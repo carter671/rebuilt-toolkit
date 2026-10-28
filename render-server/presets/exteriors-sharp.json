@@ -1,0 +1,43 @@
+{
+ "sun_azimuth": 285,
+ "sun_elevation": 30,
+ "samples": 256,
+ "shots": [
+  {
+   "name": "street-northwest",
+   "eye": [
+    -28,
+    92,
+    5.6
+   ],
+   "look": [
+    34,
+    36,
+    12
+   ],
+   "lens": 28,
+   "res": [
+    2560,
+    1440
+   ]
+  },
+  {
+   "name": "rear-patio",
+   "eye": [
+    92,
+    -32,
+    5.6
+   ],
+   "look": [
+    44,
+    14,
+    11
+   ],
+   "lens": 28,
+   "res": [
+    2560,
+    1440
+   ]
+  }
+ ]
+}

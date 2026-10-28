@@ -1,0 +1,20 @@
+{
+ "sun_azimuth": 285,
+ "sun_elevation": 30,
+ "samples": 384,
+ "shots": [
+  {
+   "name": "kitchen",
+   "pano": true,
+   "eye": [
+    55.4,
+    30.5,
+    5.33
+   ],
+   "res": [
+    8192,
+    4096
+   ]
+  }
+ ]
+}

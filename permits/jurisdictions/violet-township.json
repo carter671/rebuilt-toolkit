@@ -1,0 +1,53 @@
+{
+  "id": "violet-township",
+  "name": "Violet Township (Fairfield County) \u2014 unincorporated",
+  "office": "Violet Township Zoning / Building, 10190 Blacklick Eastern Road, Pickerington, OH 43147",
+  "phone": "614-575-5560 (zoning), 614-575-5556 (main)",
+  "portal": "https://violetoh.portal.opengov.com/",
+  "source": "violet.oh.us zoning and building pages, checked 2026-10-28. Forms and setbacks NOT yet in the toolkit.",
+  "applies_when": {
+    "note": "Fairfield County tax district 037 (VIOLET TWP - CANAL WINCHESTER LSD) and other Violet Township districts without a CORP suffix. Many have Canal Winchester or Pickerington mailing addresses.",
+    "fairfield_districts": [
+      "037"
+    ]
+  },
+  "overlays": {},
+  "applications": [
+    {
+      "id": "zoning_permit",
+      "name": "Zoning Permit",
+      "form": null,
+      "form_note": "Apply on the OpenGov portal. Plans and the application are checked against the Violet Township Zoning Resolution.",
+      "when": "before building, remodelling or adding on",
+      "attach": [
+        "site plan with lot lines, setbacks and the addition",
+        "floor plans",
+        "elevations"
+      ]
+    },
+    {
+      "id": "building_permit",
+      "name": "Building Permit",
+      "form": null,
+      "form_note": "Township building department \u2014 work that erects, enlarges, alters, repairs, moves, improves, converts or demolishes a structure.",
+      "when": "always for additions, structural changes, new openings, roof changes, demolition",
+      "attach": [
+        "construction drawings (plans, sections, structure)",
+        "beam / header sizes",
+        "energy (insulation) values"
+      ]
+    },
+    {
+      "id": "health_dept",
+      "name": "Fairfield County Health Dept \u2014 septic / well review",
+      "form": null,
+      "form_note": "Ask: bedroom count increase or building over the septic field / near the well usually triggers a review.",
+      "when": "property on well and septic and (bedrooms added or footprint grows)"
+    }
+  ],
+  "todo": [
+    "zoning district + setbacks for the parcel (Zoning Resolution)",
+    "submission checklist from the building department",
+    "fee schedule (violet.oh.us Building, Planning and Zoning Fee Schedule)"
+  ]
+}

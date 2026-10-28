@@ -1,0 +1,25 @@
+{
+ "sun_azimuth": 285,
+ "sun_elevation": 30,
+ "samples": 256,
+ "shots": [
+  {
+   "name": "kitchen-to-dining",
+   "eye": [
+    56.0,
+    36.0,
+    5.4
+   ],
+   "look": [
+    42.0,
+    25.0,
+    4.2
+   ],
+   "lens": 17,
+   "res": [
+    2560,
+    1440
+   ]
+  }
+ ]
+}

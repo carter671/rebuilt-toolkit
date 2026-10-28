@@ -1,0 +1,176 @@
+{
+ "sun_azimuth": 285,
+ "sun_elevation": 30,
+ "samples": 256,
+ "shots": [
+  {
+   "name": "kitchen",
+   "pano": true,
+   "eye": [
+    55.4,
+    30.5,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "family-room",
+   "pano": true,
+   "eye": [
+    41.3,
+    11.0,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "front-yard",
+   "pano": true,
+   "eye": [
+    23.0,
+    64.0,
+    5.5
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "foyer",
+   "pano": true,
+   "eye": [
+    24.2,
+    33.0,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "dining",
+   "pano": true,
+   "eye": [
+    38.0,
+    34.2,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "owners-bedroom",
+   "pano": true,
+   "eye": [
+    8.5,
+    18.0,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "owners-bath",
+   "pano": true,
+   "eye": [
+    17.0,
+    12.2,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "office",
+   "pano": true,
+   "eye": [
+    16.0,
+    30.0,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "mudroom",
+   "pano": true,
+   "eye": [
+    61.3,
+    18.5,
+    5.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "patio",
+   "pano": true,
+   "eye": [
+    64.0,
+    6.0,
+    5.0
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "loft",
+   "pano": true,
+   "eye": [
+    19.0,
+    15.0,
+    15.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "bedroom-4",
+   "pano": true,
+   "eye": [
+    36.5,
+    34.0,
+    15.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  },
+  {
+   "name": "bonus-room",
+   "pano": true,
+   "eye": [
+    49.3,
+    32.0,
+    15.33
+   ],
+   "res": [
+    6144,
+    3072
+   ]
+  }
+ ]
+}

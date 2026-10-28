@@ -1,0 +1,2930 @@
+{
+ "project": "Fictional Test House",
+ "fictional": true,
+ "genome_revision": 0,
+ "model_hash": "908370b8eebc993f1fc6ae7566d0c096d47ba27aee6465bdf05f0cafed58d351",
+ "compiler_version": "0.1.0",
+ "storeys": [
+  {
+   "id": "G",
+   "name": "Ground",
+   "elevation": 0.0
+  },
+  {
+   "id": "U",
+   "name": "Upper",
+   "elevation": 2.95
+  }
+ ],
+ "elements": {
+  "O-G-BE-W5": {
+   "id": "O-G-BE-W5",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-BE-W5",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-BE",
+    "kind": "window",
+    "offset": 0.5,
+    "width": 0.8,
+    "height": 1.0,
+    "sill": 1.0,
+    "sill_z": 1.0,
+    "head_z": 2.0,
+    "centre": [
+     6.5,
+     -1.1,
+     1.5
+    ],
+    "depth": 0.16,
+    "void_volume": 0.12800000000000022
+   },
+   "params": {
+    "offset": {
+     "value": 0.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.8,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3LhxSPOW1K9AlIrXTgYcOb"
+  },
+  "O-G-BE-W5#fill": {
+   "id": "O-G-BE-W5#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-G-BE-W5 window",
+   "storey": "G",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-G-BE-W5",
+    "host": "W-G-BE",
+    "kind": "window",
+    "operation": "fixed",
+    "width": 0.8,
+    "height": 1.0,
+    "thickness": 0.07,
+    "volume": 0.05600000000000014,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 0.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.8,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "35pLqhnZTRI8SiHj8b_AKF"
+  },
+  "O-G-BS-D2": {
+   "id": "O-G-BS-D2",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-BS-D2",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-BS",
+    "kind": "door",
+    "offset": 1.05,
+    "width": 0.9,
+    "height": 2.03,
+    "sill": 0.0,
+    "sill_z": 0.0,
+    "head_z": 2.03,
+    "centre": [
+     5.0,
+     -2.0,
+     1.015
+    ],
+    "depth": 0.16,
+    "void_volume": 0.2923199999999999
+   },
+   "params": {
+    "offset": {
+     "value": 1.05,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.03,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2V3W8ygRjNExkmAvsxXNBV"
+  },
+  "O-G-BS-D2#fill": {
+   "id": "O-G-BS-D2#fill",
+   "type": "filling",
+   "ifc_class": "IfcDoor",
+   "name": "O-G-BS-D2 door",
+   "storey": "G",
+   "rev": 1,
+   "material": "Door leaf, timber",
+   "data": {
+    "opening": "O-G-BS-D2",
+    "host": "W-G-BS",
+    "kind": "door",
+    "operation": "single-swing-right",
+    "width": 0.9,
+    "height": 2.03,
+    "thickness": 0.045,
+    "volume": 0.08221499999999982,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 1.05,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.03,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2jrFYfOrLKNwiDkZ5wdKH1"
+  },
+  "O-G-E-D1": {
+   "id": "O-G-E-D1",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-E-D1",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-E",
+    "kind": "door",
+    "offset": 3.0,
+    "width": 0.9,
+    "height": 2.03,
+    "sill": 0.0,
+    "sill_z": 0.0,
+    "head_z": 2.03,
+    "centre": [
+     10.0,
+     3.45,
+     1.015
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.3836700000000016
+   },
+   "params": {
+    "offset": {
+     "value": 3.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.03,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1XxKVG5S5JzO7Mjh9mssz1"
+  },
+  "O-G-E-D1#fill": {
+   "id": "O-G-E-D1#fill",
+   "type": "filling",
+   "ifc_class": "IfcDoor",
+   "name": "O-G-E-D1 door",
+   "storey": "G",
+   "rev": 1,
+   "material": "Door leaf, timber",
+   "data": {
+    "opening": "O-G-E-D1",
+    "host": "W-G-E",
+    "kind": "door",
+    "operation": "single-swing-left",
+    "width": 0.9,
+    "height": 2.03,
+    "thickness": 0.045,
+    "volume": 0.08221499999999997,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 3.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.03,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1I$Fn9J8rGWAYHg5E01b6D"
+  },
+  "O-G-N-W3": {
+   "id": "O-G-N-W3",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-N-W3",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-N",
+    "kind": "window",
+    "offset": 2.0,
+    "width": 1.0,
+    "height": 1.0,
+    "sill": 1.1,
+    "sill_z": 1.1,
+    "head_z": 2.1,
+    "centre": [
+     7.5,
+     7.0,
+     1.6
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.2100000000000004
+   },
+   "params": {
+    "offset": {
+     "value": 2.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0hpd0szOfRl9i42XGmdhrX"
+  },
+  "O-G-N-W3#fill": {
+   "id": "O-G-N-W3#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-G-N-W3 window",
+   "storey": "G",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-G-N-W3",
+    "host": "W-G-N",
+    "kind": "window",
+    "operation": "slider",
+    "width": 1.0,
+    "height": 1.0,
+    "thickness": 0.07,
+    "volume": 0.07000000000000028,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 2.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3cOCxdT7TLIh6jyg3pwozw"
+  },
+  "O-G-S-V1": {
+   "id": "O-G-S-V1",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-S-V1",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-S",
+    "kind": "void",
+    "offset": 4.2,
+    "width": 1.6,
+    "height": 2.1,
+    "sill": 0.0,
+    "sill_z": 0.0,
+    "head_z": 2.1,
+    "centre": [
+     5.0,
+     0.0,
+     1.05
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.7056000000000003
+   },
+   "params": {
+    "offset": {
+     "value": 4.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.6,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "03837xVzzI5wdy16e3Safm"
+  },
+  "O-G-S-W1": {
+   "id": "O-G-S-W1",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-S-W1",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-S",
+    "kind": "window",
+    "offset": 1.0,
+    "width": 1.2,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 0.9,
+    "head_z": 2.1,
+    "centre": [
+     1.6,
+     0.0,
+     1.5
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.3024000000000001
+   },
+   "params": {
+    "offset": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2mPQyDwgTSges8pLc5i1Nf"
+  },
+  "O-G-S-W1#fill": {
+   "id": "O-G-S-W1#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-G-S-W1 window",
+   "storey": "G",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-G-S-W1",
+    "host": "W-G-S",
+    "kind": "window",
+    "operation": "double-hung",
+    "width": 1.2,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.10080000000000003,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1PeKgn1tDHDBqG86C34kGg"
+  },
+  "O-G-S-W2": {
+   "id": "O-G-S-W2",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-S-W2",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-S",
+    "kind": "window",
+    "offset": 7.5,
+    "width": 1.2,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 0.9,
+    "head_z": 2.1,
+    "centre": [
+     8.1,
+     0.0,
+     1.5
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.3023999999999998
+   },
+   "params": {
+    "offset": {
+     "value": 7.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "195s7exu1Qg8G$reHEZJ54"
+  },
+  "O-G-S-W2#fill": {
+   "id": "O-G-S-W2#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-G-S-W2 window",
+   "storey": "G",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-G-S-W2",
+    "host": "W-G-S",
+    "kind": "window",
+    "operation": "double-hung",
+    "width": 1.2,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.10079999999999996,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 7.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0BaZAqHMTJ4AEuCaeBghPN"
+  },
+  "O-G-W-W4": {
+   "id": "O-G-W-W4",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-G-W-W4",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-G-W",
+    "kind": "window",
+    "offset": 1.0,
+    "width": 1.0,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 0.9,
+    "head_z": 2.1,
+    "centre": [
+     0.0,
+     5.5,
+     1.5
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.25200000000000006
+   },
+   "params": {
+    "offset": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3dzus4AH1K6QKzKfxLe6yC"
+  },
+  "O-G-W-W4#fill": {
+   "id": "O-G-W-W4#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-G-W-W4 window",
+   "storey": "G",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-G-W-W4",
+    "host": "W-G-W",
+    "kind": "window",
+    "operation": "casement",
+    "width": 1.0,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.084,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "21yWvnhyDPzBNwmda9Lq$J"
+  },
+  "O-U-N-W8": {
+   "id": "O-U-N-W8",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-U-N-W8",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-U-N",
+    "kind": "window",
+    "offset": 6.5,
+    "width": 1.0,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 3.85,
+    "head_z": 5.05,
+    "centre": [
+     3.0,
+     7.0,
+     4.45
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.25199999999999956
+   },
+   "params": {
+    "offset": {
+     "value": 6.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2UUWMci3zP9RMZSEmCRdWb"
+  },
+  "O-U-N-W8#fill": {
+   "id": "O-U-N-W8#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-U-N-W8 window",
+   "storey": "U",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-U-N-W8",
+    "host": "W-U-N",
+    "kind": "window",
+    "operation": "double-hung",
+    "width": 1.0,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.08400000000000023,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 6.5,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3UU8JlkTLM_wqva3xcVxkc"
+  },
+  "O-U-S-W6": {
+   "id": "O-U-S-W6",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-U-S-W6",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-U-S",
+    "kind": "window",
+    "offset": 2.0,
+    "width": 1.0,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 3.85,
+    "head_z": 5.05,
+    "centre": [
+     2.5,
+     0.0,
+     4.45
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.25199999999999995
+   },
+   "params": {
+    "offset": {
+     "value": 2.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1exm7NypjSNOhufphxTTjD"
+  },
+  "O-U-S-W6#fill": {
+   "id": "O-U-S-W6#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-U-S-W6 window",
+   "storey": "U",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-U-S-W6",
+    "host": "W-U-S",
+    "kind": "window",
+    "operation": "double-hung",
+    "width": 1.0,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.08400000000000002,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 2.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2qzk0OKwbTge33rHQIdI1Q"
+  },
+  "O-U-S-W7": {
+   "id": "O-U-S-W7",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-U-S-W7",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-U-S",
+    "kind": "window",
+    "offset": 7.0,
+    "width": 1.0,
+    "height": 1.2,
+    "sill": 0.9,
+    "sill_z": 3.85,
+    "head_z": 5.05,
+    "centre": [
+     7.5,
+     0.0,
+     4.45
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.2519999999999999
+   },
+   "params": {
+    "offset": {
+     "value": 7.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2enjGDOQTVhBIXCVBMfSwi"
+  },
+  "O-U-S-W7#fill": {
+   "id": "O-U-S-W7#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-U-S-W7 window",
+   "storey": "U",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-U-S-W7",
+    "host": "W-U-S",
+    "kind": "window",
+    "operation": "double-hung",
+    "width": 1.0,
+    "height": 1.2,
+    "thickness": 0.07,
+    "volume": 0.084,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 7.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 0.9,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2_6BePtELRt8Ev8Mirkfsp"
+  },
+  "O-U-W-W9": {
+   "id": "O-U-W-W9",
+   "type": "opening",
+   "ifc_class": "IfcOpeningElement",
+   "name": "O-U-W-W9",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "host": "W-U-W",
+    "kind": "window",
+    "offset": 3.0,
+    "width": 0.8,
+    "height": 1.0,
+    "sill": 1.2,
+    "sill_z": 4.15,
+    "head_z": 5.15,
+    "centre": [
+     0.0,
+     3.6,
+     4.65
+    ],
+    "depth": 0.21000000000000002,
+    "void_volume": 0.16799999999999993
+   },
+   "params": {
+    "offset": {
+     "value": 3.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.8,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2xkFjRDNvTbgJHaZPkD4ht"
+  },
+  "O-U-W-W9#fill": {
+   "id": "O-U-W-W9#fill",
+   "type": "filling",
+   "ifc_class": "IfcWindow",
+   "name": "O-U-W-W9 window",
+   "storey": "U",
+   "rev": 1,
+   "material": "Glazing",
+   "data": {
+    "opening": "O-U-W-W9",
+    "host": "W-U-W",
+    "kind": "window",
+    "operation": "fixed",
+    "width": 0.8,
+    "height": 1.0,
+    "thickness": 0.07,
+    "volume": 0.055999999999999994,
+    "representation": "proxy-panel"
+   },
+   "params": {
+    "offset": {
+     "value": 3.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "width": {
+     "value": 0.8,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 1.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "sill": {
+     "value": 1.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2ojfW_NyPH895EoH6zvoLW"
+  },
+  "R-main": {
+   "id": "R-main",
+   "type": "roof",
+   "ifc_class": "IfcRoof",
+   "name": "Main gable roof",
+   "storey": "U",
+   "rev": 1,
+   "material": "Asphalt shingle roof assembly",
+   "data": {
+    "plate_z": 5.550000000000001,
+    "slope": 0.6666666666666666,
+    "top_z": 8.190370085030933,
+    "vertical_thickness": 0.24037008503093263,
+    "volume": 19.87379861158895
+   },
+   "params": {
+    "pitch": {
+     "value": 0.6666666666666666,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.01,
+     "confidence": null,
+     "observations": [],
+     "input": "8:12"
+    },
+    "plate_height": {
+     "value": 2.6,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "overhang": {
+     "value": 0.3,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.01,
+     "confidence": null,
+     "observations": []
+    },
+    "rake_overhang": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.01,
+     "confidence": null,
+     "observations": []
+    },
+    "thickness": {
+     "value": 0.2,
+     "basis": "assumed",
+     "verification": "unverified",
+     "uncertainty": null,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1OsqVeg4rOeA9_NhiKBd6R"
+  },
+  "R-mud": {
+   "id": "R-mud",
+   "type": "roof",
+   "ifc_class": "IfcRoof",
+   "name": "Mudroom shed roof",
+   "storey": "G",
+   "rev": 1,
+   "material": "Asphalt shingle roof assembly",
+   "data": {
+    "plate_z": 2.4,
+    "slope": 0.25,
+    "top_z": 3.0483664609606627,
+    "vertical_thickness": 0.15461646096066226,
+    "volume": 1.1524724446068364
+   },
+   "params": {
+    "pitch": {
+     "value": 0.25,
+     "basis": "observed",
+     "verification": "unverified",
+     "uncertainty": 0.04,
+     "confidence": 0.6,
+     "observations": [],
+     "input": "about 3:12 (from photo)"
+    },
+    "plate_height": {
+     "value": 2.4,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "overhang": {
+     "value": 0.25,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.01,
+     "confidence": null,
+     "observations": []
+    },
+    "rake_overhang": {
+     "value": 0.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.01,
+     "confidence": null,
+     "observations": []
+    },
+    "thickness": {
+     "value": 0.15,
+     "basis": "assumed",
+     "verification": "unverified",
+     "uncertainty": null,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3JiLkv_RjKMg$cH6FMTcxY"
+  },
+  "S-G-base": {
+   "id": "S-G-base",
+   "type": "slab",
+   "ifc_class": "IfcSlab",
+   "name": "Ground slab",
+   "storey": "G",
+   "rev": 1,
+   "material": "Concrete",
+   "data": {
+    "kind": "base",
+    "top_z": 0.0,
+    "bottom_z": -0.1,
+    "thickness": 0.1,
+    "area": 79.66125,
+    "volume": 7.966125006832183
+   },
+   "params": {
+    "thickness": {
+     "value": 0.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "top_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "02OBIYAubSrxTXujGFOClD"
+  },
+  "S-U-ceiling": {
+   "id": "S-U-ceiling",
+   "type": "slab",
+   "ifc_class": "IfcSlab",
+   "name": "Upper ceiling",
+   "storey": "U",
+   "rev": 1,
+   "material": "Gypsum board",
+   "data": {
+    "kind": "ceiling",
+    "top_z": 5.550000000000001,
+    "bottom_z": 5.534000000000001,
+    "thickness": 0.016,
+    "area": 66.64,
+    "volume": 1.0662399992084493
+   },
+   "params": {
+    "thickness": {
+     "value": 0.016,
+     "basis": "assumed",
+     "verification": "unverified",
+     "uncertainty": null,
+     "confidence": null,
+     "observations": []
+    },
+    "top_offset": {
+     "value": 2.6,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2ZBXCKmLHUEQdaBv1GMad5"
+  },
+  "S-U-floor": {
+   "id": "S-U-floor",
+   "type": "slab",
+   "ifc_class": "IfcSlab",
+   "name": "Upper floor",
+   "storey": "U",
+   "rev": 1,
+   "material": "Timber floor assembly",
+   "data": {
+    "kind": "floor",
+    "top_z": 2.95,
+    "bottom_z": 2.7,
+    "thickness": 0.25,
+    "area": 73.43999999999998,
+    "volume": 18.360000012964
+   },
+   "params": {
+    "thickness": {
+     "value": 0.25,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "top_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2kcpplrMHKuepFzeYpXTt0"
+  },
+  "SP-G-family": {
+   "id": "SP-G-family",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Family",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 26.18,
+    "height": 2.7,
+    "volume": 70.68599999637902,
+    "base_z": 0.0,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3VmMvz9i9HZA1njwIAiEle"
+  },
+  "SP-G-kitchen": {
+   "id": "SP-G-kitchen",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Kitchen",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 16.67250000000001,
+    "height": 2.7,
+    "volume": 45.01575003500284,
+    "base_z": 0.0,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1DGyxCuuXGYwoGyjL6A0gH"
+  },
+  "SP-G-living": {
+   "id": "SP-G-living",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Living",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 22.522500000000004,
+    "height": 2.7,
+    "volume": 60.810750039026146,
+    "base_z": 0.0,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "327WOh1X9KDwksFWJp2QW5"
+  },
+  "SP-G-mud": {
+   "id": "SP-G-mud",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Mudroom",
+   "storey": "G",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 5.201249999999999,
+    "height": 2.4,
+    "volume": 12.482999943315981,
+    "base_z": 0.0,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.4,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3TD7fgWhjUwxBu4s2I3w6e"
+  },
+  "SP-U-bed1": {
+   "id": "SP-U-bed1",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Bedroom 1",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 32.980000000000004,
+    "height": 2.584,
+    "volume": 85.22031998883368,
+    "base_z": 2.95,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.584,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0mVCa4x2jVKA8fKA6ecaB0"
+  },
+  "SP-U-bed2": {
+   "id": "SP-U-bed2",
+   "type": "space",
+   "ifc_class": "IfcSpace",
+   "name": "Bedroom 2",
+   "storey": "U",
+   "rev": 1,
+   "material": null,
+   "data": {
+    "area": 32.980000000000004,
+    "height": 2.584,
+    "volume": 85.22031998883368,
+    "base_z": 2.95,
+    "usage": ""
+   },
+   "params": {
+    "height": {
+     "value": 2.584,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2iOd_oCQnIzelOKwRptwkj"
+  },
+  "W-G-BE": {
+   "id": "W-G-BE",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Mudroom east wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      6.5,
+      -2.0
+     ],
+     [
+      6.5,
+      0.0
+     ]
+    ],
+    "length": 2.0,
+    "thickness": 0.15,
+    "base_z": 0.0,
+    "height": null,
+    "top_z": null,
+    "clear_span": [
+     0.07499999999999996,
+     1.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-BS"
+      ]
+     },
+     "end": {
+      "kind": "T",
+      "others": [
+       "W-G-S"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 0.7569961231807265,
+    "volume": 0.6369961184123528,
+    "exterior": true,
+    "attached_roof": "R-mud"
+   },
+   "params": {
+    "thickness": {
+     "value": 0.15,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": null,
+     "basis": "observed",
+     "verification": "unverified",
+     "from": "clipped to roof R-mud (governed by roof pitch)",
+     "derived": true,
+     "uncertainty": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0uKGNy8kHVSOGBlNzoVHJ6"
+  },
+  "W-G-BS": {
+   "id": "W-G-BS",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Mudroom south wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      3.5,
+      -2.0
+     ],
+     [
+      6.5,
+      -2.0
+     ]
+    ],
+    "length": 3.0,
+    "thickness": 0.15,
+    "base_z": 0.0,
+    "height": 2.4,
+    "top_z": 2.4,
+    "clear_span": [
+     0.07500000000000018,
+     2.925
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-BW"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-BE"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 1.0800000429153442,
+    "volume": 0.8059500320255758,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.15,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.4,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "38ZXxHu7fSYh8SdJX0GcaD"
+  },
+  "W-G-BW": {
+   "id": "W-G-BW",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Mudroom west wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      3.5,
+      0.0
+     ],
+     [
+      3.5,
+      -2.0
+     ]
+    ],
+    "length": 2.0,
+    "thickness": 0.15,
+    "base_z": 0.0,
+    "height": null,
+    "top_z": null,
+    "clear_span": [
+     0.1,
+     1.925
+    ],
+    "junctions": {
+     "start": {
+      "kind": "T",
+      "others": [
+       "W-G-S"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-BS"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 0.7569961231807238,
+    "volume": 0.7569961231807238,
+    "exterior": true,
+    "attached_roof": "R-mud"
+   },
+   "params": {
+    "thickness": {
+     "value": 0.15,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": null,
+     "basis": "observed",
+     "verification": "unverified",
+     "from": "clipped to roof R-mud (governed by roof pitch)",
+     "derived": true,
+     "uncertainty": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "18H3CcUOvRjgkRKpNrg7zt"
+  },
+  "W-G-E": {
+   "id": "W-G-E",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground east wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      10.0,
+      0.0
+     ],
+     [
+      10.0,
+      7.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.2,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.1,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-S"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-N"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 3.780000056326391,
+    "volume": 3.4146000508815058,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3R9xc7WdfQKeRrbH2PMbjQ"
+  },
+  "W-G-I1": {
+   "id": "W-G-I1",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground partition x=6",
+   "storey": "G",
+   "rev": 1,
+   "material": "Interior partition, generic",
+   "data": {
+    "baseline": [
+     [
+      6.0,
+      0.0
+     ],
+     [
+      6.0,
+      7.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.1,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.1,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "T",
+      "others": [
+       "W-G-S"
+      ]
+     },
+     "end": {
+      "kind": "T",
+      "others": [
+       "W-G-N"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-G-I2",
+      "L",
+      3.95,
+      4.05
+     ]
+    ],
+    "gross_volume": 1.8359998897612098,
+    "volume": 1.8359998897612098,
+    "exterior": false,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0YETEn5UfSdvW8riKTcKh1"
+  },
+  "W-G-I2": {
+   "id": "W-G-I2",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground partition y=4",
+   "storey": "G",
+   "rev": 1,
+   "material": "Interior partition, generic",
+   "data": {
+    "baseline": [
+     [
+      0.0,
+      4.0
+     ],
+     [
+      6.0,
+      4.0
+     ]
+    ],
+    "length": 6.0,
+    "thickness": 0.1,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.1,
+     5.95
+    ],
+    "junctions": {
+     "start": {
+      "kind": "T",
+      "others": [
+       "W-G-W"
+      ]
+     },
+     "end": {
+      "kind": "T",
+      "others": [
+       "W-G-I1"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 1.579499906256796,
+    "volume": 1.579499906256796,
+    "exterior": false,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2bVmo9gv1Mgfd9NF1f21ml"
+  },
+  "W-G-N": {
+   "id": "W-G-N",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground north wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      10.0,
+      7.0
+     ],
+     [
+      0.0,
+      7.0
+     ]
+    ],
+    "length": 10.0,
+    "thickness": 0.2,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.09999999999999964,
+     9.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-E"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-W"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-G-I1",
+      "L",
+      3.95,
+      4.05
+     ]
+    ],
+    "gross_volume": 5.400000080466265,
+    "volume": 5.200000077486035,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2nE8WKQyzMaurVMmF3aFfw"
+  },
+  "W-G-S": {
+   "id": "W-G-S",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground south wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      10.0,
+      0.0
+     ]
+    ],
+    "length": 10.0,
+    "thickness": 0.2,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.1,
+     9.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-W"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-E"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-G-BE",
+      "R",
+      6.425,
+      6.575
+     ],
+     [
+      "W-G-BW",
+      "R",
+      3.425,
+      3.575
+     ],
+     [
+      "W-G-I1",
+      "L",
+      5.95,
+      6.05
+     ]
+    ],
+    "gross_volume": 5.4000000804662704,
+    "volume": 4.152000061869622,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3EmIlvpJ5QMuP0lBZ04LxF"
+  },
+  "W-G-W": {
+   "id": "W-G-W",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Ground west wall",
+   "storey": "G",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      0.0,
+      7.0
+     ],
+     [
+      0.0,
+      0.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.2,
+    "base_z": 0.0,
+    "height": 2.7,
+    "top_z": 2.7,
+    "clear_span": [
+     0.09999999999999964,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-G-N"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-G-S"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-G-I2",
+      "L",
+      2.95,
+      3.05
+     ]
+    ],
+    "gross_volume": 3.7800000563263896,
+    "volume": 3.540000052750111,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.7,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "171q4eaeTTLwpvdvjEX8Gb"
+  },
+  "W-U-E": {
+   "id": "W-U-E",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Upper east gable wall",
+   "storey": "U",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      10.0,
+      0.0
+     ],
+     [
+      10.0,
+      7.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.2,
+    "base_z": 2.95,
+    "height": null,
+    "top_z": null,
+    "clear_span": [
+     0.1,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-U-S"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-U-N"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 5.366222302171913,
+    "volume": 5.366222302171913,
+    "exterior": true,
+    "attached_roof": "R-main"
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": null,
+     "basis": "measured",
+     "verification": "unverified",
+     "from": "clipped to roof R-main (governed by roof pitch)",
+     "derived": true,
+     "uncertainty": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "18zE8dKZPSKxa2IOC1pg2n"
+  },
+  "W-U-I1": {
+   "id": "W-U-I1",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Upper partition x=5",
+   "storey": "U",
+   "rev": 1,
+   "material": "Interior partition, generic",
+   "data": {
+    "baseline": [
+     [
+      5.0,
+      0.0
+     ],
+     [
+      5.0,
+      7.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.1,
+    "base_z": 2.95,
+    "height": 2.584,
+    "top_z": 5.534000000000001,
+    "clear_span": [
+     0.1,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "T",
+      "others": [
+       "W-U-S"
+      ]
+     },
+     "end": {
+      "kind": "T",
+      "others": [
+       "W-U-N"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 1.757119894497396,
+    "volume": 1.757119894497396,
+    "exterior": false,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.1,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.584,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "3AQlVJNwrHkBUJVHDUMYML"
+  },
+  "W-U-N": {
+   "id": "W-U-N",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Upper north wall",
+   "storey": "U",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      10.0,
+      7.0
+     ],
+     [
+      0.0,
+      7.0
+     ]
+    ],
+    "length": 10.0,
+    "thickness": 0.2,
+    "base_z": 2.95,
+    "height": 2.6,
+    "top_z": 5.550000000000001,
+    "clear_span": [
+     0.09999999999999964,
+     9.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-U-E"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-U-W"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-U-I1",
+      "L",
+      4.95,
+      5.05
+     ]
+    ],
+    "gross_volume": 5.200000077486056,
+    "volume": 4.960000073909763,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.6,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "from": "storey U height"
+    }
+   },
+   "issues": [],
+   "ifc_guid": "2wFPrPsmfIovMf6smouQXZ"
+  },
+  "W-U-S": {
+   "id": "W-U-S",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Upper south wall",
+   "storey": "U",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      10.0,
+      0.0
+     ]
+    ],
+    "length": 10.0,
+    "thickness": 0.2,
+    "base_z": 2.95,
+    "height": 2.6,
+    "top_z": 5.550000000000001,
+    "clear_span": [
+     0.1,
+     9.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-U-W"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-U-E"
+      ]
+     }
+    },
+    "butted_by": [
+     [
+      "W-U-I1",
+      "L",
+      4.95,
+      5.05
+     ]
+    ],
+    "gross_volume": 5.200000077486039,
+    "volume": 4.720000070333482,
+    "exterior": true,
+    "attached_roof": null
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "inferred",
+     "verification": "unverified",
+     "uncertainty": 0.03,
+     "confidence": 0.7,
+     "observations": []
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": 2.6,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "from": "storey U height"
+    }
+   },
+   "issues": [],
+   "ifc_guid": "1tsk9npLbT3udfFdZXTN42"
+  },
+  "W-U-W": {
+   "id": "W-U-W",
+   "type": "wall",
+   "ifc_class": "IfcWall",
+   "name": "Upper west gable wall",
+   "storey": "U",
+   "rev": 1,
+   "material": "Exterior wall, generic",
+   "data": {
+    "baseline": [
+     [
+      0.0,
+      7.0
+     ],
+     [
+      0.0,
+      0.0
+     ]
+    ],
+    "length": 7.0,
+    "thickness": 0.2,
+    "base_z": 2.95,
+    "height": null,
+    "top_z": null,
+    "clear_span": [
+     0.09999999999999964,
+     6.9
+    ],
+    "junctions": {
+     "start": {
+      "kind": "L",
+      "others": [
+       "W-U-N"
+      ]
+     },
+     "end": {
+      "kind": "L",
+      "others": [
+       "W-U-S"
+      ]
+     }
+    },
+    "butted_by": [],
+    "gross_volume": 5.366222302171917,
+    "volume": 5.206222299787732,
+    "exterior": true,
+    "attached_roof": "R-main"
+   },
+   "params": {
+    "thickness": {
+     "value": 0.2,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.003,
+     "confidence": null,
+     "observations": [],
+     "input": "7 7/8\""
+    },
+    "base_offset": {
+     "value": 0.0,
+     "basis": "measured",
+     "verification": "unverified",
+     "uncertainty": 0.0,
+     "confidence": null,
+     "observations": []
+    },
+    "height": {
+     "value": null,
+     "basis": "measured",
+     "verification": "unverified",
+     "from": "clipped to roof R-main (governed by roof pitch)",
+     "derived": true,
+     "uncertainty": null,
+     "observations": []
+    }
+   },
+   "issues": [],
+   "ifc_guid": "0cMOF$qbXQxQpVJg_NYzwM"
+  }
+ },
+ "issues": [],
+ "unsupported": [],
+ "observations": {}
+}

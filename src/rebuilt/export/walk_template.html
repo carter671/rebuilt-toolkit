@@ -1,0 +1,312 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* layout: full-screen 3D view; top bar with modes + room picker; plan inset bottom-left; move pad bottom-right (phones) */
+:root{
+  --chrome:#141b1f; --chrome-2:#1f292f; --ink:#e8eef1; --muted:#9fb0b8; --accent:#7fc0e8; --line:#33424a;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif; --f-body:"Source Sans 3",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--chrome);color:var(--ink);font:14px/1.4 var(--f-body);overflow:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--chrome)}
+#app{position:fixed;inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px) 0;display:grid;grid-template-rows:auto 1fr}
+header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--chrome);border-bottom:1px solid var(--line);
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:600 1.25rem var(--f-display);letter-spacing:.02em;margin:0;white-space:nowrap}
+.sub{color:var(--muted);font-size:.8rem}
+.grp{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+button,select{font:inherit;color:var(--ink);background:var(--chrome-2);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer}
+button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#view{position:relative;min-height:0}
+#gl{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
+#where{position:absolute;top:10px;left:max(12px,env(safe-area-inset-left,0px));background:rgba(20,27,31,.78);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font:600 1rem var(--f-display);letter-spacing:.03em}
+#where small{display:block;font:400 .75rem var(--f-mono);color:var(--muted);letter-spacing:0}
+#mini{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;width:200px;height:150px;background:rgba(20,27,31,.82);border:1px solid var(--line);border-radius:4px}
+#pad{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:6px}
+#pad button{font-size:1.1rem;padding:0;background:rgba(31,41,47,.85)}
+#help{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:10px;max-width:300px;background:rgba(20,27,31,.82);border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-size:.82rem;color:var(--muted)}
+#help b{color:var(--ink);font-weight:600}
+#loading{position:absolute;inset:0;display:grid;place-items:center;font:600 1.1rem var(--f-display);letter-spacing:.04em;color:var(--muted)}
+#photo{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(20,27,31,.88);border:1px solid var(--accent);color:var(--accent);border-radius:20px;padding:8px 16px;font:600 .95rem var(--f-body);text-decoration:none;white-space:nowrap}
+#photo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:640px){#photo{bottom:auto;top:58px}}
+@media (max-width:640px){#mini{width:140px;height:105px}#help{display:none}h1{font-size:1.05rem}}
+</style>
+
+<div id="app">
+  <header>
+    <div><h1 id="ttl"></h1><div class="sub" id="sub"></div></div>
+    <div class="grp" role="group" aria-label="View mode">
+      <button id="mWalk" aria-pressed="true">Walk</button>
+      <button id="mOver" aria-pressed="false">Overview</button>
+    </div>
+    <div class="grp" role="group" aria-label="Overview cut" id="cuts" hidden>
+      <button data-cut="whole" aria-pressed="true">Whole house</button>
+      <button data-cut="roof" aria-pressed="false">Roof off</button>
+      <button data-cut="1F" aria-pressed="false">1st floor cutaway</button>
+    </div>
+    <div class="grp">
+      <label class="sub" for="room">Go to</label>
+      <select id="room"></select>
+      <button id="tour">Next view ▸</button>
+    </div>
+  </header>
+  <div id="view">
+    <div id="loading">Building the house…</div>
+    <div id="where" hidden><span id="wName"></span><small id="wSub"></small></div>
+    <a id="photo" hidden>See the 360° photo here</a>
+    <canvas id="mini" width="400" height="300" aria-label="Plan inset showing where you are"></canvas>
+    <div id="help"><b>Walk:</b> drag to look around · W A S D or arrow keys to move · hold Shift to move faster · use the stairs to go up.<br><b>Overview:</b> drag to orbit, scroll or pinch to zoom.</div>
+    <div id="pad" aria-label="Move">
+      <span></span><button data-k="f" aria-label="Forward">▲</button><span></span>
+      <button data-k="l" aria-label="Turn left">◀</button><button data-k="b" aria-label="Back">▼</button><button data-k="r" aria-label="Turn right">▶</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const D = __DATA__;
+const GLB = "__GLB__";
+const FT = 0.3048, EYE = 5.33 * FT;
+document.getElementById('ttl').textContent = D.title;
+document.getElementById('sub').textContent = D.subtitle;
+
+/* ---------- renderer + scene ---------- */
+const view = document.getElementById('view');
+const canvas = document.createElement('canvas'); canvas.id = 'gl'; view.prepend(canvas);
+const R = new THREE.WebGLRenderer({canvas, antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.outputColorSpace = THREE.SRGBColorSpace;
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.35;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#bcd3e2');
+scene.fog = new THREE.Fog('#bcd3e2', 60, 160);
+const cam = new THREE.PerspectiveCamera(62, 1, 0.05, 400);
+const hemi = new THREE.HemisphereLight('#f2f7ff', '#8a7a62', 1.9); scene.add(hemi); scene.add(new THREE.AmbientLight('#fff6ea', 0.35));
+const sun = new THREE.DirectionalLight('#fff3df', 2.3);
+sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+Object.assign(sun.shadow.camera, {left:-24, right:24, top:24, bottom:-24, near:1, far:120});
+scene.add(sun, sun.target);
+const fill = new THREE.PointLight('#fff1dd', 0.0, 0); scene.add(fill); // interior bounce, follows the walker
+
+function resize(){ const r = view.getBoundingClientRect(); R.setSize(r.width, r.height, false); cam.aspect = r.width / Math.max(1, r.height); cam.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+/* ---------- model ---------- */
+__RENDERLIB__
+const groups = {roof:[], up:[], all:[]};
+const solid = [];                       // what the walker bumps into
+const nodesById = {};
+/* baked mode: the path-traced look (colour atlas x light atlas, baked on the render server) on unlit materials */
+const BK = D.baked, mgr = new THREE.LoadingManager();
+const small = matchMedia('(pointer: coarse)').matches || R.capabilities.maxTextureSize < 4096;
+const texL = new THREE.TextureLoader(mgr), bakedMats = {};
+function bakedTex(url, srgb){ const t = texL.load(url); t.flipY = false; t.colorSpace = srgb; t.anisotropy = Math.min(8, R.capabilities.getMaxAnisotropy()); t.channel = 0; return t; }
+function bakedMat(i){
+  if (!bakedMats[i]){
+    const map = bakedTex(`${BK.dir}color_${i}${small ? '-2k' : ''}.jpg`, THREE.SRGBColorSpace);
+    const lightMap = bakedTex(`${BK.dir}light_${i}.png`, THREE.SRGBColorSpace);
+    bakedMats[i] = new THREE.MeshBasicMaterial({map, lightMap, lightMapIntensity: Math.PI / BK.k[i], side:THREE.DoubleSide});
+  }
+  return bakedMats[i];
+}
+const glassMat = new THREE.MeshBasicMaterial({color:'#dfeaf0', transparent:true, opacity:.1, depthWrite:false, side:THREE.DoubleSide});
+const lampMat = new THREE.MeshBasicMaterial({color:'#fff3dc', toneMapped:false});
+if (BK){
+  R.shadowMap.enabled = false; sun.castShadow = false; R.toneMapping = THREE.AgXToneMapping; R.toneMappingExposure = BK.exposure || 1.0;
+  mgr.onProgress = (url, n, total) => { document.getElementById('loading').textContent = `Loading the baked house… ${Math.round(n / total * 100)}%`; };
+  mgr.onLoad = () => { document.getElementById('loading').hidden = true; };
+}
+const modelReady = g => {
+  g.scene.traverse(o => {
+    if (!o.isMesh) return;
+    const u = o.userData || {}, id = u.genome_id || o.name || '', base = id.replace('#fill','');
+    if (BK){
+      o.material = u.mat === 'glass' ? glassMat : u.mat === 'lamp' ? lampMat : bakedMat(u.bake || 0);
+      nodesById[id] = o; groups.all.push(o);
+      if (u.type === 'roof') groups.roof.push(o);
+      if (u.storey === '2F' || D.upperIds.includes(id)) groups.up.push(o);
+      if (['wall','component','filling'].includes(u.type) && !id.startsWith('ST-') && !id.startsWith('FL-') && !id.startsWith('FP-STEP') && u.mat !== 'glass') solid.push(o);
+      return;
+    }
+    if (u.type === 'space') { o.visible = false; return; }
+    if (u.type === 'filling' && D.hideFill.includes(base)) { o.visible = false; return; }
+    const c = o.material.color ? o.material.color.clone() : new THREE.Color('#ddd');
+    o.material = new THREE.MeshStandardMaterial({color:c, roughness:.82, metalness:0, side:THREE.DoubleSide});
+    nodesById[id] = o; groups.all.push(o);
+    if (u.type === 'roof') groups.roof.push(o);
+    if (u.storey === '2F' || D.upperIds.includes(id)) groups.up.push(o);
+    if (['wall','component','filling'].includes(u.type) && !id.startsWith('ST-') && !id.startsWith('FL-') && !id.startsWith('FP-STEP')) solid.push(o);
+  });
+  scene.add(g.scene);
+  const bb = new THREE.Box3().setFromObject(g.scene); bb.getCenter(center); bb.getSize(size);
+  orbit.target.copy(center);
+  if (!BK) { try { RB.apply({scene, renderer:R, sun, hemi, nodes:nodesById, cfg:D.rcfg, site:D.site}); } catch(e) { console.warn('render', e); }
+    document.getElementById('loading').hidden = true; }
+  resize(); spawn(); loop();
+};
+if (BK) new GLTFLoader(mgr).load(BK.dir + (BK.glb || 'scene.glb'), modelReady, undefined, () => { document.getElementById('loading').textContent = 'The baked house could not be loaded.'; });
+else new GLTFLoader().parse(Uint8Array.from(atob(GLB), c => c.charCodeAt(0)).buffer, '', modelReady);
+const center = new THREE.Vector3(), size = new THREE.Vector3();
+
+/* ---------- modes ---------- */
+const orbit = new OrbitControls(cam, canvas); orbit.enableDamping = true; orbit.enabled = false;
+let mode = 'walk';
+function setMode(m){
+  mode = m; orbit.enabled = m === 'over';
+  document.getElementById('mWalk').setAttribute('aria-pressed', m==='walk');
+  document.getElementById('mOver').setAttribute('aria-pressed', m==='over');
+  document.getElementById('cuts').hidden = m !== 'over';
+  document.getElementById('pad').style.display = m==='walk' ? '' : 'none';
+  document.getElementById('where').hidden = m !== 'walk';
+  if (m !== 'walk') photoBtn.hidden = true;
+  scene.fog.near = m==='walk' ? 60 : 200;
+  if (m === 'over') { setCut(cut); cam.position.set(center.x - size.x*.55, size.y*3.2, center.z + size.z*1.15); orbit.update(); }
+  else setCut('whole');
+}
+let cut = 'whole';
+function setCut(c){
+  cut = c;
+  groups.all.forEach(o => o.visible = o.visible && true);
+  groups.roof.forEach(o => o.visible = c === 'whole');
+  groups.up.forEach(o => o.visible = c !== '1F');
+  document.querySelectorAll('#cuts button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cut === c));
+}
+document.getElementById('mWalk').onclick = () => { setMode('walk'); goRoom(cur.room || D.start); };
+document.getElementById('mOver').onclick = () => setMode('over');
+document.querySelectorAll('#cuts button').forEach(b => b.onclick = () => setCut(b.dataset.cut));
+
+/* ---------- walking ---------- */
+const P2 = (gx, gy) => new THREE.Vector3(gx, 0, -gy);      // genome metres -> three
+const inPoly = (x, y, poly) => { let c = false; for (let i=0, j=poly.length-1; i<poly.length; j=i++){ const [xi,yi]=poly[i],[xj,yj]=poly[j]; if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; };
+let yaw = 0, pitch = -0.05, level = '1F';
+const cur = {room:null};
+function floorAt(gx, gy){
+  const s = D.stair;
+  if (gx > s.x0 && gx < s.x1 && gy > s.y0 - 0.3 && gy < s.y1 + 0.2){
+    const t = Math.min(1, Math.max(0, (gy - s.y0) / (s.y1 - s.y0)));
+    const z = t * D.levels['2F'];
+    if (level === '2F' && gy > s.y1 - 0.05) return D.levels['2F'];
+    if (level === '1F' && gy > s.y1 - 0.6) return D.levels['1F'];  // the 1F hall at the stair head stays on 1F
+    level = z > D.levels['2F']/2 ? '2F' : '1F';
+    return z;
+  }
+  return D.levels[level];
+}
+function roomAt(gx, gy){ return D.rooms.find(r => r.storey === level && inPoly(gx, gy, r.poly)); }
+function goRoom(name){
+  const r = D.rooms.find(q => q.name === name) || D.rooms[0];
+  level = r.storey; setMode('walk');
+  const [gx, gy] = r.at; cam.position.set(gx, D.levels[level] + EYE, -gy);
+  yaw = Math.atan2(-r.look[0], r.look[1]); pitch = r.pitch ?? -0.04;
+  document.getElementById('room').value = r.name;
+}
+function spawn(){
+  const m = /at=([-\d.]+),([-\d.]+),(1F|2F),([-\d.]+)/.exec(decodeURIComponent(location.hash || ''));
+  if (!m) return goRoom(D.start);
+  level = m[3]; setMode('walk');
+  cam.position.set(+m[1], D.levels[level] + EYE, -m[2]); yaw = +m[4]; pitch = -0.04;
+}
+const photoBtn = document.getElementById('photo');
+function nearPhoto(gx, gy){
+  if (!D.photos) return;
+  let best = null, bd = 1.6;
+  for (const q of D.photos.stops){ if (q.floor !== level) continue; const d = Math.hypot(q.x - gx, q.y - gy); if (d < bd){ bd = d; best = q; } }
+  photoBtn.hidden = !best;
+  if (best) { photoBtn.textContent = `See the 360° photo: ${best.name}`; photoBtn.href = `${D.photos.url}#${best.id}&yaw=${yaw.toFixed(3)}`; }
+}
+const keys = {};
+addEventListener('keydown', e => { if (e.target.tagName === 'SELECT') return; keys[e.code] = true; });
+addEventListener('keyup', e => { keys[e.code] = false; });
+document.querySelectorAll('#pad button').forEach(b => {
+  const on = e => { e.preventDefault(); keys['pad-'+b.dataset.k] = true; }, off = () => keys['pad-'+b.dataset.k] = false;
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+});
+let drag = null;
+canvas.addEventListener('pointerdown', e => { if (mode !== 'walk') return; drag = {x:e.clientX, y:e.clientY}; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX-drag.x)*0.004; pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY-drag.y)*0.004)); drag = {x:e.clientX, y:e.clientY}; });
+canvas.addEventListener('pointerup', () => drag = null);
+const ray = new THREE.Raycaster();
+function blocked(from, dir, dist){
+  for (const h of [0.45, 1.2]){
+    const o = from.clone(); o.y = D.levels[level] + h;
+    ray.set(o, dir); ray.far = dist + 0.3;
+    const hit = ray.intersectObjects(solid, false).find(i => i.object.visible);
+    if (hit) return true;
+  }
+  return false;
+}
+const clock = new THREE.Clock();
+function step(dt){
+  const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  let turn = 0, mv = 0;
+  if (keys.KeyW || keys.ArrowUp || keys['pad-f']) mv += 1;
+  if (keys.KeyS || keys.ArrowDown || keys['pad-b']) mv -= 1;
+  if (keys.ArrowLeft || keys['pad-l']) turn += 1;
+  if (keys.ArrowRight || keys['pad-r']) turn -= 1;
+  const strafe = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  yaw += turn * dt * 1.6;
+  const speed = (keys.ShiftLeft || keys.ShiftRight ? 3.2 : 1.6) * dt;
+  const dir = fwd.clone().multiplyScalar(mv).add(new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(strafe));
+  if (dir.lengthSq() > 0){
+    dir.normalize();
+    if (!blocked(cam.position, dir, speed)) cam.position.addScaledVector(dir, speed);
+  }
+  const gx = cam.position.x, gy = -cam.position.z;
+  const fz = floorAt(gx, gy);
+  cam.position.y += (fz + EYE - cam.position.y) * Math.min(1, dt * 10);
+  cam.rotation.set(pitch, yaw, 0, 'YXZ');
+  fill.position.copy(cam.position); fill.position.y += 0.6; fill.intensity = 30; fill.distance = 14; fill.decay = 1.4;
+  const r = roomAt(gx, gy);
+  if (r) cur.room = r.name;
+  nearPhoto(gx, gy);
+  document.getElementById('wName').textContent = r ? r.name : (cur.room ? 'Near ' + cur.room : 'Outside');
+  document.getElementById('wSub').textContent = `${level === '2F' ? 'Second' : 'First'} floor` + (r && r.sf ? ` · ${r.sf} sf` : '');
+}
+
+/* ---------- plan inset ---------- */
+const mini = document.getElementById('mini'), mc = mini.getContext('2d');
+function drawMini(){
+  const W = mini.width, H = mini.height, b = D.bounds, pad = 14;
+  const s = Math.min((W - pad*2) / (b[2]-b[0]), (H - pad*2) / (b[3]-b[1]));
+  const X = x => pad + (x - b[0]) * s, Y = y => H - pad - (y - b[1]) * s;
+  mc.clearRect(0, 0, W, H);
+  const lvl = mode === 'walk' ? level : '1F';
+  for (const r of D.rooms){
+    if (r.storey !== lvl || !r.poly.length) continue;
+    mc.beginPath(); r.poly.forEach(([x,y], i) => i ? mc.lineTo(X(x), Y(y)) : mc.moveTo(X(x), Y(y))); mc.closePath();
+    mc.fillStyle = r.name === cur.room ? 'rgba(127,192,232,.45)' : 'rgba(232,238,241,.10)'; mc.fill();
+    mc.strokeStyle = 'rgba(232,238,241,.5)'; mc.lineWidth = 1.5; mc.stroke();
+  }
+  if (mode === 'walk'){
+    const gx = cam.position.x, gy = -cam.position.z;
+    mc.fillStyle = '#7fc0e8'; mc.beginPath(); mc.arc(X(gx), Y(gy), 6, 0, 7); mc.fill();
+    mc.strokeStyle = '#7fc0e8'; mc.lineWidth = 3; mc.beginPath(); mc.moveTo(X(gx), Y(gy));
+    mc.lineTo(X(gx - Math.sin(yaw)*1.6), Y(gy + Math.cos(yaw)*1.6)); mc.stroke();
+  }
+  mc.fillStyle = 'rgba(159,176,184,.9)'; mc.font = '500 20px "JetBrains Mono", monospace';
+  mc.fillText(lvl === '2F' ? '2F' : '1F', W - 40, 26); mc.fillText('N ↑', 10, 26);
+}
+
+/* ---------- room picker + tour ---------- */
+const sel = document.getElementById('room');
+sel.innerHTML = D.rooms.filter(r => r.go).map(r => `<option>${r.name}</option>`).join('');
+sel.onchange = () => goRoom(sel.value);
+let tourI = 0;
+document.getElementById('tour').onclick = () => { const t = D.tour[tourI++ % D.tour.length]; goRoom(t); };
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (mode === 'walk') step(dt); else { orbit.update(); fill.intensity = 0; }
+  R.render(scene, cam); drawMini();
+}
+</script>

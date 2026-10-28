@@ -1,0 +1,32 @@
+{
+ "_note": "Hand-derived reference quantities for the FICTIONAL test house (see tests/test_reference.py for derivations). Implementation-independent.",
+ "source_genome": "examples/fictional_house/fictional_house.genome.json",
+ "tolerance_m3": 0.0001,
+ "volumes_m3": {
+  "O-G-E-D1#fill": 0.082215,
+  "O-G-S-W1#fill": 0.1008,
+  "R-main": 19.87379863,
+  "R-mud": 1.152472446,
+  "S-G-base": 7.966125,
+  "S-U-ceiling": 1.06624,
+  "S-U-floor": 18.36,
+  "W-G-BE": 0.636996094,
+  "W-G-BS": 0.80595,
+  "W-G-BW": 0.756996094,
+  "W-G-E": 3.4146,
+  "W-G-I1": 1.836,
+  "W-G-I2": 1.5795,
+  "W-G-N": 5.2,
+  "W-G-S": 4.152,
+  "W-G-W": 3.54,
+  "W-U-E": 5.366222222,
+  "W-U-I1": 1.75712,
+  "W-U-N": 4.96,
+  "W-U-S": 4.72,
+  "W-U-W": 5.206222222
+ },
+ "other": {
+  "R-main ridge top z": 8.190370085030931,
+  "R-main eave underside z": 5.35
+ }
+}

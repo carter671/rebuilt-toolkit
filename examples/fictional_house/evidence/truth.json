@@ -1,0 +1,25 @@
+{
+  "_note": "Hand-written ground truth for the FICTIONAL controlled evidence set. Independent of the parser. Values in metres (pitch as rise/run).",
+  "field_notes.txt": [
+    {"locator": "line 2", "subject": "W-U-S", "property": "thickness", "value": 0.2000250},
+    {"locator": "line 3", "subject": "R-mud", "property": "pitch", "value": 0.25},
+    {"locator": "line 4", "subject": "O-G-S-W1", "property": "width", "value": 1.2001500},
+    {"locator": "line 5", "subject": "O-G-W-W4", "property": "sill", "value": 0.9001125},
+    {"locator": "line 6", "subject": "W-G-I2", "property": "thickness", "value": 0.1016},
+    {"locator": "line 7", "subject": "O-G-BS-D2", "property": "width", "value": 0.9001125},
+    {"locator": "line 7", "subject": "O-G-BS-D2", "property": "height", "value": 2.032},
+    {"locator": "line 8", "subject": ["SP-U-bed1", "SP-U-bed2"], "property": "height", "value": 2.5844500},
+    {"locator": "line 9", "subject": "W-G-I1", "property": "thickness", "value": 1.0414, "expect_flag": "IMPLAUSIBLE"},
+    {"locator": "line 10", "subject": "O-G-E-D1", "property": "width", "value": 0.9144},
+    {"locator": "line 11", "subject": "AMBIGUOUS", "property": "overhang", "value": 0.3048, "hedged": true},
+    {"locator": "line 12", "subject": "W-G-BE", "property": null, "value": null, "kind": "statement"},
+    {"locator": "line 13", "subject": "R-main", "property": "thickness", "value": null, "kind": "statement", "expect_flag": "REPORTED_UNKNOWN"}
+  ],
+  "measurements.csv": [
+    {"locator": "row 2", "subject": "O-G-S-W1", "property": "width", "value": 1.2446},
+    {"locator": "row 3", "subject": "W-G-S", "property": "thickness", "value": 0.2000250},
+    {"locator": "row 4", "subject": "R-main", "property": "pitch", "value": 0.6666667},
+    {"locator": "row 5", "subject": "O-G-N-W3", "property": "height", "value": 1.0001250}
+  ],
+  "expected_conflicts": [["O-G-S-W1", "width"]]
+}

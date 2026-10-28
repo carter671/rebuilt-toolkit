@@ -1,0 +1,319 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* layout: sticky cost bar; plan sheet + decision list side by side, stacking on phones; price book below */
+:root{
+  --paper:#eef1f2; --sheet:#ffffff; --ink:#1b2a33; --muted:#5d6d76; --line:#cfd8dc;
+  --blue:#1f5f8b; --blue-soft:#dbe8f1; --amber:#a86a00; --amber-soft:#fbefd6; --good:#2e7d4f;
+  --room:#e7eef2; --room-hi:#c6dceb; --wall:#1b2a33;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Source Sans 3",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#11181c; --sheet:#182126; --ink:#e3eaee; --muted:#93a4ad; --line:#2b3940;
+  --blue:#6fb0dc; --blue-soft:#1c3444; --amber:#e3a63a; --amber-soft:#3a2e17; --good:#6cc392;
+  --room:#1f2c33; --room-hi:#2a4659; --wall:#d6e0e5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11181c; --sheet:#182126; --ink:#e3eaee; --muted:#93a4ad; --line:#2b3940;
+  --blue:#6fb0dc; --blue-soft:#1c3444; --amber:#e3a63a; --amber-soft:#3a2e17; --good:#6cc392;
+  --room:#1f2c33; --room-hi:#2a4659; --wall:#d6e0e5; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:2rem;line-height:1.1} h2{font-size:1.35rem} h3{font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+header.top{padding-top:24px;display:grid;gap:6px}
+.eyebrow{font:600 .78rem var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--sheet);border:1px solid var(--line);border-radius:6px;
+  padding:12px 16px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:baseline}
+.bar .total{font:700 2rem var(--f-display)}
+.bar .k{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bar .stat{display:grid}
+.bar .stat b{font:600 1.1rem var(--f-mono)}
+.bar .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--sheet);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--blue)} button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+button.primary{background:var(--blue);border-color:var(--blue);color:var(--sheet)}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:20px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.plan{position:sticky;top:calc(env(safe-area-inset-top,0px) + 92px)}
+@media (max-width:900px){.plan{position:static}}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0}
+.tabs button{font:600 .85rem var(--f-mono);padding:4px 10px}
+.tabs button[aria-pressed="true"]{background:var(--blue-soft);border-color:var(--blue)}
+svg.sheet{width:100%;height:auto;display:block;background:var(--sheet)}
+svg .room{fill:var(--room);stroke:none;cursor:pointer}
+svg .room:hover,svg .room.sel{fill:var(--room-hi)}
+svg .wall{fill:var(--wall)}
+svg .gap{stroke:var(--room);stroke-width:.2}
+svg .win{stroke:var(--blue);stroke-width:.08}
+svg text{fill:var(--ink);font-family:var(--f-body);pointer-events:none}
+svg text.sf{fill:var(--muted);font-family:var(--f-mono)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:8px}
+.group{border-top:1px solid var(--line);padding-block:12px;display:grid;gap:6px}
+.group:first-child{border-top:0;padding-top:0}
+.group.hl{background:var(--blue-soft);margin-inline:-16px;padding-inline:16px;border-radius:4px}
+.gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.gh h2{font-size:1.15rem}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto 90px;gap:4px 10px;align-items:center}
+.row .lab{min-width:0}
+.row .lab small{display:block;color:var(--muted);font-size:.8rem;overflow-wrap:anywhere}
+.row select{padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--sheet);max-width:190px}
+.row .amt{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.row .lines{grid-column:1/-1;font-size:.8rem;color:var(--muted);font-family:var(--f-mono);padding-left:10px;border-left:2px solid var(--line)}
+@media (max-width:480px){.row{grid-template-columns:minmax(0,1fr) 84px}.row select{grid-column:1/-1;max-width:none}}
+.filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.trades{display:grid;gap:6px}
+.trade{display:grid;grid-template-columns:110px minmax(0,1fr) 90px;gap:10px;align-items:center;font-size:.9rem}
+.trade .t{height:10px;background:var(--blue);border-radius:2px;min-width:2px}
+.trade .v{text-align:right;font-family:var(--f-mono)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{font:600 .75rem var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:5px 8px;border-bottom:1px solid var(--line)}
+td.r,th.r{text-align:right}
+td input{width:88px;text-align:right;font-family:var(--f-mono);border:1px solid var(--line);border-radius:3px;padding:2px 6px;background:var(--sheet)}
+.pill{font:600 .7rem var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.pill.ph{background:var(--amber-soft);color:var(--amber)}
+.pill.rb{background:var(--blue-soft);color:var(--blue)}
+.note{background:var(--amber-soft);color:var(--ink);border-radius:4px;padding:10px 12px;font-size:.9rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:4px;font-size:.9rem}
+textarea{width:100%;height:120px;font:12px var(--f-mono);background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+@media (prefers-reduced-motion:no-preference){.group.hl{transition:background .3s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow" id="eyebrow"></span>
+    <h1 id="addr"></h1>
+    <p class="muted" style="margin:0;max-width:72ch">__INTRO__ Prices marked <span class="pill ph">placeholder</span> are rough Central Ohio numbers until Rebuilt's own are entered below.</p>
+  </header>
+
+  <div class="bar" role="status" aria-live="polite">
+    <div class="stat"><span class="k">Rehab total</span><span class="total num" id="total">$0</span></div>
+    <div class="stat"><span class="k">Subtotal</span><b id="sub">$0</b></div>
+    <div class="stat"><span class="k">Contingency</span><b><input id="cont" type="number" min="0" max="50" step="1" style="width:56px;font:inherit;background:transparent;border:1px solid var(--line);border-radius:3px;padding:0 4px">%</b></div>
+    <div class="stat"><span class="k">Per heated sf</span><b id="psf">$0</b></div>
+    <div class="actions">
+      <button id="reset">Reset to model defaults</button>
+      <button id="copyScope" class="primary">Copy scope sheet</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <section class="panel plan" aria-label="Floor plan">
+      <div class="gh"><h2>Plan</h2><span class="muted mono" id="planNote"></span></div>
+      <div class="tabs" id="tabs"></div>
+      <div id="planBox"></div>
+      <div class="legend"><span>Tap a room to jump to its choices</span><span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--blue)" stroke-width="2"/></svg> window</span><span>gap = door / opening</span></div>
+    </section>
+
+    <section class="panel" aria-label="Scope decisions">
+      <div class="filter">
+        <h2 style="margin-right:auto">Scope</h2>
+        <label class="muted" for="show">Show</label>
+        <select id="show"><option value="all">Everything</option><option value="on">Only priced items</option></select>
+      </div>
+      <div id="groups"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="gh"><h2>By trade</h2><span class="muted">before contingency</span></div>
+    <div class="trades" id="trades" style="margin-top:10px"></div>
+  </section>
+
+  <section class="panel">
+    <div class="gh" style="flex-wrap:wrap"><h2>Price book</h2>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button id="copyPrices">Copy price list</button><button id="pasteToggle">Paste a price list</button></span></div>
+    <p class="muted" style="max-width:72ch">Type your own unit cost in any row; it turns blue and is remembered in this browser. Copy the list and send it to Claude to make it the default for every property.</p>
+    <div id="pasteBox" hidden style="display:grid;gap:8px;margin-bottom:12px">
+      <label for="pasteArea" class="muted">Paste a price list (the JSON from "Copy price list")</label>
+      <textarea id="pasteArea"></textarea>
+      <div><button id="pasteApply" class="primary">Apply prices</button></div>
+    </div>
+    <div class="scroll"><table id="pb"></table></div>
+  </section>
+
+  <p class="muted mono" style="font-size:.78rem" id="foot"></p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const DATA = __DATA__;
+const LS = "rebuilt-scope:" + DATA.key;
+const fmt = n => "$" + Math.round(n).toLocaleString("en-US");
+const fmt2 = n => n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toLocaleString("en-US",{maximumFractionDigits:2});
+let state = {sel:{...DATA.selections}, prices:{}, cont: Math.round(DATA.contingency*100)};
+try { const s = JSON.parse(localStorage.getItem(LS) || "null"); if (s) state = {sel:{...DATA.selections, ...s.sel}, prices:s.prices||{}, cont: s.cont ?? state.cont}; } catch(e) {}
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(state)); } catch(e) {} };
+const cost = k => state.prices[k] ?? DATA.pricebook[k].cost;
+const isMine = k => state.prices[k] != null || DATA.pricebook[k].source === "rebuilt";
+
+function decisionAmount(d){
+  const o = d.options[state.sel[d.id] ?? d.default]; if (!o) return 0;
+  return o.lines.reduce((a,l)=>a + l.qty*cost(l.key), 0);
+}
+function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(()=>el.hidden = true, 1800); }
+async function copy(text, done){
+  try { await navigator.clipboard.writeText(text); toast(done); }
+  catch(e){ const a = document.getElementById("pasteArea"); document.getElementById("pasteBox").hidden = false; a.value = text; a.select(); toast("Selected — press Ctrl/Cmd+C to copy"); }
+}
+
+/* ---------- decisions list ---------- */
+const groups = {};
+DATA.decisions.forEach(d => (groups[d.group] ||= []).push(d));
+const roomOfGroup = {};
+DATA.rooms.forEach(r => roomOfGroup["Rooms · " + r.name] = r.id);
+function renderGroups(){
+  const box = document.getElementById("groups"); box.innerHTML = "";
+  const onlyOn = document.getElementById("show").value === "on";
+  for (const [g, ds] of Object.entries(groups)){
+    const tot = ds.reduce((a,d)=>a+decisionAmount(d),0);
+    if (onlyOn && tot === 0) continue;
+    const sec = document.createElement("div"); sec.className = "group";
+    if (roomOfGroup[g]) sec.id = "g-" + roomOfGroup[g];
+    const room = DATA.rooms.find(r => r.id === roomOfGroup[g]);
+    sec.innerHTML = `<div class="gh"><h2>${g.replace(/^[^·]+· /,"")}</h2><span class="num">${fmt(tot)}</span></div>
+      <div class="muted" style="font-size:.8rem;margin-top:-4px">${g.split(" · ")[0]}${room ? ` · ${room.storey} · ${Math.round(room.floor_sf)} sf floor · ${Math.round(room.wall_sf)} sf wall · ${room.height_ft.toFixed(1)} ft ceiling` : ""}</div>`;
+    for (const d of ds){
+      const amt = decisionAmount(d);
+      if (onlyOn && amt === 0) continue;
+      const cur = state.sel[d.id] ?? d.default;
+      const row = document.createElement("div"); row.className = "row";
+      const opts = Object.entries(d.options).map(([k,o]) => `<option value="${k}" ${k===cur?"selected":""}>${o.label}${k===d.default?" (suggested)":""}</option>`).join("");
+      const o = d.options[cur];
+      const lines = (o?.lines||[]).map(l => `${fmt2(l.qty)} ${DATA.pricebook[l.key].unit} × ${fmt2(cost(l.key))} — ${DATA.pricebook[l.key].label}${l.note?` (${l.note})`:""}`).join("<br>");
+      const sid = "s-" + d.id.replace(/[^a-z0-9]/gi,"_");
+      row.innerHTML = `<label class="lab" for="${sid}">${d.label}<small>Now: ${d.existing}</small></label>
+        <select id="${sid}">${opts}</select><span class="amt">${amt?fmt(amt):"—"}</span>${lines?`<div class="lines">${lines}</div>`:""}`;
+      row.querySelector("select").addEventListener("change", e => { state.sel[d.id] = e.target.value; save(); update(); });
+      sec.appendChild(row);
+    }
+    box.appendChild(sec);
+  }
+}
+
+/* ---------- totals ---------- */
+function update(){
+  let sub = 0; const trades = {};
+  for (const d of DATA.decisions){
+    const o = d.options[state.sel[d.id] ?? d.default]; if (!o) continue;
+    for (const l of o.lines){ const a = l.qty*cost(l.key); sub += a; const t = DATA.pricebook[l.key].trade; trades[t] = (trades[t]||0) + a; }
+  }
+  const cont = sub * state.cont/100;
+  document.getElementById("sub").textContent = fmt(sub);
+  document.getElementById("total").textContent = fmt(sub+cont);
+  document.getElementById("psf").textContent = fmt((sub+cont)/DATA.heated_sf);
+  const max = Math.max(1, ...Object.values(trades));
+  document.getElementById("trades").innerHTML = Object.entries(trades).sort((a,b)=>b[1]-a[1])
+    .map(([t,v]) => `<div class="trade"><span>${t}</span><span class="t" style="width:${(v/max*100).toFixed(1)}%"></span><span class="v">${fmt(v)}</span></div>`).join("");
+  renderGroups(); renderPrices();
+}
+
+/* ---------- price book ---------- */
+function renderPrices(){
+  const used = new Set(); DATA.decisions.forEach(d => Object.values(d.options).forEach(o => o.lines.forEach(l => used.add(l.key))));
+  const rows = Object.entries(DATA.pricebook).filter(([k]) => used.has(k)).sort((a,b)=>a[1].trade.localeCompare(b[1].trade));
+  const t = document.getElementById("pb");
+  const focused = document.activeElement?.id;
+  t.innerHTML = `<tr><th>Trade</th><th>Item</th><th>Unit</th><th class="r">Unit cost</th><th>Source</th></tr>` + rows.map(([k,p]) =>
+    `<tr><td>${p.trade}</td><td>${p.label}</td><td class="mono">${p.unit}</td>
+      <td class="r"><input id="p-${k}" type="number" step="0.01" min="0" value="${cost(k)}" aria-label="Unit cost for ${p.label}"></td>
+      <td>${isMine(k)?'<span class="pill rb">Rebuilt</span>':'<span class="pill ph">placeholder</span>'}</td></tr>`).join("");
+  t.querySelectorAll("input").forEach(inp => inp.addEventListener("change", e => {
+    const k = e.target.id.slice(2), v = parseFloat(e.target.value);
+    if (isNaN(v)) return; state.prices[k] = v; save(); update();
+  }));
+  if (focused) document.getElementById(focused)?.focus();
+}
+
+/* ---------- plan ---------- */
+const storeys = DATA.storeys.filter(s => DATA.plans[s.id]);
+let cur = storeys[0]?.id;
+function renderTabs(){
+  document.getElementById("tabs").innerHTML = storeys.map(s => `<button aria-pressed="${s.id===cur}" data-s="${s.id}">${s.building === storeys[0].building ? s.name : s.building}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { cur = b.dataset.s; renderTabs(); renderPlan(); });
+}
+function renderPlan(){
+  const p = DATA.plans[cur];
+  const pts = p.walls.flatMap(w => w.poly).concat(p.rooms.flatMap(r=>r.poly));
+  const xs = pts.map(q=>q[0]), ys = pts.map(q=>q[1]);
+  const x0 = Math.min(...xs)-.6, x1 = Math.max(...xs)+.6, y0 = Math.min(...ys)-.6, y1 = Math.max(...ys)+.6;
+  const P = q => `${q[0].toFixed(3)},${(y1+y0-q[1]).toFixed(3)}`;
+  const poly = a => a.map(P).join(" ");
+  let s = `<svg class="sheet" viewBox="${x0} ${y0} ${x1-x0} ${y1-y0}" role="img" aria-label="Floor plan">`;
+  for (const r of p.rooms) s += `<polygon class="room" data-r="${r.id}" points="${poly(r.poly)}"><title>${r.name}</title></polygon>`;
+  for (const w of p.walls) s += `<polygon class="wall" points="${poly(w.poly)}"/>`;
+  for (const o of p.openings){
+    const cls = o.kind === "window" ? "win" : "gap";
+    s += `<line class="${cls}" x1="${o.p0[0]}" y1="${y1+y0-o.p0[1]}" x2="${o.p1[0]}" y2="${y1+y0-o.p1[1]}"/>`;
+  }
+  for (const r of p.rooms){
+    const info = DATA.rooms.find(q=>q.id===r.id); if (!info) continue;
+    const cx = r.poly.reduce((a,q)=>a+q[0],0)/r.poly.length, cy = r.poly.reduce((a,q)=>a+q[1],0)/r.poly.length;
+    const fs = Math.max(0.22, Math.min(0.42, Math.sqrt(info.floor_sf/10.76)/9));
+    const short = r.name.replace(/\(.*\)/,"").replace(/ room$/i,"").trim();
+    s += `<text x="${cx}" y="${y1+y0-cy}" font-size="${fs}" text-anchor="middle">${short.length>16?short.slice(0,15)+"…":short}</text>`;
+    s += `<text class="sf" x="${cx}" y="${y1+y0-cy+fs*1.2}" font-size="${fs*.8}" text-anchor="middle">${Math.round(info.floor_sf)} sf</text>`;
+  }
+  s += `<text class="sf" x="${x0+.2}" y="${y1-.2}" font-size=".3">0′</text><line x1="${x0+.6}" y1="${y1-.3}" x2="${x0+.6+3.048}" y2="${y1-.3}" stroke="var(--muted)" stroke-width=".04"/><text class="sf" x="${x0+.6+3.048+.15}" y="${y1-.2}" font-size=".3">10′</text>`;
+  document.getElementById("planBox").innerHTML = s + "</svg>";
+  document.querySelectorAll("#planBox .room").forEach(el => el.addEventListener("click", () => {
+    if (document.getElementById("show").value === "on") { document.getElementById("show").value = "all"; renderGroups(); }
+    const g = document.getElementById("g-" + el.dataset.r); if (!g) return;
+    document.querySelectorAll(".group.hl").forEach(x=>x.classList.remove("hl")); g.classList.add("hl");
+    document.querySelectorAll("#planBox .room.sel").forEach(x=>x.classList.remove("sel")); el.classList.add("sel");
+    g.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"center"});
+  }));
+  const st = DATA.storeys.find(x=>x.id===cur);
+  document.getElementById("planNote").textContent = `${st.building} · ${st.name}`;
+}
+
+/* ---------- scope sheet text ---------- */
+function scopeText(){
+  const out = [`REHAB SCOPE — ${DATA.address}`, `Design: ${DATA.design}`, ""];
+  let sub = 0;
+  for (const [g, ds] of Object.entries(groups)){
+    const ls = [];
+    for (const d of ds){ const o = d.options[state.sel[d.id] ?? d.default]; if (!o || !o.lines.length) continue;
+      for (const l of o.lines){ const p = DATA.pricebook[l.key], a = l.qty*cost(l.key); sub += a;
+        ls.push(`- ${d.label}: ${p.label} — ${fmt2(l.qty)} ${p.unit} @ $${fmt2(cost(l.key))} = ${fmt(a)}${isMine(l.key)?"":" (placeholder price)"}`); } }
+    if (ls.length) out.push(g.toUpperCase(), ...ls, "");
+  }
+  const c = sub*state.cont/100;
+  out.push(`Subtotal ${fmt(sub)}`, `Contingency ${state.cont}% ${fmt(c)}`, `TOTAL ${fmt(sub+c)}`, "", `Quantities from Rebuilt model ${DATA.model_hash.slice(0,12)} (Genome rev ${DATA.genome_revision}).`);
+  return out.join("\n");
+}
+
+/* ---------- wire up ---------- */
+document.getElementById("addr").textContent = DATA.address;
+document.title = document.title;
+document.getElementById("eyebrow").textContent = `Rebuilt · Design + Scope · ${DATA.design}`;
+document.getElementById("foot").textContent = `Model ${DATA.model_hash.slice(0,12)} · Genome rev ${DATA.genome_revision} · ${Math.round(DATA.heated_sf)} sf heated (net room area; walls excluded) · ${DATA.decisions.length} decisions`;
+const contEl = document.getElementById("cont"); contEl.value = state.cont;
+contEl.addEventListener("change", e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { state.cont = v; save(); update(); } });
+document.getElementById("show").addEventListener("change", renderGroups);
+document.getElementById("reset").addEventListener("click", () => { state.sel = {...DATA.selections}; save(); update(); toast("Choices reset to the model's suggestions"); });
+document.getElementById("copyScope").addEventListener("click", () => copy(scopeText(), "Scope sheet copied"));
+document.getElementById("copyPrices").addEventListener("click", () => {
+  const o = {}; for (const k of Object.keys(DATA.pricebook)) o[k] = cost(k);
+  copy(JSON.stringify(o, null, 1), "Price list copied");
+});
+document.getElementById("pasteToggle").addEventListener("click", () => { const b = document.getElementById("pasteBox"); b.hidden = !b.hidden; });
+document.getElementById("pasteApply").addEventListener("click", () => {
+  try { const o = JSON.parse(document.getElementById("pasteArea").value); let n = 0;
+    for (const [k,v] of Object.entries(o)) if (DATA.pricebook[k] && typeof v === "number") { state.prices[k] = v; n++; }
+    save(); update(); toast(`${n} prices applied`); }
+  catch(e){ toast("That isn't a price list — paste the text from Copy price list"); }
+});
+renderTabs(); renderPlan(); update();
+</script>

@@ -1,0 +1,2898 @@
+{
+ "$defs": {
+  "AtPoint": {
+   "additionalProperties": false,
+   "description": "Free placement: plan point (box centre), z = bottom relative to storey elevation.",
+   "properties": {
+    "on": {
+     "const": "point",
+     "title": "On",
+     "type": "string"
+    },
+    "at": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "number"
+      }
+     ],
+     "title": "At",
+     "type": "array"
+    },
+    "z": {
+     "$ref": "#/$defs/Value"
+    },
+    "rotation": {
+     "default": 0.0,
+     "title": "Rotation",
+     "type": "number"
+    }
+   },
+   "required": [
+    "on",
+    "at",
+    "z"
+   ],
+   "title": "AtPoint",
+   "type": "object"
+  },
+  "Building": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "storeys": {
+     "items": {
+      "$ref": "#/$defs/Storey"
+     },
+     "title": "Storeys",
+     "type": "array"
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "storeys"
+   ],
+   "title": "Building",
+   "type": "object"
+  },
+  "Candidate": {
+   "additionalProperties": false,
+   "properties": {
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Value"
+    },
+    "observations": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Observations",
+     "type": "array"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "title": "Candidate",
+   "type": "object"
+  },
+  "Capture": {
+   "additionalProperties": false,
+   "description": "Capture epochs: when closed, gathered evidence is accepted for modelling; new evidence opens a new epoch.",
+   "properties": {
+    "epoch": {
+     "default": 1,
+     "title": "Epoch",
+     "type": "integer"
+    },
+    "closed": {
+     "default": false,
+     "title": "Closed",
+     "type": "boolean"
+    },
+    "closed_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Closed At"
+    },
+    "closed_by": {
+     "default": "",
+     "title": "Closed By",
+     "type": "string"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "title": "Capture",
+   "type": "object"
+  },
+  "ChangeSummary": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "number": {
+     "title": "Number",
+     "type": "integer"
+    },
+    "author": {
+     "title": "Author",
+     "type": "string"
+    },
+    "at": {
+     "title": "At",
+     "type": "string"
+    },
+    "reason": {
+     "title": "Reason",
+     "type": "string"
+    },
+    "source": {
+     "title": "Source",
+     "type": "string"
+    },
+    "ops": {
+     "title": "Ops",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "id",
+    "number",
+    "author",
+    "at",
+    "reason",
+    "source",
+    "ops"
+   ],
+   "title": "ChangeSummary",
+   "type": "object"
+  },
+  "Component": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "component",
+     "title": "Type",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "cladding",
+      "trim",
+      "shutter",
+      "fascia",
+      "soffit",
+      "gutter",
+      "downspout",
+      "chimney",
+      "vent",
+      "fixture",
+      "equipment",
+      "post",
+      "screen",
+      "railing",
+      "stair",
+      "furnishing",
+      "other"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "storey": {
+     "title": "Storey",
+     "type": "string"
+    },
+    "placement": {
+     "discriminator": {
+      "mapping": {
+       "corner": "#/$defs/OnCorner",
+       "opening": "#/$defs/OnOpening",
+       "point": "#/$defs/AtPoint",
+       "roof_edge": "#/$defs/OnRoofEdge",
+       "space": "#/$defs/InSpace",
+       "wall": "#/$defs/OnWall"
+      },
+      "propertyName": "on"
+     },
+     "oneOf": [
+      {
+       "$ref": "#/$defs/OnWall"
+      },
+      {
+       "$ref": "#/$defs/OnOpening"
+      },
+      {
+       "$ref": "#/$defs/OnCorner"
+      },
+      {
+       "$ref": "#/$defs/OnRoofEdge"
+      },
+      {
+       "$ref": "#/$defs/AtPoint"
+      },
+      {
+       "$ref": "#/$defs/InSpace"
+      }
+     ],
+     "title": "Placement"
+    },
+    "size": {
+     "$ref": "#/$defs/Size",
+     "default": {
+      "w": null,
+      "h": null,
+      "d": null
+     }
+    },
+    "hosts": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Hosts",
+     "type": "array"
+    },
+    "geometry": {
+     "default": "box",
+     "enum": [
+      "box",
+      "none",
+      "prism"
+     ],
+     "title": "Geometry",
+     "type": "string"
+    },
+    "outline": {
+     "anyOf": [
+      {
+       "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "type": "array"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Outline"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "kind",
+    "storey",
+    "placement"
+   ],
+   "title": "Component",
+   "type": "object"
+  },
+  "Condition": {
+   "additionalProperties": false,
+   "properties": {
+    "rating": {
+     "default": "unknown",
+     "enum": [
+      "good",
+      "fair",
+      "poor",
+      "failed",
+      "unknown"
+     ],
+     "title": "Rating",
+     "type": "string"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    }
+   },
+   "title": "Condition",
+   "type": "object"
+  },
+  "Constraint": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "equal",
+      "parallel",
+      "perpendicular",
+      "collinear",
+      "fixed"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "refs": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Refs",
+     "type": "array"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "refs"
+   ],
+   "title": "Constraint",
+   "type": "object"
+  },
+  "CoordinateSystem": {
+   "additionalProperties": false,
+   "properties": {
+    "handedness": {
+     "const": "right",
+     "default": "right",
+     "title": "Handedness",
+     "type": "string"
+    },
+    "up": {
+     "const": "+z",
+     "default": "+z",
+     "title": "Up",
+     "type": "string"
+    },
+    "project_north": {
+     "const": "+y",
+     "default": "+y",
+     "title": "Project North",
+     "type": "string"
+    },
+    "true_north_deg": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "origin_description": {
+     "default": "",
+     "title": "Origin Description",
+     "type": "string"
+    }
+   },
+   "title": "CoordinateSystem",
+   "type": "object"
+  },
+  "Family": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "cladding",
+      "trim",
+      "shutter",
+      "fascia",
+      "soffit",
+      "gutter",
+      "downspout",
+      "chimney",
+      "vent",
+      "fixture",
+      "equipment",
+      "post",
+      "screen",
+      "railing",
+      "stair",
+      "furnishing",
+      "other"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "info": {
+     "$ref": "#/$defs/Info",
+     "default": {
+      "category": "",
+      "subtype": "",
+      "material": "",
+      "finish": null,
+      "manufacturer": "",
+      "model": "",
+      "serial": "",
+      "install_year": null,
+      "condition": null,
+      "observed": null,
+      "notes": ""
+     }
+    },
+    "size": {
+     "$ref": "#/$defs/Size",
+     "default": {
+      "w": null,
+      "h": null,
+      "d": null
+     }
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "kind"
+   ],
+   "title": "Family",
+   "type": "object"
+  },
+  "Filling": {
+   "additionalProperties": false,
+   "properties": {
+    "type": {
+     "enum": [
+      "door",
+      "window",
+      "none"
+     ],
+     "title": "Type",
+     "type": "string"
+    },
+    "operation": {
+     "default": "",
+     "title": "Operation",
+     "type": "string"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    }
+   },
+   "required": [
+    "type"
+   ],
+   "title": "Filling",
+   "type": "object"
+  },
+  "Finish": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "hex": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Hex"
+    },
+    "product": {
+     "default": "",
+     "title": "Product",
+     "type": "string"
+    },
+    "sheen": {
+     "default": "",
+     "title": "Sheen",
+     "type": "string"
+    },
+    "basis": {
+     "default": "observed",
+     "enum": [
+      "measured",
+      "observed",
+      "extracted",
+      "inferred",
+      "assumed",
+      "unknown"
+     ],
+     "title": "Basis",
+     "type": "string"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "name"
+   ],
+   "title": "Finish",
+   "type": "object"
+  },
+  "HistoryEvent": {
+   "additionalProperties": false,
+   "properties": {
+    "date": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Date"
+    },
+    "event": {
+     "enum": [
+      "installed",
+      "replaced",
+      "repaired",
+      "painted",
+      "observed_damage",
+      "removed",
+      "other"
+     ],
+     "title": "Event",
+     "type": "string"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Source"
+    }
+   },
+   "required": [
+    "event"
+   ],
+   "title": "HistoryEvent",
+   "type": "object"
+  },
+  "InSpace": {
+   "additionalProperties": false,
+   "description": "Information-only placement in a room (no geometry until located).",
+   "properties": {
+    "on": {
+     "const": "space",
+     "title": "On",
+     "type": "string"
+    },
+    "space": {
+     "title": "Space",
+     "type": "string"
+    },
+    "wall": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Wall"
+    },
+    "location": {
+     "default": "",
+     "title": "Location",
+     "type": "string"
+    }
+   },
+   "required": [
+    "on",
+    "space"
+   ],
+   "title": "InSpace",
+   "type": "object"
+  },
+  "Info": {
+   "additionalProperties": false,
+   "properties": {
+    "category": {
+     "default": "",
+     "title": "Category",
+     "type": "string"
+    },
+    "subtype": {
+     "default": "",
+     "title": "Subtype",
+     "type": "string"
+    },
+    "material": {
+     "default": "",
+     "title": "Material",
+     "type": "string"
+    },
+    "finish": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Finish"
+    },
+    "manufacturer": {
+     "default": "",
+     "title": "Manufacturer",
+     "type": "string"
+    },
+    "model": {
+     "default": "",
+     "title": "Model",
+     "type": "string"
+    },
+    "serial": {
+     "default": "",
+     "title": "Serial",
+     "type": "string"
+    },
+    "install_year": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "condition": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Condition"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "observed": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Observed"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    }
+   },
+   "title": "Info",
+   "type": "object"
+  },
+  "Material": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "category": {
+     "default": "other",
+     "enum": [
+      "masonry",
+      "concrete",
+      "wood",
+      "gypsum",
+      "glass",
+      "metal",
+      "insulation",
+      "roofing",
+      "other"
+     ],
+     "title": "Category",
+     "type": "string"
+    },
+    "color": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Color"
+    },
+    "layers": {
+     "default": [],
+     "items": {
+      "additionalProperties": true,
+      "type": "object"
+     },
+     "title": "Layers",
+     "type": "array"
+    }
+   },
+   "required": [
+    "id",
+    "name"
+   ],
+   "title": "Material",
+   "type": "object"
+  },
+  "Observation": {
+   "additionalProperties": false,
+   "description": "A single piece of evidence-derived information. Observations are never deleted.",
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "measurement",
+      "observation",
+      "extraction",
+      "statement"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "source": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Source"
+    },
+    "locator": {
+     "default": "",
+     "title": "Locator",
+     "type": "string"
+    },
+    "text": {
+     "default": "",
+     "title": "Text",
+     "type": "string"
+    },
+    "subject": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Subject"
+    },
+    "property": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Property"
+    },
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Value"
+    },
+    "uncertainty": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Uncertainty"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "recorded_by": {
+     "default": "",
+     "title": "Recorded By",
+     "type": "string"
+    },
+    "recorded_at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Recorded At"
+    },
+    "status": {
+     "default": "active",
+     "enum": [
+      "active",
+      "rejected",
+      "superseded"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "data": {
+     "additionalProperties": true,
+     "default": {},
+     "title": "Data",
+     "type": "object"
+    }
+   },
+   "required": [
+    "id",
+    "kind"
+   ],
+   "title": "Observation",
+   "type": "object"
+  },
+  "Observed": {
+   "additionalProperties": false,
+   "description": "When / by whom / from what this element's information was observed (the time axis).",
+   "properties": {
+    "date": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Date"
+    },
+    "by": {
+     "default": "",
+     "title": "By",
+     "type": "string"
+    },
+    "photos": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Photos",
+     "type": "array"
+    },
+    "observation": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Observation"
+    },
+    "confidence": {
+     "anyOf": [
+      {
+       "maximum": 1,
+       "minimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Confidence"
+    }
+   },
+   "title": "Observed",
+   "type": "object"
+  },
+  "OnCorner": {
+   "additionalProperties": false,
+   "description": "L-shaped corner board where the exterior faces of two walls meet.",
+   "properties": {
+    "on": {
+     "const": "corner",
+     "title": "On",
+     "type": "string"
+    },
+    "walls": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "string"
+      }
+     ],
+     "title": "Walls",
+     "type": "array"
+    },
+    "sides": {
+     "default": [
+      "exterior",
+      "exterior"
+     ],
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "enum": [
+        "exterior",
+        "interior",
+        "left",
+        "right"
+       ],
+       "type": "string"
+      },
+      {
+       "enum": [
+        "exterior",
+        "interior",
+        "left",
+        "right"
+       ],
+       "type": "string"
+      }
+     ],
+     "title": "Sides",
+     "type": "array"
+    }
+   },
+   "required": [
+    "on",
+    "walls"
+   ],
+   "title": "OnCorner",
+   "type": "object"
+  },
+  "OnOpening": {
+   "additionalProperties": false,
+   "description": "Relative to an opening: casing (surround/head/sill), shutters (start/end/both = toward wall start/end).",
+   "properties": {
+    "on": {
+     "const": "opening",
+     "title": "On",
+     "type": "string"
+    },
+    "opening": {
+     "title": "Opening",
+     "type": "string"
+    },
+    "position": {
+     "enum": [
+      "surround",
+      "head",
+      "sill",
+      "start",
+      "end",
+      "both"
+     ],
+     "title": "Position",
+     "type": "string"
+    },
+    "side": {
+     "default": "exterior",
+     "enum": [
+      "exterior",
+      "interior",
+      "left",
+      "right"
+     ],
+     "title": "Side",
+     "type": "string"
+    },
+    "gap": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "on",
+    "opening",
+    "position"
+   ],
+   "title": "OnOpening",
+   "type": "object"
+  },
+  "OnRoofEdge": {
+   "additionalProperties": false,
+   "description": "Along roof footprint edges (indices into footprint): fascia, rake boards, soffits, gutters.",
+   "properties": {
+    "on": {
+     "const": "roof_edge",
+     "title": "On",
+     "type": "string"
+    },
+    "roof": {
+     "title": "Roof",
+     "type": "string"
+    },
+    "edges": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Edges",
+     "type": "array"
+    },
+    "gap": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "within": {
+     "anyOf": [
+      {
+       "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "number"
+         },
+         {
+          "type": "number"
+         }
+        ],
+        "type": "array"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Within"
+    }
+   },
+   "required": [
+    "on",
+    "roof",
+    "edges"
+   ],
+   "title": "OnRoofEdge",
+   "type": "object"
+  },
+  "OnWall": {
+   "additionalProperties": false,
+   "description": "Box on a wall face. u = along the wall from its start to the component centre; z = bottom above wall base.",
+   "properties": {
+    "on": {
+     "const": "wall",
+     "title": "On",
+     "type": "string"
+    },
+    "wall": {
+     "title": "Wall",
+     "type": "string"
+    },
+    "side": {
+     "default": "exterior",
+     "enum": [
+      "exterior",
+      "interior",
+      "left",
+      "right"
+     ],
+     "title": "Side",
+     "type": "string"
+    },
+    "u": {
+     "$ref": "#/$defs/Value"
+    },
+    "z": {
+     "$ref": "#/$defs/Value"
+    }
+   },
+   "required": [
+    "on",
+    "wall",
+    "u",
+    "z"
+   ],
+   "title": "OnWall",
+   "type": "object"
+  },
+  "Opening": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "opening",
+     "title": "Type",
+     "type": "string"
+    },
+    "host": {
+     "title": "Host",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "door",
+      "window",
+      "void"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "offset": {
+     "$ref": "#/$defs/Value"
+    },
+    "width": {
+     "$ref": "#/$defs/Value"
+    },
+    "height": {
+     "$ref": "#/$defs/Value"
+    },
+    "sill": {
+     "$ref": "#/$defs/Value"
+    },
+    "filling": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Filling"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "shape": {
+     "default": "rectangle",
+     "enum": [
+      "rectangle",
+      "arch"
+     ],
+     "title": "Shape",
+     "type": "string"
+    },
+    "unit": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/OpeningUnit"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "host",
+    "kind",
+    "offset",
+    "width",
+    "height",
+    "sill"
+   ],
+   "title": "Opening",
+   "type": "object"
+  },
+  "OpeningUnit": {
+   "additionalProperties": false,
+   "description": "What fills the opening, as information (geometry stays a proxy panel).",
+   "properties": {
+    "type": {
+     "default": "",
+     "title": "Type",
+     "type": "string"
+    },
+    "lites": {
+     "default": "",
+     "title": "Lites",
+     "type": "string"
+    },
+    "frame_material": {
+     "default": "",
+     "title": "Frame Material",
+     "type": "string"
+    },
+    "sash_finish": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Sash Finish"
+    },
+    "storm": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Storm"
+    },
+    "screen": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Screen"
+    },
+    "hardware": {
+     "default": "",
+     "title": "Hardware",
+     "type": "string"
+    }
+   },
+   "title": "OpeningUnit",
+   "type": "object"
+  },
+  "Project": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "units": {
+     "const": "m",
+     "default": "m",
+     "title": "Units",
+     "type": "string"
+    },
+    "tolerances": {
+     "$ref": "#/$defs/Tolerances",
+     "default": {
+      "join": 0.002,
+      "geometry": 1e-06,
+      "overlap": 0.002
+     }
+    },
+    "coordinate_system": {
+     "$ref": "#/$defs/CoordinateSystem",
+     "default": {
+      "handedness": "right",
+      "up": "+z",
+      "project_north": "+y",
+      "true_north_deg": null,
+      "origin_description": ""
+     }
+    },
+    "survey_reference": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/SurveyReference"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "extensions_declared": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Extensions Declared",
+     "type": "array"
+    },
+    "fictional": {
+     "default": false,
+     "title": "Fictional",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "name"
+   ],
+   "title": "Project",
+   "type": "object"
+  },
+  "Property": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "address": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Address"
+    },
+    "parcel": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Parcel"
+    }
+   },
+   "required": [
+    "id"
+   ],
+   "title": "Property",
+   "type": "object"
+  },
+  "Revision": {
+   "additionalProperties": false,
+   "properties": {
+    "number": {
+     "default": 0,
+     "title": "Number",
+     "type": "integer"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/ChangeSummary"
+     },
+     "title": "History",
+     "type": "array"
+    }
+   },
+   "title": "Revision",
+   "type": "object"
+  },
+  "Roof": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "roof",
+     "title": "Type",
+     "type": "string"
+    },
+    "storey": {
+     "title": "Storey",
+     "type": "string"
+    },
+    "form": {
+     "enum": [
+      "gable",
+      "hip",
+      "shed",
+      "planes"
+     ],
+     "title": "Form",
+     "type": "string"
+    },
+    "footprint": {
+     "items": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "type": "array"
+     },
+     "title": "Footprint",
+     "type": "array"
+    },
+    "edge_roles": {
+     "items": {
+      "enum": [
+       "eave",
+       "flush-eave",
+       "rake",
+       "abut"
+      ],
+      "type": "string"
+     },
+     "title": "Edge Roles",
+     "type": "array"
+    },
+    "trim_by": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Trim By",
+     "type": "array"
+    },
+    "pitch": {
+     "$ref": "#/$defs/Value"
+    },
+    "plate_height": {
+     "$ref": "#/$defs/Value"
+    },
+    "overhang": {
+     "$ref": "#/$defs/Value"
+    },
+    "rake_overhang": {
+     "$ref": "#/$defs/Value"
+    },
+    "thickness": {
+     "$ref": "#/$defs/Value"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "storey",
+    "form",
+    "footprint",
+    "edge_roles",
+    "pitch",
+    "plate_height",
+    "overhang",
+    "rake_overhang",
+    "thickness"
+   ],
+   "title": "Roof",
+   "type": "object"
+  },
+  "RoofAttach": {
+   "additionalProperties": false,
+   "properties": {
+    "attach": {
+     "title": "Attach",
+     "type": "string"
+    }
+   },
+   "required": [
+    "attach"
+   ],
+   "title": "RoofAttach",
+   "type": "object"
+  },
+  "Selection": {
+   "additionalProperties": false,
+   "properties": {
+    "by": {
+     "title": "By",
+     "type": "string"
+    },
+    "process": {
+     "enum": [
+      "review",
+      "capture-auto",
+      "cli",
+      "import",
+      "migration",
+      "design"
+     ],
+     "title": "Process",
+     "type": "string"
+    },
+    "reason": {
+     "default": "",
+     "title": "Reason",
+     "type": "string"
+    },
+    "at": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "At"
+    }
+   },
+   "required": [
+    "by",
+    "process"
+   ],
+   "title": "Selection",
+   "type": "object"
+  },
+  "Size": {
+   "additionalProperties": false,
+   "properties": {
+    "w": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "h": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "d": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "title": "Size",
+   "type": "object"
+  },
+  "Slab": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "slab",
+     "title": "Type",
+     "type": "string"
+    },
+    "storey": {
+     "title": "Storey",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "floor",
+      "base",
+      "ceiling"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "boundary": {
+     "items": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "type": "array"
+     },
+     "title": "Boundary",
+     "type": "array"
+    },
+    "thickness": {
+     "$ref": "#/$defs/Value"
+    },
+    "top_offset": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "storey",
+    "kind",
+    "boundary",
+    "thickness"
+   ],
+   "title": "Slab",
+   "type": "object"
+  },
+  "SourceRef": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "sha256": {
+     "title": "Sha256",
+     "type": "string"
+    },
+    "filename": {
+     "title": "Filename",
+     "type": "string"
+    },
+    "media_type": {
+     "title": "Media Type",
+     "type": "string"
+    },
+    "description": {
+     "default": "",
+     "title": "Description",
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "sha256",
+    "filename",
+    "media_type"
+   ],
+   "title": "SourceRef",
+   "type": "object"
+  },
+  "Space": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "space",
+     "title": "Type",
+     "type": "string"
+    },
+    "storey": {
+     "title": "Storey",
+     "type": "string"
+    },
+    "boundary": {
+     "items": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "type": "array"
+     },
+     "title": "Boundary",
+     "type": "array"
+    },
+    "bounded_by": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Bounded By",
+     "type": "array"
+    },
+    "height": {
+     "$ref": "#/$defs/Value"
+    },
+    "usage": {
+     "default": "",
+     "title": "Usage",
+     "type": "string"
+    },
+    "surfaces": {
+     "additionalProperties": {
+      "$ref": "#/$defs/Info"
+     },
+     "default": {},
+     "propertyNames": {
+      "enum": [
+       "walls",
+       "ceiling",
+       "floor",
+       "base",
+       "crown",
+       "wainscot",
+       "trim"
+      ]
+     },
+     "title": "Surfaces",
+     "type": "object"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "storey",
+    "boundary",
+    "height"
+   ],
+   "title": "Space",
+   "type": "object"
+  },
+  "Storey": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "elevation": {
+     "$ref": "#/$defs/Value"
+    },
+    "height": {
+     "$ref": "#/$defs/Value"
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "elevation",
+    "height"
+   ],
+   "title": "Storey",
+   "type": "object"
+  },
+  "StoreyRef": {
+   "additionalProperties": false,
+   "properties": {
+    "ref": {
+     "const": "storey",
+     "title": "Ref",
+     "type": "string"
+    }
+   },
+   "required": [
+    "ref"
+   ],
+   "title": "StoreyRef",
+   "type": "object"
+  },
+  "SurveyReference": {
+   "additionalProperties": false,
+   "properties": {
+    "epsg": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Epsg"
+    },
+    "easting": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Easting"
+    },
+    "northing": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Northing"
+    },
+    "elevation": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Elevation"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "title": "SurveyReference",
+   "type": "object"
+  },
+  "Tolerances": {
+   "additionalProperties": false,
+   "properties": {
+    "join": {
+     "default": 0.002,
+     "title": "Join",
+     "type": "number"
+    },
+    "geometry": {
+     "default": 1e-06,
+     "title": "Geometry",
+     "type": "number"
+    },
+    "overlap": {
+     "default": 0.002,
+     "title": "Overlap",
+     "type": "number"
+    }
+   },
+   "title": "Tolerances",
+   "type": "object"
+  },
+  "Uncertainty": {
+   "additionalProperties": false,
+   "properties": {
+    "kind": {
+     "const": "pm",
+     "default": "pm",
+     "title": "Kind",
+     "type": "string"
+    },
+    "value": {
+     "minimum": 0,
+     "title": "Value",
+     "type": "number"
+    }
+   },
+   "required": [
+    "value"
+   ],
+   "title": "Uncertainty",
+   "type": "object"
+  },
+  "Value": {
+   "additionalProperties": false,
+   "description": "A provenance-carrying scalar. Canonical units: metres for lengths, rise/run for pitch.",
+   "properties": {
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Value"
+    },
+    "basis": {
+     "enum": [
+      "measured",
+      "observed",
+      "extracted",
+      "inferred",
+      "assumed",
+      "unknown"
+     ],
+     "title": "Basis",
+     "type": "string"
+    },
+    "verification": {
+     "default": "unverified",
+     "enum": [
+      "unverified",
+      "verified",
+      "disputed"
+     ],
+     "title": "Verification",
+     "type": "string"
+    },
+    "uncertainty": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Uncertainty"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "confidence": {
+     "anyOf": [
+      {
+       "maximum": 1,
+       "minimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Confidence"
+    },
+    "observations": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Observations",
+     "type": "array"
+    },
+    "selection": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Selection"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "conflicts": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/Candidate"
+     },
+     "title": "Conflicts",
+     "type": "array"
+    },
+    "input": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Input"
+    }
+   },
+   "required": [
+    "basis"
+   ],
+   "title": "Value",
+   "type": "object"
+  },
+  "Wall": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "rev": {
+     "default": 1,
+     "title": "Rev",
+     "type": "integer"
+    },
+    "name": {
+     "default": "",
+     "title": "Name",
+     "type": "string"
+    },
+    "aliases": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Aliases",
+     "type": "array"
+    },
+    "material": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Material"
+    },
+    "notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "info": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Info"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "family": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Family"
+    },
+    "phase": {
+     "default": "existing",
+     "enum": [
+      "existing",
+      "demolish",
+      "new",
+      "temporary"
+     ],
+     "title": "Phase",
+     "type": "string"
+    },
+    "history": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/HistoryEvent"
+     },
+     "title": "History",
+     "type": "array"
+    },
+    "properties": {
+     "type": "object",
+     "additionalProperties": {
+      "$ref": "#/$defs/Value"
+     },
+     "default": {},
+     "title": "Properties"
+    },
+    "type": {
+     "const": "wall",
+     "title": "Type",
+     "type": "string"
+    },
+    "storey": {
+     "title": "Storey",
+     "type": "string"
+    },
+    "start": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "number"
+      }
+     ],
+     "title": "Start",
+     "type": "array"
+    },
+    "end": {
+     "maxItems": 2,
+     "minItems": 2,
+     "prefixItems": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "number"
+      }
+     ],
+     "title": "End",
+     "type": "array"
+    },
+    "thickness": {
+     "$ref": "#/$defs/Value"
+    },
+    "height": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "$ref": "#/$defs/StoreyRef"
+      }
+     ],
+     "title": "Height"
+    },
+    "base_offset": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "alignment": {
+     "default": "center",
+     "enum": [
+      "center",
+      "left",
+      "right"
+     ],
+     "title": "Alignment",
+     "type": "string"
+    },
+    "exterior": {
+     "default": false,
+     "title": "Exterior",
+     "type": "boolean"
+    },
+    "top": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/RoofAttach"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "shape": {
+     "default": "straight",
+     "enum": [
+      "straight",
+      "arc"
+     ],
+     "title": "Shape",
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "storey",
+    "start",
+    "end",
+    "thickness",
+    "height"
+   ],
+   "title": "Wall",
+   "type": "object"
+  }
+ },
+ "additionalProperties": false,
+ "properties": {
+  "schema_version": {
+   "default": "0.2.0",
+   "title": "Schema Version",
+   "type": "string"
+  },
+  "project": {
+   "$ref": "#/$defs/Project"
+  },
+  "property": {
+   "$ref": "#/$defs/Property"
+  },
+  "buildings": {
+   "items": {
+    "$ref": "#/$defs/Building"
+   },
+   "title": "Buildings",
+   "type": "array"
+  },
+  "materials": {
+   "additionalProperties": {
+    "$ref": "#/$defs/Material"
+   },
+   "default": {},
+   "title": "Materials",
+   "type": "object"
+  },
+  "elements": {
+   "additionalProperties": {
+    "discriminator": {
+     "mapping": {
+      "component": "#/$defs/Component",
+      "opening": "#/$defs/Opening",
+      "roof": "#/$defs/Roof",
+      "slab": "#/$defs/Slab",
+      "space": "#/$defs/Space",
+      "wall": "#/$defs/Wall"
+     },
+     "propertyName": "type"
+    },
+    "oneOf": [
+     {
+      "$ref": "#/$defs/Wall"
+     },
+     {
+      "$ref": "#/$defs/Opening"
+     },
+     {
+      "$ref": "#/$defs/Slab"
+     },
+     {
+      "$ref": "#/$defs/Roof"
+     },
+     {
+      "$ref": "#/$defs/Space"
+     },
+     {
+      "$ref": "#/$defs/Component"
+     }
+    ]
+   },
+   "default": {},
+   "title": "Elements",
+   "type": "object"
+  },
+  "observations": {
+   "additionalProperties": {
+    "$ref": "#/$defs/Observation"
+   },
+   "default": {},
+   "title": "Observations",
+   "type": "object"
+  },
+  "sources": {
+   "additionalProperties": {
+    "$ref": "#/$defs/SourceRef"
+   },
+   "default": {},
+   "title": "Sources",
+   "type": "object"
+  },
+  "constraints": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/Constraint"
+   },
+   "title": "Constraints",
+   "type": "array"
+  },
+  "finishes": {
+   "additionalProperties": {
+    "$ref": "#/$defs/Finish"
+   },
+   "default": {},
+   "title": "Finishes",
+   "type": "object"
+  },
+  "families": {
+   "additionalProperties": {
+    "$ref": "#/$defs/Family"
+   },
+   "default": {},
+   "title": "Families",
+   "type": "object"
+  },
+  "capture": {
+   "$ref": "#/$defs/Capture",
+   "default": {
+    "epoch": 1,
+    "closed": false,
+    "closed_at": null,
+    "closed_by": "",
+    "note": ""
+   }
+  },
+  "revision": {
+   "$ref": "#/$defs/Revision",
+   "default": {
+    "number": 0,
+    "history": []
+   }
+  },
+  "extensions": {
+   "additionalProperties": {
+    "additionalProperties": true,
+    "type": "object"
+   },
+   "default": {},
+   "title": "Extensions",
+   "type": "object"
+  }
+ },
+ "required": [
+  "project",
+  "property",
+  "buildings"
+ ],
+ "title": "Rebuilt Genome",
+ "type": "object",
+ "$id": "https://rebuilt.homes/schemas/genome/0.2.0"
+}

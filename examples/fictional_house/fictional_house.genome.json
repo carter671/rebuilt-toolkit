@@ -1,0 +1,1705 @@
+{
+  "schema_version": "0.1.0",
+  "project": {
+    "id": "proj-fictional-0001",
+    "name": "Fictional Test House",
+    "units": "m",
+    "fictional": true,
+    "coordinate_system": {
+      "origin_description": "Centre-line intersection of ground south and west walls",
+      "true_north_deg": {
+        "value": 0.0,
+        "basis": "assumed"
+      }
+    }
+  },
+  "property": {
+    "id": "prop-fictional-0001",
+    "address": "FICTIONAL \u2014 no real address"
+  },
+  "buildings": [
+    {
+      "id": "B1",
+      "name": "Main house",
+      "storeys": [
+        {
+          "id": "G",
+          "name": "Ground",
+          "elevation": {
+            "value": 0.0,
+            "basis": "measured",
+            "uncertainty": {
+              "kind": "pm",
+              "value": 0.0
+            }
+          },
+          "height": {
+            "value": 2.95,
+            "basis": "measured",
+            "uncertainty": {
+              "kind": "pm",
+              "value": 0.003
+            }
+          }
+        },
+        {
+          "id": "U",
+          "name": "Upper",
+          "elevation": {
+            "value": 2.95,
+            "basis": "measured",
+            "uncertainty": {
+              "kind": "pm",
+              "value": 0.003
+            }
+          },
+          "height": {
+            "value": 2.6,
+            "basis": "measured",
+            "uncertainty": {
+              "kind": "pm",
+              "value": 0.003
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "materials": {
+    "mat-ext-wall": {
+      "id": "mat-ext-wall",
+      "name": "Exterior wall, generic",
+      "category": "wood",
+      "color": "#d9cbb3"
+    },
+    "mat-int-wall": {
+      "id": "mat-int-wall",
+      "name": "Interior partition, generic",
+      "category": "gypsum",
+      "color": "#efefef"
+    },
+    "mat-concrete": {
+      "id": "mat-concrete",
+      "name": "Concrete",
+      "category": "concrete",
+      "color": "#a7a7a2"
+    },
+    "mat-floor": {
+      "id": "mat-floor",
+      "name": "Timber floor assembly",
+      "category": "wood",
+      "color": "#b9946a"
+    },
+    "mat-gypsum": {
+      "id": "mat-gypsum",
+      "name": "Gypsum board",
+      "category": "gypsum",
+      "color": "#f4f4f0"
+    },
+    "mat-roofing": {
+      "id": "mat-roofing",
+      "name": "Asphalt shingle roof assembly",
+      "category": "roofing",
+      "color": "#5b5f66"
+    },
+    "mat-glass": {
+      "id": "mat-glass",
+      "name": "Glazing",
+      "category": "glass",
+      "color": "#9cc7e0"
+    },
+    "mat-door": {
+      "id": "mat-door",
+      "name": "Door leaf, timber",
+      "category": "wood",
+      "color": "#8a5a36"
+    }
+  },
+  "elements": {
+    "O-G-BE-W5": {
+      "type": "opening",
+      "id": "O-G-BE-W5",
+      "name": "O-G-BE-W5",
+      "host": "W-G-BE",
+      "kind": "window",
+      "offset": {
+        "value": 0.5,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 0.8,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "fixed",
+        "material": "mat-glass"
+      }
+    },
+    "O-G-BS-D2": {
+      "type": "opening",
+      "id": "O-G-BS-D2",
+      "name": "O-G-BS-D2",
+      "host": "W-G-BS",
+      "kind": "door",
+      "offset": {
+        "value": 1.05,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.03,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "door",
+        "operation": "single-swing-right",
+        "material": "mat-door"
+      }
+    },
+    "O-G-E-D1": {
+      "type": "opening",
+      "id": "O-G-E-D1",
+      "name": "O-G-E-D1",
+      "host": "W-G-E",
+      "kind": "door",
+      "offset": {
+        "value": 3.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.03,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "door",
+        "operation": "single-swing-left",
+        "material": "mat-door"
+      }
+    },
+    "O-G-N-W3": {
+      "type": "opening",
+      "id": "O-G-N-W3",
+      "name": "O-G-N-W3",
+      "host": "W-G-N",
+      "kind": "window",
+      "offset": {
+        "value": 2.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 1.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "slider",
+        "material": "mat-glass"
+      }
+    },
+    "O-G-S-V1": {
+      "type": "opening",
+      "id": "O-G-S-V1",
+      "name": "O-G-S-V1",
+      "host": "W-G-S",
+      "kind": "void",
+      "offset": {
+        "value": 4.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.6,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "none"
+      }
+    },
+    "O-G-S-W1": {
+      "type": "opening",
+      "id": "O-G-S-W1",
+      "name": "O-G-S-W1",
+      "host": "W-G-S",
+      "kind": "window",
+      "offset": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "double-hung",
+        "material": "mat-glass"
+      }
+    },
+    "O-G-S-W2": {
+      "type": "opening",
+      "id": "O-G-S-W2",
+      "name": "O-G-S-W2",
+      "host": "W-G-S",
+      "kind": "window",
+      "offset": {
+        "value": 7.5,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "double-hung",
+        "material": "mat-glass"
+      }
+    },
+    "O-G-W-W4": {
+      "type": "opening",
+      "id": "O-G-W-W4",
+      "name": "O-G-W-W4",
+      "host": "W-G-W",
+      "kind": "window",
+      "offset": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "casement",
+        "material": "mat-glass"
+      }
+    },
+    "O-U-N-W8": {
+      "type": "opening",
+      "id": "O-U-N-W8",
+      "name": "O-U-N-W8",
+      "host": "W-U-N",
+      "kind": "window",
+      "offset": {
+        "value": 6.5,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "double-hung",
+        "material": "mat-glass"
+      }
+    },
+    "O-U-S-W6": {
+      "type": "opening",
+      "id": "O-U-S-W6",
+      "name": "O-U-S-W6",
+      "host": "W-U-S",
+      "kind": "window",
+      "offset": {
+        "value": 2.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "double-hung",
+        "material": "mat-glass"
+      }
+    },
+    "O-U-S-W7": {
+      "type": "opening",
+      "id": "O-U-S-W7",
+      "name": "O-U-S-W7",
+      "host": "W-U-S",
+      "kind": "window",
+      "offset": {
+        "value": 7.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 0.9,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "double-hung",
+        "material": "mat-glass"
+      }
+    },
+    "O-U-W-W9": {
+      "type": "opening",
+      "id": "O-U-W-W9",
+      "name": "O-U-W-W9",
+      "host": "W-U-W",
+      "kind": "window",
+      "offset": {
+        "value": 3.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "width": {
+        "value": 0.8,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 1.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "sill": {
+        "value": 1.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "filling": {
+        "type": "window",
+        "operation": "fixed",
+        "material": "mat-glass"
+      }
+    },
+    "R-main": {
+      "type": "roof",
+      "id": "R-main",
+      "name": "Main gable roof",
+      "storey": "U",
+      "form": "gable",
+      "footprint": [
+        [
+          -0.1,
+          -0.1
+        ],
+        [
+          10.1,
+          -0.1
+        ],
+        [
+          10.1,
+          7.1
+        ],
+        [
+          -0.1,
+          7.1
+        ]
+      ],
+      "edge_roles": [
+        "eave",
+        "rake",
+        "eave",
+        "rake"
+      ],
+      "pitch": {
+        "value": 0.6666666666666666,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.01
+        },
+        "input": "8:12"
+      },
+      "plate_height": {
+        "value": 2.6,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "overhang": {
+        "value": 0.3,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.01
+        }
+      },
+      "rake_overhang": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.01
+        }
+      },
+      "thickness": {
+        "value": 0.2,
+        "basis": "assumed"
+      },
+      "material": "mat-roofing"
+    },
+    "R-mud": {
+      "type": "roof",
+      "id": "R-mud",
+      "name": "Mudroom shed roof",
+      "storey": "G",
+      "form": "shed",
+      "footprint": [
+        [
+          3.425,
+          -2.075
+        ],
+        [
+          6.575,
+          -2.075
+        ],
+        [
+          6.575,
+          -0.1
+        ],
+        [
+          3.425,
+          -0.1
+        ]
+      ],
+      "edge_roles": [
+        "eave",
+        "rake",
+        "abut",
+        "rake"
+      ],
+      "pitch": {
+        "value": 0.25,
+        "basis": "observed",
+        "confidence": 0.6,
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.04
+        },
+        "input": "about 3:12 (from photo)"
+      },
+      "plate_height": {
+        "value": 2.4,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "overhang": {
+        "value": 0.25,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.01
+        }
+      },
+      "rake_overhang": {
+        "value": 0.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.01
+        }
+      },
+      "thickness": {
+        "value": 0.15,
+        "basis": "assumed"
+      },
+      "material": "mat-roofing"
+    },
+    "S-G-base": {
+      "type": "slab",
+      "id": "S-G-base",
+      "name": "Ground slab",
+      "storey": "G",
+      "kind": "base",
+      "boundary": [
+        [
+          -0.1,
+          -0.1
+        ],
+        [
+          3.425,
+          -0.1
+        ],
+        [
+          3.425,
+          -2.075
+        ],
+        [
+          6.575,
+          -2.075
+        ],
+        [
+          6.575,
+          -0.1
+        ],
+        [
+          10.1,
+          -0.1
+        ],
+        [
+          10.1,
+          7.1
+        ],
+        [
+          -0.1,
+          7.1
+        ]
+      ],
+      "thickness": {
+        "value": 0.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "top_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "material": "mat-concrete"
+    },
+    "S-U-ceiling": {
+      "type": "slab",
+      "id": "S-U-ceiling",
+      "name": "Upper ceiling",
+      "storey": "U",
+      "kind": "ceiling",
+      "boundary": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          9.9,
+          0.1
+        ],
+        [
+          9.9,
+          6.9
+        ],
+        [
+          0.1,
+          6.9
+        ]
+      ],
+      "thickness": {
+        "value": 0.016,
+        "basis": "assumed"
+      },
+      "top_offset": {
+        "value": 2.6,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "material": "mat-gypsum"
+    },
+    "S-U-floor": {
+      "type": "slab",
+      "id": "S-U-floor",
+      "name": "Upper floor",
+      "storey": "U",
+      "kind": "floor",
+      "boundary": [
+        [
+          -0.1,
+          -0.1
+        ],
+        [
+          10.1,
+          -0.1
+        ],
+        [
+          10.1,
+          7.1
+        ],
+        [
+          -0.1,
+          7.1
+        ]
+      ],
+      "thickness": {
+        "value": 0.25,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "top_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "material": "mat-floor"
+    },
+    "SP-G-family": {
+      "type": "space",
+      "id": "SP-G-family",
+      "name": "Family",
+      "storey": "G",
+      "boundary": [
+        [
+          6.05,
+          0.1
+        ],
+        [
+          9.9,
+          0.1
+        ],
+        [
+          9.9,
+          6.9
+        ],
+        [
+          6.05,
+          6.9
+        ]
+      ],
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-G-S",
+        "W-G-E",
+        "W-G-N",
+        "W-G-I1"
+      ]
+    },
+    "SP-G-kitchen": {
+      "type": "space",
+      "id": "SP-G-kitchen",
+      "name": "Kitchen",
+      "storey": "G",
+      "boundary": [
+        [
+          0.1,
+          4.05
+        ],
+        [
+          5.95,
+          4.05
+        ],
+        [
+          5.95,
+          6.9
+        ],
+        [
+          0.1,
+          6.9
+        ]
+      ],
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-G-N",
+        "W-G-W",
+        "W-G-I1",
+        "W-G-I2"
+      ]
+    },
+    "SP-G-living": {
+      "type": "space",
+      "id": "SP-G-living",
+      "name": "Living",
+      "storey": "G",
+      "boundary": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          5.95,
+          0.1
+        ],
+        [
+          5.95,
+          3.95
+        ],
+        [
+          0.1,
+          3.95
+        ]
+      ],
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-G-S",
+        "W-G-W",
+        "W-G-I1",
+        "W-G-I2"
+      ]
+    },
+    "SP-G-mud": {
+      "type": "space",
+      "id": "SP-G-mud",
+      "name": "Mudroom",
+      "storey": "G",
+      "boundary": [
+        [
+          3.575,
+          -1.925
+        ],
+        [
+          6.425,
+          -1.925
+        ],
+        [
+          6.425,
+          -0.1
+        ],
+        [
+          3.575,
+          -0.1
+        ]
+      ],
+      "height": {
+        "value": 2.4,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-G-BW",
+        "W-G-BS",
+        "W-G-BE",
+        "W-G-S"
+      ]
+    },
+    "SP-U-bed1": {
+      "type": "space",
+      "id": "SP-U-bed1",
+      "name": "Bedroom 1",
+      "storey": "U",
+      "boundary": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          4.95,
+          0.1
+        ],
+        [
+          4.95,
+          6.9
+        ],
+        [
+          0.1,
+          6.9
+        ]
+      ],
+      "height": {
+        "value": 2.584,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-U-S",
+        "W-U-W",
+        "W-U-N",
+        "W-U-I1"
+      ]
+    },
+    "SP-U-bed2": {
+      "type": "space",
+      "id": "SP-U-bed2",
+      "name": "Bedroom 2",
+      "storey": "U",
+      "boundary": [
+        [
+          5.05,
+          0.1
+        ],
+        [
+          9.9,
+          0.1
+        ],
+        [
+          9.9,
+          6.9
+        ],
+        [
+          5.05,
+          6.9
+        ]
+      ],
+      "height": {
+        "value": 2.584,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "bounded_by": [
+        "W-U-S",
+        "W-U-E",
+        "W-U-N",
+        "W-U-I1"
+      ]
+    },
+    "W-G-BE": {
+      "type": "wall",
+      "id": "W-G-BE",
+      "name": "Mudroom east wall",
+      "storey": "G",
+      "start": [
+        6.5,
+        -2
+      ],
+      "end": [
+        6.5,
+        0
+      ],
+      "thickness": {
+        "value": 0.15,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall",
+      "top": {
+        "attach": "R-mud"
+      }
+    },
+    "W-G-BS": {
+      "type": "wall",
+      "id": "W-G-BS",
+      "name": "Mudroom south wall",
+      "storey": "G",
+      "start": [
+        3.5,
+        -2
+      ],
+      "end": [
+        6.5,
+        -2
+      ],
+      "thickness": {
+        "value": 0.15,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.4,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-G-BW": {
+      "type": "wall",
+      "id": "W-G-BW",
+      "name": "Mudroom west wall",
+      "storey": "G",
+      "start": [
+        3.5,
+        0
+      ],
+      "end": [
+        3.5,
+        -2
+      ],
+      "thickness": {
+        "value": 0.15,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall",
+      "top": {
+        "attach": "R-mud"
+      }
+    },
+    "W-G-E": {
+      "type": "wall",
+      "id": "W-G-E",
+      "name": "Ground east wall",
+      "storey": "G",
+      "start": [
+        10,
+        0
+      ],
+      "end": [
+        10,
+        7
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-G-I1": {
+      "type": "wall",
+      "id": "W-G-I1",
+      "name": "Ground partition x=6",
+      "storey": "G",
+      "start": [
+        6,
+        0
+      ],
+      "end": [
+        6,
+        7
+      ],
+      "thickness": {
+        "value": 0.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": false,
+      "material": "mat-int-wall"
+    },
+    "W-G-I2": {
+      "type": "wall",
+      "id": "W-G-I2",
+      "name": "Ground partition y=4",
+      "storey": "G",
+      "start": [
+        0,
+        4
+      ],
+      "end": [
+        6,
+        4
+      ],
+      "thickness": {
+        "value": 0.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": false,
+      "material": "mat-int-wall"
+    },
+    "W-G-N": {
+      "type": "wall",
+      "id": "W-G-N",
+      "name": "Ground north wall",
+      "storey": "G",
+      "start": [
+        10,
+        7
+      ],
+      "end": [
+        0,
+        7
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-G-S": {
+      "type": "wall",
+      "id": "W-G-S",
+      "name": "Ground south wall",
+      "storey": "G",
+      "start": [
+        0,
+        0
+      ],
+      "end": [
+        10,
+        0
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall",
+      "aliases": [
+        "front wall",
+        "south wall"
+      ]
+    },
+    "W-G-W": {
+      "type": "wall",
+      "id": "W-G-W",
+      "name": "Ground west wall",
+      "storey": "G",
+      "start": [
+        0,
+        7
+      ],
+      "end": [
+        0,
+        0
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "value": 2.7,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-U-E": {
+      "type": "wall",
+      "id": "W-U-E",
+      "name": "Upper east gable wall",
+      "storey": "U",
+      "start": [
+        10,
+        0
+      ],
+      "end": [
+        10,
+        7
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall",
+      "top": {
+        "attach": "R-main"
+      }
+    },
+    "W-U-I1": {
+      "type": "wall",
+      "id": "W-U-I1",
+      "name": "Upper partition x=5",
+      "storey": "U",
+      "start": [
+        5,
+        0
+      ],
+      "end": [
+        5,
+        7
+      ],
+      "thickness": {
+        "value": 0.1,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "height": {
+        "value": 2.584,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        }
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": false,
+      "material": "mat-int-wall"
+    },
+    "W-U-N": {
+      "type": "wall",
+      "id": "W-U-N",
+      "name": "Upper north wall",
+      "storey": "U",
+      "start": [
+        10,
+        7
+      ],
+      "end": [
+        0,
+        7
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-U-S": {
+      "type": "wall",
+      "id": "W-U-S",
+      "name": "Upper south wall",
+      "storey": "U",
+      "start": [
+        0,
+        0
+      ],
+      "end": [
+        10,
+        0
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "inferred",
+        "confidence": 0.7,
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.03
+        }
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall"
+    },
+    "W-U-W": {
+      "type": "wall",
+      "id": "W-U-W",
+      "name": "Upper west gable wall",
+      "storey": "U",
+      "start": [
+        0,
+        7
+      ],
+      "end": [
+        0,
+        0
+      ],
+      "thickness": {
+        "value": 0.2,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.003
+        },
+        "input": "7 7/8\""
+      },
+      "height": {
+        "ref": "storey"
+      },
+      "base_offset": {
+        "value": 0.0,
+        "basis": "measured",
+        "uncertainty": {
+          "kind": "pm",
+          "value": 0.0
+        }
+      },
+      "exterior": true,
+      "material": "mat-ext-wall",
+      "top": {
+        "attach": "R-main"
+      }
+    }
+  }
+}
