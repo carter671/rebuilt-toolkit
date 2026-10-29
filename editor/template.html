@@ -184,6 +184,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button data-v="3d" aria-pressed="false">3D</button>
       <button id="tRoof" aria-pressed="false" title="Show the roof in the 3D view">Roof</button>
       <button id="tLot" aria-pressed="false" title="Show the lot lines and the setbacks (no-build zone)">Lot</button>
+      <select id="level" aria-label="Floor" title="Which floor you are working on" hidden></select>
     </div>
     <span class="save" id="save" aria-live="polite"></span>
   </header>
@@ -228,7 +229,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
         <div><b>Click a room</b> to rename it. Scroll to zoom; drag empty space to pan.</div>
       </section>
     </aside>
-    <div class="view" id="plan"><span class="tag">Plan · house + garage</span><svg id="svg" aria-label="Floor plan editor"></svg></div>
+    <div class="view" id="plan"><span class="tag" id="planTag">Plan</span><svg id="svg" aria-label="Floor plan editor"></svg></div>
     <div class="view" id="three"><span class="tag">3D</span></div>
   </main>
   <section id="chat" hidden aria-label="Chat with Claude">
@@ -257,9 +258,24 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
 const PLAN = __PLAN__;
 const BASE_ID = PLAN.base_id;
-const ST = '1F';                                      // default level for new walls
-const SHOW = new Set(Object.keys(PLAN.storeys));      // every building at grade: house + garage
 const EL = st => (PLAN.storeys[st] || {elev: 0}).elev;
+// floors: storeys within 1.2 m of each other show together (a house floor + a garage a few steps down)
+const LEVELS = (() => { const ids = Object.keys(PLAN.storeys).sort((a, b) => EL(a) - EL(b)), out = [];
+  ids.forEach(id => { const L = out[out.length - 1]; if (L && Math.abs(EL(id) - EL(L[0])) < 1.2) L.push(id); else out.push([id]); }); return out; })();
+let LEVEL = LEVELS.findIndex(L => L.some(id => Math.abs(EL(id)) < 0.6)); if (LEVEL < 0) LEVEL = 0;
+const SHOW = new Set(LEVELS[LEVEL]);                  // the floor being edited
+let ST = PLAN.storeys['1F'] && SHOW.has('1F') ? '1F' : LEVELS[LEVEL][0];   // default storey for new walls
+const levelName = L => L.map(id => PLAN.storeys[id].name).join(' + ');
+const levelOf = id => LEVELS.findIndex(L => L.includes(id));
+// a wall shows on storey st's plan if it is st's own wall starting near that floor, or a wall of another floor
+// (a 2-storey outside wall, an upstairs partition stored on the floor below) that the 4-ft plan cut passes through
+function wallOn(w, st){ const z = EL(st), b = EL(w.st) + (w.b || 0), t = b + w.h;
+  if (w.st === st) return b < z + 1.0 && t > z + 0.3;
+  if (levelOf(w.st) === levelOf(st)) return false;
+  return b < z + 1.2 && t > z + 1.2; }
+const onLvl = w => [...SHOW].some(st => wallOn(w, st));
+// an opening shows on the current floor when it overlaps that floor's 0.3-2.2 m band
+function opOnLvl(o, w){ const b = EL(w.st) + o.sill, z = EL(ST); return b < z + 2.2 && b + o.h > z + 0.3; }
 const IN = 0.0254, FT = 0.3048, TOL = 0.03;
 const $ = s => document.querySelector(s);
 $('#sub').textContent = PLAN.name;
@@ -302,7 +318,7 @@ function interiorPoint(P){
   }
   return best;
 }
-let BASE_SPACES = PLAN.spaces.filter(s => SHOW.has(s.st)).map(s => ({...s, pt: interiorPoint(s.poly)}));
+let BASE_SPACES = PLAN.spaces.map(s => ({...s, pt: interiorPoint(s.poly)}));
 
 /* ---------------- state + operations ---------------- */
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -371,7 +387,7 @@ function afterChange(save){ rooms = computeRooms(); issues = computeChecks(); dr
 let rooms = [];
 function computeRooms(){ return [...SHOW].flatMap(st => roomsFor(st)).sort((a, b) => b.area - a.area); }
 function roomsFor(ST){
-  const WS = S.walls.filter(w => w.st === ST); let segs = WS.map(w => [w.s.slice(), w.e.slice()]);
+  const WS = S.walls.filter(w => wallOn(w, ST)); let segs = WS.map(w => [w.s.slice(), w.e.slice()]);
   // walls drawn to the face of another wall: pull the end onto that wall's centreline
   segs.forEach((sg, i) => { for (let k = 0; k < 2; k++){ let best = null, bd = 1e9;
     const p = sg[k], q = sg[1 - k], dir = unit(sub(p, q));
@@ -452,7 +468,7 @@ function roomsFor(ST){
 const svg = $('#svg'), NS = 'http://www.w3.org/2000/svg';
 let vb = null;                                       // view box in plan metres: {x, y, w, h} with y up
 function fit(){
-  const ws = S.walls.filter(w => SHOW.has(w.st)); const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+  const ws = S.walls.filter(w => onLvl(w)); const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
   const r = svg.getBoundingClientRect(), pad = 1.5;
   let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
   const s = Math.max((x1 - x0) / Math.max(r.width, 1), (y1 - y0) / Math.max(r.height, 1));
@@ -494,7 +510,7 @@ function drawPlan(){
   PLAN.comps.filter(c => SHOW.has(c.st)).forEach(c => el('rect', {x: c.min[0], y: -c.max[1], width: c.max[0] - c.min[0], height: c.max[1] - c.min[1], class: 'comp', 'stroke-width': pxm()}, g));
   drawItems(g, false);
   // walls
-  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+  S.walls.filter(w => onLvl(w)).forEach(w => {
     const {d: wd0, L: wl} = wallFrame(w), cuts = S.openings.filter(o => o.host === w.id && o.op === 'open').map(o => [o.off, o.off + o.w]).sort((a, b) => a[0] - b[0]);
     const spans = []; let u0 = 0; cuts.forEach(([a, b]) => { if (a > u0) spans.push([u0, a]); u0 = Math.max(u0, b); }); if (wl > u0) spans.push([u0, wl]);
     spans.forEach(([a, b]) => { const piece = {...w, s: add(w.s, mul(wd0, a)), e: add(w.s, mul(wd0, b))};
@@ -503,7 +519,7 @@ function drawPlan(){
   });
   // openings: gap + symbol
   S.openings.forEach(o => {
-    const w = S.walls.find(x => x.id === o.host); if (!w || !SHOW.has(w.st)) return;
+    const w = S.walls.find(x => x.id === o.host); if (!w || !onLvl(w) || !opOnLvl(o, w)) return;
     const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), h = w.t / 2 + 0.01;
     if (o.op !== 'open') el('polygon', {points: pts([add(a, mul(n, h)), add(b, mul(n, h)), add(b, mul(n, -h)), add(a, mul(n, -h))]), class: o.kind === 'void' ? 'gap open' : 'gap'}, g);
     const isSel = sel && sel.kind === 'opening' && sel.id === o.id, cls = 'op-line' + (isSel ? ' sel' : ''), sw = (isSel ? 2.2 : 1.2) * pxm();
@@ -643,6 +659,7 @@ function addOpening(w, kind, at){
   const o = garage ? {id: uid('N-O'), host: w.id, kind: 'door', off, w: wd, h: 7 * FT, sill: 0, name: 'Garage door', op: 'overhead'}
     : {id: uid('N-O'), host: w.id, kind, off, w: wd, h: kind === 'door' ? 80 * IN : 48 * IN, sill: kind === 'door' ? 0 : 36 * IN, name: kind === 'door' ? 'New door' : 'New window', op: kind === 'door' ? 'swing' : 'double-hung'};
   if (garage && w.h < o.h + 8 * IN) o.h = Math.max(6.5 * FT, w.h - 10 * IN);     // leave room for the header
+  if (!SHOW.has(w.st)) o.sill += EL(ST) - EL(w.st);                               // a 2-storey wall, placed from the upper floor
   commit({do: 'add_opening', opening: o, label: `Added ${ftin(o.w)} ${garage ? 'garage door' : kind} in ${w.name || 'wall'}`});
   sel = {kind: 'opening', id: o.id}; drawPlan(); showPop(null);
 }
@@ -910,7 +927,7 @@ function finishBox(d, ev){
   drawPlan();
   if (!dragMoved || (x1 - x0) < 0.05 && (y1 - y0) < 0.05){ if (sel){ sel = null; hidePop(); drawPlan(); highlight3D(); } return; }
   const inBox = q => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1;
-  const hit = S.walls.filter(w => SHOW.has(w.st) && Array.from({length: 21}, (_, k) => add(w.s, mul(sub(w.e, w.s), k / 20))).filter(inBox).length >= 11).map(w => w.id);
+  const hit = S.walls.filter(w => onLvl(w) && Array.from({length: 21}, (_, k) => add(w.s, mul(sub(w.e, w.s), k / 20))).filter(inBox).length >= 11).map(w => w.id);
   const ids = [...new Set((d.add ? selWalls() : []).concat(hit))];
   if (!ids.length){ sel = null; hidePop(); drawPlan(); highlight3D(); return; }
   select(ids.length === 1 ? {kind: 'wall', id: ids[0]} : {kind: 'walls', ids}, ev);
@@ -923,15 +940,15 @@ svg.addEventListener('wheel', ev => {
 /* ---------------- draw wall tool ---------------- */
 function snapPoint(p){
   let best = null, bd = 8 * pxm();
-  S.walls.filter(w => SHOW.has(w.st)).forEach(w => { for (const q of [w.s, w.e]){ const dd = dist(p, q); if (dd < bd){ bd = dd; best = q.slice(); } } });
-  if (!best){ let bd2 = 6 * pxm(); S.walls.filter(w => SHOW.has(w.st)).forEach(w => { const pr = projOnSeg(p, w.s, w.e); if (pr.d < bd2 + w.t / 2){ bd2 = pr.d; best = pr.q; } }); }
+  S.walls.filter(w => onLvl(w)).forEach(w => { for (const q of [w.s, w.e]){ const dd = dist(p, q); if (dd < bd){ bd = dd; best = q.slice(); } } });
+  if (!best){ let bd2 = 6 * pxm(); S.walls.filter(w => onLvl(w)).forEach(w => { const pr = projOnSeg(p, w.s, w.e); if (pr.d < bd2 + w.t / 2){ bd2 = pr.d; best = pr.q; } }); }
   snapMark = best;
   return best || [snapIn(p[0]), snapIn(p[1])];
 }
 function ortho(a, b){ const v = sub(b, a); return Math.abs(v[0]) > Math.abs(v[1]) ? [b[0], a[1]] : [a[0], b[1]]; }
 // buildings: outline box of each level's outside walls (house, garage)
 function buildingBox(st){
-  const ws = S.walls.filter(w => w.st === st && w.ext && PLAN.walls.some(b => b.id === w.id)); if (!ws.length) return null;
+  const ws = S.walls.filter(w => wallOn(w, st) && w.ext && PLAN.walls.some(b => b.id === w.id)); if (!ws.length) return null;
   const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
   return {x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys)};
 }
@@ -939,8 +956,8 @@ const inBox = (p, b, m) => b && p[0] > b.x0 - m && p[0] < b.x1 + m && p[1] > b.y
 function storeyAt(p){
   // inside a building: that building's level. Outside: the level of the nearest wall (what it attaches to)
   for (const st of SHOW) if (inBox(p, buildingBox(st), 0.2)) return st;
-  let best = null; S.walls.filter(w => SHOW.has(w.st)).forEach(w => { const d = projOnSeg(p, w.s, w.e).d; if (!best || d < best.d) best = {d, st: w.st}; });
-  return best ? best.st : ST;
+  let best = null; S.walls.filter(w => onLvl(w)).forEach(w => { const d = projOnSeg(p, w.s, w.e).d; if (!best || d < best.d) best = {d, st: w.st}; });
+  return best && SHOW.has(best.st) ? best.st : ST;
 }
 // wall settings to match: outside walls of that building for an addition, a 2x4 partition inside
 function wallKind(st, a, b){
@@ -964,7 +981,7 @@ function axisSnap(p){
   // line the room's edges up with existing walls: their centre lines (and corners) within ~14 px, else the nearest inch
   const tol = Math.max(14 * pxm(), 0.25); let x = null, y = null, bx = tol, by = tol;
   const near = (v, c, best) => Math.abs(v - c) < best;
-  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+  S.walls.filter(w => onLvl(w)).forEach(w => {
     const {d} = wallFrame(w);
     if (Math.abs(d[0]) < 0.05){ const cx = (w.s[0] + w.e[0]) / 2; if (near(p[0], cx, bx)){ bx = Math.abs(p[0] - cx); x = cx; } }   // vertical wall: its x
     if (Math.abs(d[1]) < 0.05){ const cy = (w.s[1] + w.e[1]) / 2; if (near(p[1], cy, by)){ by = Math.abs(p[1] - cy); y = cy; } }   // horizontal wall: its y
@@ -977,12 +994,12 @@ function roomPoint(p){ snapMark = null; const q = axisSnap(p); snapMark = (q[0] 
 function roomOps(a, c, name){
   const P = [[a[0], a[1]], [c[0], a[1]], [c[0], c[1]], [a[0], c[1]]], ctr = mul(add(a, c), 0.5);
   let st = null; for (const s2 of SHOW) if (inBox(ctr, buildingBox(s2), -0.05)) st = s2;
-  if (!st){ let best = null; S.walls.filter(w => SHOW.has(w.st)).forEach(w => P.forEach((p, i) => { const q = P[(i + 1) % 4]; [p, q, mul(add(p, q), 0.5)].forEach(x => { const d = projOnSeg(x, w.s, w.e).d; if (!best || d < best.d) best = {d, st: w.st}; }); })); st = best ? best.st : ST; }
+  if (!st){ let best = null; S.walls.filter(w => onLvl(w)).forEach(w => P.forEach((p, i) => { const q = P[(i + 1) % 4]; [p, q, mul(add(p, q), 0.5)].forEach(x => { const d = projOnSeg(x, w.s, w.e).d; if (!best || d < best.d) best = {d, st: SHOW.has(w.st) ? w.st : ST}; }); })); st = best ? best.st : ST; }
   const out = [];
   for (let i = 0; i < 4; i++){
     const p = P[i], q = P[(i + 1) % 4], d = unit(sub(q, p)), L = dist(p, q);
     // intervals of this edge already on an existing wall's centreline
-    const cov = S.walls.filter(w => w.st === st).map(w => {
+    const cov = S.walls.filter(w => wallOn(w, st)).map(w => {
       if (Math.abs(Math.abs(dot(wallFrame(w).d, d)) - 1) > 1e-3 || projOnSeg(p, w.s, w.e).d > w.t / 2 + TOL && Math.abs(dot(sub(w.s, p), perp(d))) > w.t / 2 + TOL) return null;
       const u0 = dot(sub(w.s, p), d), u1 = dot(sub(w.e, p), d); return [Math.max(0, Math.min(u0, u1)), Math.min(L, Math.max(u0, u1))];
     }).filter(x => x && x[1] - x[0] > 0.05).sort((x, y) => x[0] - y[0]);
@@ -990,7 +1007,7 @@ function roomOps(a, c, name){
     cov.forEach(([x0, x1]) => { if (x0 > u + 0.05) free.push([u, x0]); u = Math.max(u, x1); }); if (L > u + 0.05) free.push([u, L]);
     free.forEach(([x0, x1]) => { let s0 = add(p, mul(d, x0)), e0 = add(p, mul(d, x1)); const k = wallKind(st, s0, e0);
       // stop at the face of a wall it runs into (no overlap with the old wall), and line up with old corners
-      const trim = (q, inward) => { for (const o of S.walls.filter(w => w.st === st)){ if (Math.abs(dot(wallFrame(o).d, d)) > 0.3) continue;
+      const trim = (q, inward) => { for (const o of S.walls.filter(w => wallOn(w, st))){ if (Math.abs(dot(wallFrame(o).d, d)) > 0.3) continue;
           const pr = projOnSeg(q, o.s, o.e); if (pr.d < o.t / 2 + TOL && pr.t > -0.02 && pr.t < 1.02){ const side = Math.sign(dot(inward, wallFrame(o).n)) || 1;
             const line = dot(o.s, wallFrame(o).n), cur = dot(q, wallFrame(o).n), target = line + side * o.t / 2; return add(q, mul(inward, (target - cur) / dot(inward, wallFrame(o).n))); } }
         return q; };
@@ -1032,7 +1049,7 @@ const M = {
 };
 let group = new THREE.Group(); scene.add(group);
 const wallMeshes = {};
-const elev = EL(ST);
+let elev = EL(ST);
 const P3 = (x, y, z) => new THREE.Vector3(x, z, -y);   // plan -> three
 function boxAlong(w, u0, u1, z0, z1, mat){
   const {d} = wallFrame(w), L = u1 - u0; if (L < 0.005 || z1 - z0 < 0.005) return null;
@@ -1043,7 +1060,8 @@ function boxAlong(w, u0, u1, z0, z1, mat){
 function build3D(){
   scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); group = new THREE.Group(); scene.add(group);
   for (const k in wallMeshes) delete wallMeshes[k];
-  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+  const top3 = Math.max(...[...SHOW].map(EL)) + 0.01;
+  S.walls.filter(w => EL(w.st) <= top3).forEach(w => {
     const elev = EL(w.st), {L} = wallFrame(w), z0 = elev + w.b, z1 = z0 + w.h, mat = w.ext ? M.ext : M.wall;
     const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
     const parts = []; let u = 0;
@@ -1185,7 +1203,7 @@ function resize3(){
   const r = host3.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return;
   R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
   if (!camSet){
-    const ws = S.walls.filter(w => SHOW.has(w.st)), xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+    const ws = S.walls.filter(w => onLvl(w)), xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = true;
   }
@@ -1667,9 +1685,9 @@ function computeChecks(){
   }
   // a wall that butts into the middle of an opening
   S.openings.forEach(o => {
-    const w = S.walls.find(x => x.id === o.host); if (!w || !SHOW.has(w.st)) return;
+    const w = S.walls.find(x => x.id === o.host); if (!w || !onLvl(w) || !opOnLvl(o, w)) return;
     const {d} = wallFrame(w);
-    const hit = S.walls.find(x => x.id !== w.id && x.st === w.st && Math.abs(dot(wallFrame(x).d, d)) < 0.3 && [x.s, x.e].some(q => { const pr = projOnSeg(q, w.s, w.e); const u = dot(sub(q, w.s), d); return pr.d < w.t / 2 + TOL && u > o.off - x.t / 2 + 0.01 && u < o.off + o.w + x.t / 2 - 0.01; }));
+    const hit = S.walls.find(x => x.id !== w.id && x.st === w.st && (x.b || 0) + x.h > o.sill + 0.05 && (x.b || 0) < o.sill + o.h - 0.05 && Math.abs(dot(wallFrame(x).d, d)) < 0.3 && [x.s, x.e].some(q => { const pr = projOnSeg(q, w.s, w.e); const u = dot(sub(q, w.s), d); return pr.d < w.t / 2 + TOL && u > o.off - x.t / 2 + 0.01 && u < o.off + o.w + x.t / 2 - 0.01; }));
     if (hit && o.op !== 'open') out.push({type: 'opjunction', o: o.id, wall: hit.id, ids: [], msg: `${hit.name || 'A wall'} runs into ${o.name || 'an opening'}`});
   });
   out.filter(x => x.type === 'ceiling' && x.rooms).forEach(x => { const n = x.rooms.length, list = n > 4 ? x.rooms.slice(0, 3).join(', ') + ` + ${n - 3} more` : x.rooms.join(', ');
@@ -2512,7 +2530,7 @@ $('#undo').onclick = () => { if (cursor > 0) jump(cursor - 1); };
 $('#redo').onclick = () => { if (cursor < ops.length) jump(cursor + 1); };
 function placeOpeningAt(p, ev){
   // nearest wall within ~14 px of the click
-  let best = null; S.walls.filter(w => SHOW.has(w.st)).forEach(w => { const pr = projOnSeg(p, w.s, w.e); if (pr.t > 0 && pr.t < 1 && pr.d < w.t / 2 + 14 * pxm() && (!best || pr.d < best.d)) best = {w, d: pr.d, q: pr.q}; });
+  let best = null; S.walls.filter(w => onLvl(w)).forEach(w => { const pr = projOnSeg(p, w.s, w.e); if (pr.t > 0 && pr.t < 1 && pr.d < w.t / 2 + 14 * pxm() && (!best || pr.d < best.d)) best = {w, d: pr.d, q: pr.q}; });
   if (!best){ toast('Click on a wall to put the ' + tool + ' there.'); return; }
   if (tool === 'window' && !best.w.ext){ toast('Windows go in outside walls.'); return; }
   const kind = tool; setTool('select'); addOpening(best.w, kind, best.q);
@@ -2595,13 +2613,27 @@ async function initDb(){
   } catch (e) { saveEl.textContent = 'Not saving'; }
 }
 
+/* ---------------- floors ---------------- */
+const setPlanTag = () => { const t = document.getElementById('planTag'); if (t) t.textContent = 'Plan · ' + levelName(LEVELS[LEVEL]).toLowerCase(); };
+function setLevel(i){
+  LEVEL = i; SHOW.clear(); LEVELS[i].forEach(id => SHOW.add(id)); if ($('#level')) $('#level').value = i;
+  ST = LEVELS[i].includes('1F') ? '1F' : LEVELS[i].slice().sort((a, b) => Math.abs(EL(a) - EL(LEVELS[i][0])) - Math.abs(EL(b) - EL(LEVELS[i][0])))[0];
+  elev = EL(ST); floorPlane.constant = -elev; sel = null; hidePop(); draft = null; roomDraft = null;
+  setPlanTag(); rooms = computeRooms(); issues = computeChecks(); fit(); drawPlan(); build3D(); drawSide();
+  try { localStorage.setItem('rebuilt-level-' + BASE_ID, String(i)); } catch (e) {}
+}
+(() => { const s = $('#level'); if (LEVELS.length < 2) return; s.hidden = false;
+  LEVELS.forEach((L, i) => { const o = document.createElement('option'); o.value = i; o.textContent = levelName(L); s.appendChild(o); });
+  s.value = LEVEL; s.onchange = () => setLevel(+s.value);
+  try { const k = +localStorage.getItem('rebuilt-level-' + BASE_ID); if (k >= 0 && k < LEVELS.length && k !== LEVEL){ LEVEL = k; SHOW.clear(); LEVELS[k].forEach(id => SHOW.add(id)); ST = LEVELS[k].includes('1F') ? '1F' : LEVELS[k][0]; elev = EL(ST); floorPlane.constant = -elev; s.value = k; } } catch (e) {}
+})();
 /* ---------------- boot ---------------- */
 rebuild();
-for (const st of SHOW){
+for (const st of Object.keys(PLAN.storeys)){
   if (PLAN.spaces.some(s => s.st === st)) continue;
   const nm = /garage/i.test(PLAN.storeys[st].name + st) ? 'Garage' : PLAN.storeys[st].name;
   roomsFor(st).filter(r => r.area > 2).forEach((r, i) => BASE_SPACES.push({id: `BASE-${st}-${i}`, name: nm, st, poly: r.poly, pt: r.pt}));
 }
-rooms = computeRooms(); issues = computeChecks(); buildCatalogue();
+setPlanTag(); rooms = computeRooms(); issues = computeChecks(); buildCatalogue();
 requestAnimationFrame(() => { if (showLot && SITE) fitLot(); else fit(); drawLotPanel(); drawPlan(); resize3(); build3D(); drawSide(); updateButtons(); loop(); fillPicker(); initDb(); initChat(); });
 </script>
