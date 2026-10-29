@@ -185,6 +185,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button id="tRoof" aria-pressed="false" title="Show the roof in the 3D view">Roof</button>
       <button id="tLot" aria-pressed="false" title="Show the lot lines and the setbacks (no-build zone)">Lot</button>
       <select id="level" aria-label="Floor" title="Which floor you are working on" hidden></select>
+      <select id="view3" aria-label="Floors in 3D" title="Which floors the 3D view shows" hidden><option value="below">3D: this floor + below</option><option value="one">3D: this floor only</option><option value="apart">3D: floors pulled apart</option></select>
     </div>
     <span class="save" id="save" aria-live="polite"></span>
   </header>
@@ -1057,16 +1058,18 @@ function boxAlong(w, u0, u1, z0, z1, mat){
   const c = add(w.s, mul(d, (u0 + u1) / 2)); m.position.copy(P3(c[0], c[1], (z0 + z1) / 2));
   m.rotation.y = Math.atan2(d[1], d[0]); m.castShadow = true; m.receiveShadow = true; return m;
 }
-function build3D(){
-  scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); group = new THREE.Group(); scene.add(group);
-  for (const k in wallMeshes) delete wallMeshes[k];
-  const top3 = Math.max(...[...SHOW].map(EL)) + 0.01;
-  S.walls.filter(w => EL(w.st) <= top3).forEach(w => {
-    const elev = EL(w.st), {L} = wallFrame(w), z0 = elev + w.b, z1 = z0 + w.h, mat = w.ext ? M.ext : M.wall;
+let view3 = 'below';                                  // 3D floors: 'below' = this floor and everything under it, 'one' = this floor only, 'apart' = every floor pulled apart
+try { const v = localStorage.getItem('rebuilt-view3'); if (['below', 'one', 'apart'].includes(v)) view3 = v; } catch (e) {}
+const GAP3 = 3.6;                                     // metres between floors when pulled apart
+function addWalls3D(grp, keep, zlo, zhi, live){
+  S.walls.filter(keep).forEach(w => {
+    const elev = EL(w.st), {L} = wallFrame(w), mat = w.ext ? M.ext : M.wall;
+    const z0 = Math.max(elev + w.b, zlo), z1 = Math.min(elev + w.b + w.h, zhi); if (z1 - z0 < 0.05) return;
     const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
     const parts = []; let u = 0;
     ops2.forEach(o => {
-      const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = elev + o.sill, oz1 = oz0 + o.h;
+      const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = Math.max(elev + o.sill, z0), oz1 = Math.min(elev + o.sill + o.h, z1);
+      if (oz1 - oz0 < 0.02) return;                    // this opening is on another floor's part of the wall
       parts.push(boxAlong(w, u, a, z0, z1, mat));
       if (oz0 > z0 + 0.01) parts.push(boxAlong(w, a, b, z0, oz0, mat));
       if (oz1 < z1 - 0.01 && o.op !== 'open') parts.push(boxAlong(w, a, b, oz1, z1, mat));
@@ -1074,22 +1077,55 @@ function build3D(){
       u = Math.max(u, b);
     });
     parts.push(boxAlong(w, u, L, z0, z1, mat));
-    const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { p.userData.wall = w.id; wg.add(p); });
-    wg.userData.wall = w.id; wallMeshes[w.id] = wg; group.add(wg);
+    const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { if (live) p.userData.wall = w.id; wg.add(p); });
+    if (live){ wg.userData.wall = w.id; wallMeshes[w.id] = wg; }
+    grp.add(wg);
   });
+}
+function addFloorStuff3D(grp){
   rooms.forEach(r => {
     const shape = new THREE.Shape(r.poly.map(p => new THREE.Vector2(p[0], p[1])));
     const g = new THREE.ShapeGeometry(shape); const m = new THREE.Mesh(g, r.changed ? M.floorNew : M.floor);
-    m.rotation.x = -Math.PI / 2; m.position.y = EL(r.st) + 0.002; m.receiveShadow = true; group.add(m);
-    if (r.ceil.given && !showRoof) buildCeiling3D(r, group);
+    m.rotation.x = -Math.PI / 2; m.position.y = EL(r.st) + 0.002; m.receiveShadow = true; grp.add(m);
+    if (r.ceil.given && !showRoof) buildCeiling3D(r, grp);
   });
   PLAN.comps.filter(c => SHOW.has(c.st) && /toilet|tub|vanity|cabinet|sink|range|fridge|bed|sofa|table/i.test(c.name + ' ' + c.cat)).forEach(c => {
     const g = new THREE.BoxGeometry(c.max[0] - c.min[0], c.max[2] - c.min[2], c.max[1] - c.min[1]); const m = new THREE.Mesh(g, M.comp);
-    m.position.copy(P3((c.min[0] + c.max[0]) / 2, (c.min[1] + c.max[1]) / 2, (c.min[2] + c.max[2]) / 2)); m.castShadow = true; group.add(m);
+    m.position.copy(P3((c.min[0] + c.max[0]) / 2, (c.min[1] + c.max[1]) / 2, (c.min[2] + c.max[2]) / 2)); m.castShadow = true; grp.add(m);
   });
-  buildItems3D(group);
-  buildFraming3D(group);
-  if (showRoof) buildRoof3D(group);
+  buildItems3D(grp);
+}
+function build3D(){
+  scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); group = new THREE.Group(); scene.add(group);
+  for (const k in wallMeshes) delete wallMeshes[k];
+  ground.position.y = -0.6;
+  if (view3 === 'below' || LEVELS.length < 2){
+    const top3 = Math.max(...[...SHOW].map(EL)) + 0.01;
+    addWalls3D(group, w => EL(w.st) <= top3, -Infinity, Infinity, true);
+    addFloorStuff3D(group); buildFraming3D(group);
+    if (showRoof) buildRoof3D(group);
+    highlight3D(); return;
+  }
+  // one floor, or every floor pulled apart: each floor is a slice of the house from its floor level up to the next floor
+  const keepShow = [...SHOW], keepRooms = rooms, keepRoofs = S.roofs;
+  const bot = i => Math.min(...LEVELS[i].map(EL)), top = i => i + 1 < LEVELS.length ? bot(i + 1) : Infinity;
+  const lvls = view3 === 'one' ? [LEVEL] : LEVELS.map((_, i) => i);
+  ALL_ROOFS = keepRoofs;
+  try {
+    lvls.forEach(i => {
+      const g = new THREE.Group(), live = i === LEVEL, zlo = bot(i) - (i === 0 ? 9 : 0.01), zhi = top(i) - 0.01;
+      SHOW.clear(); LEVELS[i].forEach(id => SHOW.add(id)); rooms = live ? keepRooms : computeRooms();
+      addWalls3D(g, w => EL(w.st) + w.b < zhi && EL(w.st) + w.b + w.h > zlo, zlo, zhi, live);
+      addFloorStuff3D(g);
+      const mine = (keepRoofs || []).filter(r => SHOW.has(r.st));
+      // a roof shows with the floor it sits on; with "this floor only", the top floor also carries it
+      if (showRoof && mine.length){ S.roofs = mine; buildRoof3D(g); buildFraming3D(g); S.roofs = keepRoofs; }
+      else if (showFraming && mine.length){ S.roofs = mine; buildFraming3D(g); S.roofs = keepRoofs; }
+      if (view3 === 'apart') g.position.y = (i - LEVEL) * GAP3;   // the floor you are on stays put, so 3D dragging still lines up
+      group.add(g);
+    });
+  } finally { ALL_ROOFS = null; S.roofs = keepRoofs; SHOW.clear(); keepShow.forEach(id => SHOW.add(id)); rooms = keepRooms; }
+  if (view3 === 'apart' && LEVEL > 0) ground.position.y = -0.6 - LEVEL * GAP3;
   highlight3D();
 }
 const CM = new THREE.MeshStandardMaterial({color: '#F3EFE6', roughness: .9, transparent: true, opacity: .55, side: THREE.DoubleSide});
@@ -1134,9 +1170,10 @@ function shed3D(o, u, v, L, W, zHigh, pitch, oh, rake, grp){
   mesh3([[...P(-rake, 0), zHigh], [...P(L + rake, 0), zHigh], [...P(L + rake, W + oh), zl - oh * pitch], [...P(-rake, W + oh), zl - oh * pitch]], RM.shingle, grp);
   [0, L].forEach(a => mesh3([[...P(a, 0), zl], [...P(a, W), zl], [...P(a, 0), zHigh]], M.ext, grp));
 }
+let ALL_ROOFS = null;                                  // set while one floor's roofs are drawn on their own
 function underOtherRoof(piece, rf){
   // most of this piece sits under a different roof of the house (on this floor or the one above): not an addition
-  const others = (S.roofs || []).filter(x => x !== rf).map(liveFp); if (!others.length) return false;
+  const others = (ALL_ROOFS || S.roofs || []).filter(x => x !== rf).map(liveFp); if (!others.length) return false;
   const xs = piece.map(p => p[0]), ys = piece.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   let n = 0, hit = 0;
   for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ const q = [x0 + (i + .5) * (x1 - x0) / 8, y0 + (j + .5) * (y1 - y0) / 8];
@@ -2648,6 +2685,18 @@ function setLevel(i){
 (() => { const s = $('#level'); if (LEVELS.length < 2) return; s.hidden = false;
   LEVELS.forEach((L, i) => { const o = document.createElement('option'); o.value = i; o.textContent = levelName(L); s.appendChild(o); });
   s.value = LEVEL; s.onchange = () => setLevel(+s.value);
+  const v3 = $('#view3'); v3.hidden = false; v3.value = view3;
+  v3.onchange = () => { const was = view3; view3 = v3.value; try { localStorage.setItem('rebuilt-view3', view3); } catch (e) {}
+    // pulling the floors apart: step the camera back and centre on the stack (and back again)
+    const shift = v => v === 'apart' ? ((LEVELS.length - 1) / 2 - LEVEL) * GAP3 : 0, dy = shift(view3) - shift(was);
+    if (dy || (was === 'apart') !== (view3 === 'apart')){
+      orbit.target.y += dy; cam.position.y += dy;
+      if (view3 === 'apart'){                          // look from lower down the side so you can see into every floor
+        const off = cam.position.clone().sub(orbit.target), flat = Math.hypot(off.x, off.z) || 1, d = off.length() * 1.3;
+        cam.position.set(orbit.target.x + off.x / flat * d * 0.8, orbit.target.y + d * 0.6, orbit.target.z + off.z / flat * d * 0.8);
+      } else if (was === 'apart') cam.position.sub(orbit.target).multiplyScalar(1 / 1.3).add(orbit.target);
+      orbit.update(); }
+    build3D(); };
   try { const raw = localStorage.getItem('rebuilt-level-' + BASE_ID), k = raw === null ? -1 : +raw; if (k >= 0 && k < LEVELS.length && k !== LEVEL){ LEVEL = k; SHOW.clear(); LEVELS[k].forEach(id => SHOW.add(id)); ST = LEVELS[k].includes('1F') ? '1F' : LEVELS[k][0]; elev = EL(ST); floorPlane.constant = -elev; s.value = k; } } catch (e) {}
 })();
 /* ---------------- boot ---------------- */
