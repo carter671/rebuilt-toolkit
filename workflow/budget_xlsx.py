@@ -113,7 +113,8 @@ K = sheet('Cabinets & Fixtures', 'Cabinets, vanities, plumbing fixtures + applia
 header(K, 4, ['Room', 'Item', 'W (in)', 'D (in)', 'H (in)', 'Qty', 'Linear ft', 'Category', 'Source'])
 CAT = {'base cabinet': 'Base cabinet', 'sink base cabinet': 'Base cabinet', 'kitchen island': 'Island', 'wall cabinet': 'Upper cabinet',
        'tall cabinet': 'Tall cabinet', 'vanity': 'Vanity', 'bathtub': 'Tub', 'shower': 'Shower', 'toilet': 'Toilet',
-       'washer': 'Laundry', 'dryer': 'Laundry', 'range': 'Appliance', 'refrigerator': 'Appliance', 'dishwasher': 'Appliance'}
+       'washer': 'Laundry', 'dryer': 'Laundry', 'range': 'Appliance', 'refrigerator': 'Appliance', 'dishwasher': 'Appliance',
+       'decorative fireplace': 'Fireplace'}
 rows = []
 for it in sorted(t['items'], key=lambda x: (x['room'], x['cat'])):
     rows.append((it['room'], it['name'] + (' (sink base)' if it['cat'] == 'sink base cabinet' else ''), it['w_in'], it['d_in'], it['h_in'], 1, CAT.get(it['cat'], it['cat']), 'Placed in design'))
@@ -289,6 +290,7 @@ ADDED = {
     'recessed': ('Recessed LED light', 'ea', 165.0), 'firewall': ('5/8" Type X drywall, garage side', 'sf', 3.75),
     'insul_spray': ('Closed-cell spray foam at vaulted ceilings (R-38+)', 'sf', 4.50), 'turf': ('Golf sim turf / carpet', 'sf', 6.00),
     'drip': ('Drip edge', 'lf', 3.50), 'ridge_cap': ('Ridge cap + ridge vent', 'lf', 9.00),
+    'fireplace_decor': ('Decorative fireplace: electric insert + mantel / surround + outlet', 'ea', 3200.0),
 }
 for k, v in PB.items():          # a real pricebook entry always wins over an added rate
     ADDED.pop(k, None)
@@ -378,6 +380,8 @@ n_wash = max(1 if laundry else 0, sum(1 for r in rows if 'washer' in r[1].lower(
 L('Plumbing', 'Rough + set, per fixture', 'toilets, tubs, showers, lavs, kitchen sink + DW, washer',
   f'={KCNT("Toilet")}+{KCNT("Tub")}+{KCNT("Shower")}+{lavs}+{2 * n_kit}+{n_wash}', 'plumb_fixture', 1)
 L('Plumbing', 'Toilets', '', f'={KCNT("Toilet")}', 'toilet', 1)
+if any(r[6] == 'Fireplace' for r in rows):
+    L('Trim & Carpentry', 'Decorative fireplace (cosmetic, no flue)', 'Cabinets sheet', f'={KCNT("Fireplace")}', 'fireplace_decor', 1)
 L('Plumbing', 'Tubs', '', f'={KCNT("Tub")}', 'tub', 1)
 L('Plumbing', 'Tub / shower valves + trim', '', f'={KCNT("Tub")}+{KCNT("Shower")}', 'shower_valve', 1)
 L('Plumbing', 'Lav faucets', 'a 60"+ vanity has two', lavs, 'lav_faucet', 1)

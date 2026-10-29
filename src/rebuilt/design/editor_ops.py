@@ -16,7 +16,7 @@ Ops (all lengths in metres, plan coordinates):
   add_item      {item: {id, cat, st, at, rot, w, d, h, z, name}}   catalogue item (cabinet, fixture, bed...)
   set_item      {item, at?, rot?, w?, d?, h?, z?}
   remove_item   {item}
-  set_roof      {roof, framing?: truss | rafter | unknown, roles?: [eave|rake|abut per footprint edge]}
+  set_roof      {roof, framing?: truss | rafter | unknown, roles?: [eave|rake|abut per footprint edge], pitch?: rise per 1 run}
   set_component {id, at?, wall?, u?, z?, remove?, label?, lines?}   move / remove an existing fixture (meter, AC, chimney)
   set_wall_top  {walls: [ids], top}   top-of-wall height above the floor (fit a taller ceiling)
   add_scope     {label, lines: [{key, qty, note}]}   a scope line with no geometry (e.g. fill in a stairwell)
@@ -256,6 +256,12 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         elif do == "set_roof":
             r = E.get(op["roof"])
             if r and r["type"] == "roof":
+                if op.get("pitch") is not None:
+                    pv = float(op["pitch"])
+                    if not 0 <= pv <= 2:
+                        raise DesignError(f"op {i}: pitch {pv} out of range (rise per 1 run, e.g. 0.5 for 6/12)")
+                    r["pitch"] = {"value": pv, "basis": "assumed", "verification": "unverified",
+                                  "selection": {"by": "design", "process": "design", "reason": f"design: pitch set to {pv * 12:g}/12"}}
                 if op.get("framing"):
                     info = r.setdefault("info", {}) or {}
                     r["info"] = info
@@ -421,6 +427,7 @@ ITEM = {
     "king": ("furnishing", "bed", None), "queen": ("furnishing", "bed", None), "full": ("furnishing", "bed", None),
     "twin": ("furnishing", "bed", None), "night": ("furnishing", "nightstand", None), "dresser": ("furnishing", "dresser", None),
     "sofa": ("furnishing", "sofa", None), "table": ("furnishing", "dining table", None),
+    "fireplace": ("fixture", "decorative fireplace", None),
 }
 
 

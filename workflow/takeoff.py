@@ -221,7 +221,7 @@ for rid, ce in C.items():
     abut = sum(l for l, r in zip(lens, roles) if r == 'abut')
     n_eave = roles.count('eave')
     ridge = max(l for l, r in zip(lens, roles) if r == 'eave') if n_eave >= 2 else 0
-    changed = rid not in E0roofs or E0roofs[rid]['footprint'] != gr['footprint'] or E0roofs[rid]['edge_roles'] != gr['edge_roles']
+    changed = rid not in E0roofs or E0roofs[rid]['footprint'] != gr['footprint'] or E0roofs[rid]['edge_roles'] != gr['edge_roles'] or abs(E0roofs[rid]['pitch']['value'] - gr['pitch']['value']) > 0.01
     span_ft = max(abs((q[0] - fp[0][0]) * 0 + 0) for q in fp)  # placeholder, set below
     # run from eave to ridge (or to the high edge for a shed)
     k = roles.index('eave'); a, b = fp[k], fp[(k + 1) % n]

@@ -24,6 +24,7 @@ const CAT = {
   dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true},
   sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 36, h: 34, z: 0, wall: true},
   table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false},
+  fireplace: {g: 'Living', label: 'Fireplace (decorative)', w: 60, d: 16, h: 54, z: 0, wall: true, widths: [48, 60, 72]},
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
 };
 const isUpper = it => it.z > 1.0;
@@ -168,6 +169,7 @@ function drawItems(g, upper){
         k.forEach(([u, hw]) => el('polygon', {points: pts([L(u - hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.72), L(u - hw / 2 * 0.9, -0.72)]), class: 'sym', 'stroke-width': sw}, grp));
         line(L(-1, -0.45), L(1, -0.2)); break; }
       case 'sofa': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); break;
+      case 'fireplace': { el('polygon', {points: pts([L(-0.55, -1), L(0.55, -1), L(0.45, 0.2), L(-0.45, 0.2)]), class: 'sym', 'stroke-width': sw}, grp); const [x, y] = toSvg(L(0, 0.55)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = 'FP'; break; }
       case 'fridge': case 'dw': case 'washer': case 'dryer': {
         const t = {fridge: 'REF', dw: 'DW', washer: 'W', dryer: 'D'}[it.cat], [x, y] = toSvg(it.at);
         el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 10 * pxm()}, grp).textContent = t; break; }
@@ -289,6 +291,10 @@ function buildItems3D(grp){
       case 'king': case 'queen': case 'full': case 'twin':
         itemBox(it, -1, 1, -1, 1, 0, 0.3, on ? IM.pick : bad ? IM.bad : IM.wood, grp); itemBox(it, -0.97, 0.97, -0.97, 0.97, 0.3, 0.6, IM.bed, grp); itemBox(it, -1, 1, -1, -0.94, 0, 1.2, on ? IM.pick : IM.wood, grp); break;
       case 'sofa': itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
+      case 'fireplace': {   // mantel + surround, dark firebox, hearth
+        const mm = on ? IM.pick : bad ? IM.bad : IM.white;
+        itemBox(it, -1, 1, -1, 0.2, 0, H * 0.82, mm, grp); itemBox(it, -1.08, 1.08, -1, 1, H * 0.82, H * 0.86, mm, grp);
+        itemBox(it, -0.55, 0.55, 0.1, 0.25, 0.25, H * 0.62, IM.steel, grp); itemBox(it, -0.75, 0.75, 0.2, 1, 0, 0.03, IM.steel, grp); break; }
       default: itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.wood, grp);
     }
   });
