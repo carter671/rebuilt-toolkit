@@ -25,6 +25,11 @@ def pick_jurisdiction(prop, forced=None):
     if prop.get('jurisdiction'):
         return JUR[prop['jurisdiction']], 'set in property.json'
     parcel = re.sub(r'\D', '', prop.get('parcel', ''))
+    if (prop.get('county') or '').lower().startswith('franklin') or re.fullmatch(r'\d{3}-?\d{6}(-?\d{2})?', prop.get('parcel', '')):
+        d = parcel[:3]
+        for j in JUR.values():
+            if d in (j.get('applies_when') or {}).get('franklin_districts', []):
+                return j, f'Franklin County parcel {prop.get("parcel")}: tax district {d}'
     if (prop.get('county') or '').lower().startswith('fairfield') or len(parcel) == 10:
         d = parcel[:3]
         for j in JUR.values():

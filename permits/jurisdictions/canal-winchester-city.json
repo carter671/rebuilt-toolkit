@@ -6,22 +6,35 @@
   "fax": "614-837-0145",
   "source": "Applications Rev. 01/2025 and Zoning Code 1175 (overlays), supplied by Carter 2026-10-28",
   "applies_when": {
-    "note": "Inside the city limits only. Fairfield County parcels: tax district 042, 055 or 066 (\"... CANAL WINCHESTER CORP\"). Franklin County parcels: check the auditor's taxing district. A Canal Winchester mailing address does NOT mean the city — Violet / Bloom / Madison Township parcels use the township.",
-    "fairfield_districts": ["042", "055", "066"]
+    "note": "Inside the city limits only. Fairfield County parcels: tax district 042, 055 or 066 (\"... CANAL WINCHESTER CORP\"). Franklin County parcels: tax district 184 (\"MADISON TWP-CANAL WINCHESTER CORP\"). A Canal Winchester mailing address does NOT mean the city \u2014 Violet / Bloom / Madison Township parcels use the township.",
+    "fairfield_districts": [
+      "042",
+      "055",
+      "066"
+    ],
+    "franklin_districts": [
+      "184"
+    ]
   },
   "overlays": {
     "old_town": {
       "code": "1175.01",
-      "parts": ["historic", "preservation"],
-      "boundary": "Map in the Canal Winchester Old Town Guidelines (on file with Planning & Zoning) — not in the toolkit. Set property.old_town to historic | preservation | none after checking the map or calling 614-837-7501.",
+      "parts": [
+        "historic",
+        "preservation"
+      ],
+      "boundary": "Map in the Canal Winchester Old Town Guidelines (on file with Planning & Zoning) \u2014 not in the toolkit. Set property.old_town to historic | preservation | none after checking the map or calling 614-837-7501.",
       "reviewer": "Landmarks Commission",
       "certificate": "Certificate of Appropriateness (CoA) before ANY construction, reconstruction, exterior alteration or demolition; no zoning certificate or permit is issued without it",
       "lead_days": 15,
       "lead_note": "file with the P&Z Administrator at least 15 days before the Landmarks Commission meeting; applicant must attend; deemed approved if no action in 60 days (unless tabled)",
       "expires": "work must start within 1 year; certificate expires if not 50% complete in 1.5 years",
-      "paint_color": {"historic": true, "preservation": false},
+      "paint_color": {
+        "historic": true,
+        "preservation": false
+      },
       "materials": {
-        "historic": "traditional materials only — wood, brick or stone — for rehab and new construction (no vinyl siding / vinyl trim)",
+        "historic": "traditional materials only \u2014 wood, brick or stone \u2014 for rehab and new construction (no vinyl siding / vinyl trim)",
         "preservation": "new construction: wood, brick or stone; rehab: traditional encouraged, man-made only at the Commission's discretion if in character"
       },
       "criteria": [
@@ -47,58 +60,185 @@
       "boundary": "city parcels inside the Canal Winchester / Violet Township CEDA area (Busey Rd north, US 33 south, Franklin County line west, school district east)",
       "reviewer": "CEDA Joint Land Use Committee recommendation for additions and accessory structures",
       "residential": {
-        "front_setback_ft": 30, "side_setback_ft": 10, "side_on_street_ft": 30, "rear_setback_ft": 30, "rear_accessory_ft": 8,
-        "diley_hill_setback_ft": 75, "basil_busey_setback_ft": 50,
+        "front_setback_ft": 30,
+        "side_setback_ft": 10,
+        "side_on_street_ft": 30,
+        "rear_setback_ft": 30,
+        "rear_accessory_ft": 8,
+        "diley_hill_setback_ft": 75,
+        "basil_busey_setback_ft": 50,
         "max_height": "2.5 stories or 35 ft, whichever is less (grade at foundation to the highest roof)",
-        "porch_encroach_front_ft": 5, "side_appendage_ft": 2,
+        "porch_encroach_front_ft": 5,
+        "side_appendage_ft": 2,
         "accessory_max_height_ft": 15,
         "four_sided_architecture": "front elevation 3 design elements, side/rear 2 (door >= 17 sf, window >= 6 sf, chimney, gable vent >= 4 sf, porch/deck); additions match the house",
         "cladding": "brick, stone, wood, stucco, vinyl beaded siding, fiber cement or equal",
         "ac_location": "ground units at the rear",
         "front_garage": "front-loaded garage at least 2 ft behind the front facade",
-        "min_finished_sf": {"1 story": 1650, "1.5 story": 1870, "2 story": 2100, "split": 1650}
+        "min_finished_sf": {
+          "1 story": 1650,
+          "1.5 story": 1870,
+          "2 story": 2100,
+          "split": 1650
+        }
       }
     }
   },
   "applications": [
     {
-      "id": "coa", "name": "Certificate of Appropriateness (Old Town)", "form": null,
-      "form_note": "No CoA form was supplied — the planner writes a cover sheet from 1175.01(f)(3). Ask P&Z for their form.",
+      "id": "coa",
+      "name": "Certificate of Appropriateness (Old Town)",
+      "form": null,
+      "form_note": "No CoA form was supplied \u2014 the planner writes a cover sheet from 1175.01(f)(3). Ask P&Z for their form.",
       "when": "old_town in (historic, preservation) and (exterior change or demolition or addition)"
     },
     {
-      "id": "variance", "name": "Variance", "form": "variance.pdf", "code": "1147",
-      "when": "the design breaks a zoning standard (setback, height, lot coverage) — from the lot check",
-      "attach": ["legal description", "survey (licensed surveyor, within 2 years)", "nature of the variance + code sections", "statement on the 7 criteria of 1147.03", "adjoining + across-the-street owners (auditor tax list)", "plot plan: lot, existing + proposed structures, the special condition, uses, neighbours' structures"],
-      "fields": {"Text1": "owner.name", "Text2": "owner.address", "Text3": "owner.phone", "Text4": "owner.email", "Text5": "applicant.name", "Text6": "applicant.address", "Text7": "applicant.phone", "Text8": "applicant.email", "Text9": "property.address", "Text10": "property.zoning", "Variance Request to Section": "variance.sections", "Text11": "variance.request"}
+      "id": "variance",
+      "name": "Variance",
+      "form": "variance.pdf",
+      "code": "1147",
+      "when": "the design breaks a zoning standard (setback, height, lot coverage) \u2014 from the lot check",
+      "attach": [
+        "legal description",
+        "survey (licensed surveyor, within 2 years)",
+        "nature of the variance + code sections",
+        "statement on the 7 criteria of 1147.03",
+        "adjoining + across-the-street owners (auditor tax list)",
+        "plot plan: lot, existing + proposed structures, the special condition, uses, neighbours' structures"
+      ],
+      "fields": {
+        "Text1": "owner.name",
+        "Text2": "owner.address",
+        "Text3": "owner.phone",
+        "Text4": "owner.email",
+        "Text5": "applicant.name",
+        "Text6": "applicant.address",
+        "Text7": "applicant.phone",
+        "Text8": "applicant.email",
+        "Text9": "property.address",
+        "Text10": "property.zoning",
+        "Variance Request to Section": "variance.sections",
+        "Text11": "variance.request"
+      }
     },
     {
-      "id": "demolition", "name": "Demolition / Moving Permit", "form": "demolition-moving.pdf", "code": "1135.08",
+      "id": "demolition",
+      "name": "Demolition / Moving Permit",
+      "form": "demolition-moving.pdf",
+      "code": "1135.08",
       "when": "a whole structure or building is demolished or moved (garage, shed, the house). Partial demolition inside a remodel: confirm with P&Z",
-      "attach": ["survey showing remaining structures and those to be demolished", "certificate of insurance: at least $300,000 liability", "Old Town: CoA first"],
-      "fields": {"Text1": "owner.name", "Text2": "owner.address", "Text3": "owner.phone", "Email": "owner.email", "Text4": "applicant.name", "Text5": "applicant.address", "Text6": "applicant.phone", "Email_2": "applicant.email", "Text7": "property.address", "Text8": "proposed_use", "Text9": "demolition.description"}
+      "attach": [
+        "survey showing remaining structures and those to be demolished",
+        "certificate of insurance: at least $300,000 liability",
+        "Old Town: CoA first"
+      ],
+      "fields": {
+        "Text1": "owner.name",
+        "Text2": "owner.address",
+        "Text3": "owner.phone",
+        "Email": "owner.email",
+        "Text4": "applicant.name",
+        "Text5": "applicant.address",
+        "Text6": "applicant.phone",
+        "Email_2": "applicant.email",
+        "Text7": "property.address",
+        "Text8": "proposed_use",
+        "Text9": "demolition.description"
+      }
     },
     {
-      "id": "site_plan", "name": "Site Development Plan (major / minor)", "form": "site-development-plan.pdf", "code": "1141 / 1173",
+      "id": "site_plan",
+      "name": "Site Development Plan (major / minor)",
+      "form": "site-development-plan.pdf",
+      "code": "1141 / 1173",
       "when": "not normally for one single-family house; required when P&Z calls the project a site plan (multi-family, commercial, a new lot)",
-      "attach": ["boundary survey within 2 years", "site plan by an Ohio PE, >= 1\"=100', sheets <= 42x28", "12 copies 11x17 + 2 full size + jpg/tif", "major: file 21 days before P&Z", "1141.05 contents: setbacks, drives, streets, easements, drainage, erosion control, parking, building floors/area/height, elevations, utilities, flood zone"],
-      "fields": {"Text3": "owner.name", "Text4": "owner.address", "Text5": "owner.phone", "Text6": "owner.email", "Text7": "applicant.name", "Text8": "applicant.address", "Text9": "applicant.phone", "Text10": "applicant.email", "Text11": "property.address", "Text12": "property.parcel", "Current Zoning": "property.zoning", "Acreage": "property.acres", "Text13": "proposed_use"}
+      "attach": [
+        "boundary survey within 2 years",
+        "site plan by an Ohio PE, >= 1\"=100', sheets <= 42x28",
+        "12 copies 11x17 + 2 full size + jpg/tif",
+        "major: file 21 days before P&Z",
+        "1141.05 contents: setbacks, drives, streets, easements, drainage, erosion control, parking, building floors/area/height, elevations, utilities, flood zone"
+      ],
+      "fields": {
+        "Text3": "owner.name",
+        "Text4": "owner.address",
+        "Text5": "owner.phone",
+        "Text6": "owner.email",
+        "Text7": "applicant.name",
+        "Text8": "applicant.address",
+        "Text9": "applicant.phone",
+        "Text10": "applicant.email",
+        "Text11": "property.address",
+        "Text12": "property.parcel",
+        "Current Zoning": "property.zoning",
+        "Acreage": "property.acres",
+        "Text13": "proposed_use"
+      }
     },
     {
-      "id": "conditional_use", "name": "Conditional Use", "form": "conditional-use.pdf", "code": "1145",
+      "id": "conditional_use",
+      "name": "Conditional Use",
+      "form": "conditional-use.pdf",
+      "code": "1145",
       "when": "the proposed use is conditional in the district (e.g. a duplex / ADU / home business where allowed only conditionally)",
-      "attach": ["legal description", "survey within 2 years", "existing use, zoning, proposed use", "owners within / contiguous / across the street", "general-welfare statement", "traffic / parking / noise statement", "plot plan"],
-      "fields": {"Text1": "owner.name", "Text2": "owner.address", "Text3": "owner.phone", "Email": "owner.email", "Text4": "applicant.name", "Text5": "applicant.address", "Text6": "applicant.phone", "Email_2": "applicant.email", "Text7": "property.address", "Text8": "property.zoning", "Text9": "proposed_use", "Text10": "proposed_use_more"}
+      "attach": [
+        "legal description",
+        "survey within 2 years",
+        "existing use, zoning, proposed use",
+        "owners within / contiguous / across the street",
+        "general-welfare statement",
+        "traffic / parking / noise statement",
+        "plot plan"
+      ],
+      "fields": {
+        "Text1": "owner.name",
+        "Text2": "owner.address",
+        "Text3": "owner.phone",
+        "Email": "owner.email",
+        "Text4": "applicant.name",
+        "Text5": "applicant.address",
+        "Text6": "applicant.phone",
+        "Email_2": "applicant.email",
+        "Text7": "property.address",
+        "Text8": "property.zoning",
+        "Text9": "proposed_use",
+        "Text10": "proposed_use_more"
+      }
     },
     {
-      "id": "rezoning", "name": "Zoning Code and Map Amendment", "form": "zoning-amendment.pdf", "code": "1143",
-      "when": "the use is not allowed in the district at all (P&Z hearing + Council) — rare for a rehab",
-      "attach": ["legal description + survey within 2 years", "proposed amendment, use and district", "present use and district", "owners within / contiguous / across", "general-welfare statement", "plot plan", "deed restrictions / easements"],
-      "fields": {"Text1": "owner.name", "Text2": "owner.address", "Text3": "owner.phone", "Text4": "owner.email", "Text5": "applicant.name", "Text6": "applicant.address", "Text7": "applicant.phone", "Text8": "applicant.email", "Text9": "property.address", "Text10": "rezoning.request", "Text11": "rezoning.request_more"}
+      "id": "rezoning",
+      "name": "Zoning Code and Map Amendment",
+      "form": "zoning-amendment.pdf",
+      "code": "1143",
+      "when": "the use is not allowed in the district at all (P&Z hearing + Council) \u2014 rare for a rehab",
+      "attach": [
+        "legal description + survey within 2 years",
+        "proposed amendment, use and district",
+        "present use and district",
+        "owners within / contiguous / across",
+        "general-welfare statement",
+        "plot plan",
+        "deed restrictions / easements"
+      ],
+      "fields": {
+        "Text1": "owner.name",
+        "Text2": "owner.address",
+        "Text3": "owner.phone",
+        "Text4": "owner.email",
+        "Text5": "applicant.name",
+        "Text6": "applicant.address",
+        "Text7": "applicant.phone",
+        "Text8": "applicant.email",
+        "Text9": "property.address",
+        "Text10": "rezoning.request",
+        "Text11": "rezoning.request_more"
+      }
     },
     {
-      "id": "zoning_building", "name": "Certificate of Zoning Compliance + residential building permit", "form": null,
-      "form_note": "Not in the supplied set — ask P&Z (614-837-7501) for the residential zoning / building permit form and who reviews 1- and 2-family plans.",
+      "id": "zoning_building",
+      "name": "Certificate of Zoning Compliance + residential building permit",
+      "form": null,
+      "form_note": "Not in the supplied set \u2014 ask P&Z (614-837-7501) for the residential zoning / building permit form and who reviews 1- and 2-family plans.",
       "when": "always for additions, structural changes, new openings, roof changes"
     }
   ]

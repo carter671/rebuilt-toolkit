@@ -11,7 +11,7 @@ design review with first-pass structural sizes, a priced takeoff / rehab budget,
 ```bash
 git clone https://github.com/carter671/rebuilt-toolkit.git && cd rebuilt-toolkit
 python3 -m venv .venv && . .venv/bin/activate          # optional
-pip install -r requirements.lock && pip install -e . && pip install pyshp pypdf openpyxl shapely
+pip install -r requirements.lock && pip install -e . && pip install pyshp pypdf openpyxl shapely pyogrio geopandas
 pytest -q                                               # all green before you use it
 npm i three@0.160.0 playwright                          # only for the editor checks / renders / floor-plan PDF
 ```

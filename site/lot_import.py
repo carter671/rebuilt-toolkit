@@ -27,6 +27,101 @@ def read_zip_shp(path):
     return shapefile.Reader(shp=get('.shp'), shx=get('.shx'), dbf=get('.dbf')), prj
 
 
+def gdb_path(path):
+    """a county map export as a file geodatabase (.gdb folder, or a .zip holding one) -> the .gdb folder"""
+    import pathlib, tempfile
+    p = pathlib.Path(path)
+    if p.suffix.lower() == '.gdb' and p.is_dir():
+        return str(p)
+    if p.suffix.lower() == '.zip':
+        z = zipfile.ZipFile(p)
+        gdbs = sorted({n.split('.gdb/')[0] + '.gdb' for n in z.namelist() if '.gdb/' in n})
+        if gdbs:
+            d = tempfile.mkdtemp(prefix='gdb-'); z.extractall(d)
+            return str(pathlib.Path(d) / gdbs[0])
+    return None
+
+
+def read_gdb(gdb, layer):
+    """features of one layer as [(attrs, [ring, ...])] in the layer's grid, + metres per grid unit"""
+    import pyogrio
+    df = pyogrio.read_dataframe(gdb, layer=layer)
+    crs = df.crs.to_wkt() if df.crs is not None else ''
+    feats = []
+    for _, row in df.iterrows():
+        geom = row.geometry
+        if geom is None:
+            continue
+        polys = list(geom.geoms) if hasattr(geom, 'geoms') else [geom]
+        rs = [[(x, y) for x, y, *_ in p.exterior.coords] for p in polys if hasattr(p, 'exterior')]
+        if not rs:
+            rs = [[(c[0], c[1]) for c in geom.coords]]
+        feats.append(({k: v for k, v in row.items() if k != 'geometry'}, rs))
+    return feats, unit_m(crs)
+
+
+def gdb_layer(gdb, *names):
+    import pyogrio
+    have = [str(l[0]) for l in pyogrio.list_layers(gdb)]
+    for n in names:
+        for h in have:
+            if h.lower() == n.lower():
+                return h
+    for n in names:
+        for h in have:
+            if n.lower() in h.lower():
+                return h
+    return None
+
+
+def plan_footprint(g, st0):
+    """the main building's outline in plan metres (outside faces of its outside walls)"""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union, polygonize
+    W = [e for e in g['elements'].values() if e['type'] == 'wall' and e.get('exterior') and e['storey'] == st0]
+    lines = unary_union([LineString([w['start'], w['end']]) for w in W])
+    polys = list(polygonize(lines))
+    if not polys:
+        return None
+    t = sorted((w.get('thickness') or {}).get('value', 0.15) for w in W)[len(W) // 2]
+    return unary_union(polys).buffer(t / 2, join_style=2)
+
+
+def fit_footprint(fp_plan, hc, fp_grid, um, by0, span=20.0):
+    """bearing + grid point of the plan centre that lay the plan outline best over the county building footprint"""
+    from shapely import affinity
+    from shapely.geometry import Polygon
+    best = None
+    base = affinity.translate(fp_plan, -hc[0], -hc[1])
+    base = affinity.scale(base, 1 / um, 1 / um, origin=(0, 0))          # plan metres -> grid units
+    tgt_c = fp_grid.centroid
+    def place(by, dx, dy):
+        # plan +y bearing `by`: rotate plan so +y points at by (grid north-up)
+        P = affinity.rotate(base, -by, origin=(0, 0))
+        c = P.centroid
+        return affinity.translate(P, tgt_c.x - c.x + dx, tgt_c.y - c.y + dy)
+    def score(P):
+        u = P.union(fp_grid).area
+        return P.intersection(fp_grid).area / u if u else 0
+    k = -span
+    while k <= span:
+        P = place(by0 + k, 0, 0); s = score(P)
+        if best is None or s > best[0]: best = (s, by0 + k, 0.0, 0.0)
+        k += 0.5
+    step = 2.0
+    while step > 0.05:                                                   # local polish of shift + turn
+        s0, by, dx, dy = best; better = False
+        for dby, ddx, ddy in ((step / 4, 0, 0), (-step / 4, 0, 0), (0, step, 0), (0, -step, 0), (0, 0, step), (0, 0, -step)):
+            P = place(by + dby, dx + ddx, dy + ddy); s = score(P)
+            if s > best[0]: best = (s, by + dby, dx + ddx, dy + ddy); better = True
+        if not better: step /= 2
+    s, by, dx, dy = best
+    P = place(by, dx, dy)
+    Pr = affinity.rotate(base, -by, origin=(0, 0)); c = Pr.centroid
+    pt = (tgt_c.x - c.x + dx, tgt_c.y - c.y + dy)                       # where plan point hc lands
+    return by % 360, pt, s
+
+
 def unit_m(prj):
     p = prj.lower()
     return 0.3048006096 if 'foot_us' in p or 'us survey foot' in p or 'feet' in p else 0.3048 if 'foot' in p else 1.0
@@ -95,14 +190,32 @@ if __name__ == '__main__':
     ap.add_argument('--house-grid', help='E,N of the house (main storey) centre in the parcel grid, e.g. measured off an aerial — beats the address point')
     ap.add_argument('--plan-bearing', type=float, help='bearing of the plan +y axis (deg); overrides the compass reading')
     ap.add_argument('--no-snap', action='store_true', help="don't square the house to the nearest lot line within 6 deg")
+    ap.add_argument('--no-footprint', action='store_true', help="ignore the county building footprints even if the file has them")
     A = ap.parse_args()
     g = json.load(open(A.asbuilt))
-    r, prj = read_zip_shp(A.parcels)
-    k, fld = find_record(r, A.parcel, A.field)
-    if k is None:
-        sys.exit(f'parcel {A.parcel} not found in {A.parcels}')
-    um = unit_m(prj)
-    R = max(rings(r.shape(k)), key=lambda P: abs(area(P)))
+    gdb = gdb_path(A.parcels)
+    feat_fp, record = None, {}
+    if gdb:                                              # a county map export (file geodatabase): parcels + footprints
+        feats, um = read_gdb(gdb, gdb_layer(gdb, 'Parcels', 'parcel'))
+        key = re.sub(r'\D', '', A.parcel)
+        hit = [(a, rs) for a, rs in feats if any(isinstance(v, str) and v and (re.sub(r'\D', '', v) == key or re.sub(r'\D', '', v) == key[:9] or re.sub(r'\D', '', v)[:9] == key[:9] and len(re.sub(r'\D', '', v)) >= 9) for k2, v in a.items() if (A.field is None or k2 == A.field))]
+        if not hit:
+            sys.exit(f'parcel {A.parcel} not found in {A.parcels}')
+        record, rs = hit[0]; fld = 'map export'
+        R = max(rs, key=lambda P: abs(area(P)))
+        fl = gdb_layer(gdb, 'Building_Footprints', 'footprint', 'building')
+        if fl and not A.no_footprint:
+            from shapely.geometry import Polygon
+            lot = Polygon(R); fps = [Polygon(r_) for a_, rs_ in read_gdb(gdb, fl)[0] for r_ in rs_ if len(r_) > 3]
+            fps = [f for f in fps if f.is_valid and f.intersection(lot).area > 0.5 * f.area]
+            if fps: feat_fp = max(fps, key=lambda f: f.area)
+    else:
+        r, prj = read_zip_shp(A.parcels)
+        k, fld = find_record(r, A.parcel, A.field)
+        if k is None:
+            sys.exit(f'parcel {A.parcel} not found in {A.parcels}')
+        um = unit_m(prj)
+        R = max(rings(r.shape(k)), key=lambda P: abs(area(P)))
     by, hc, st0 = house_frame(g)
     turn = ''
     if A.plan_bearing is not None:
@@ -122,7 +235,19 @@ if __name__ == '__main__':
     ex = (math.sin(t + math.pi / 2), math.cos(t + math.pi / 2))   # plan +x = 90 deg clockwise from +y
     # where the house sits in the grid: its address point, else the lot's centroid
     pt, how = None, 'centred in the lot — move it in the editor'
-    if A.house_grid:
+    fit = None
+    if feat_fp is not None and not A.house_grid and A.plan_bearing is None:
+        fpp = plan_footprint(g, st0)
+        if fpp is not None:
+            by_f, pt_f, iou = fit_footprint(fpp, hc, feat_fp, um, by)
+            if iou > 0.6:
+                fit = iou; by, pt = by_f, pt_f; turn = ''
+                how = f'house laid over the county building footprint ({iou:.0%} overlap)'
+                t = math.radians(by)
+                ey = (math.sin(t), math.cos(t)); ex = (math.sin(t + math.pi / 2), math.cos(t + math.pi / 2))
+    if pt is not None:
+        pass
+    elif A.house_grid:
         pt = tuple(float(v) for v in A.house_grid.split(',')); how = 'house centre from the aerial'
     elif A.addresses:
         ra, _ = read_zip_shp(A.addresses)
@@ -158,7 +283,9 @@ if __name__ == '__main__':
     site = {'lot': {'poly': [[round(x, 3), round(y, 3)] for x, y in P], 'roles': roles, 'pivot': [round(hc[0], 3), round(hc[1], 3)]},
             'setbacks_ft': sb, 'accessory': sorted(set(acc)),
             'source': f"{A.source}, parcel {A.parcel} ({fld}); {how}" + (f'; {turn}' if turn else ''),
-            'grid': {'house_centre': pt, 'plan_y_bearing_deg': by, 'unit_m': um}}
+            'grid': {'house_centre': pt, 'plan_y_bearing_deg': by, 'unit_m': um},
+            'parcel_record': {k3: (str(v) if v is not None else None) for k3, v in record.items() if k3 in
+                              ('PARCELID', 'CVTTXCD', 'CVTTXDSCRP', 'SITEADDRESS', 'OWNERNME1', 'ACRES', 'STATEDAREA', 'CLASSDSCRP', 'RESYRBLT', 'FLOOD', 'SCHLDSCRP')}}
     json.dump(site, open(A.out, 'w'), indent=1)
     acres = abs(area(P)) * 10.7639 / 43560
     print(f'lot {len(P)} edges, {acres:.2f} ac, roles {roles}, accessory {site["accessory"]}; {how}')
