@@ -1065,18 +1065,18 @@ function addWalls3D(grp, keep, zlo, zhi, live){
   S.walls.filter(keep).forEach(w => {
     const elev = EL(w.st), {L} = wallFrame(w), mat = w.ext ? M.ext : M.wall;
     const z0 = Math.max(elev + w.b, zlo), z1 = Math.min(elev + w.b + w.h, zhi); if (z1 - z0 < 0.05) return;
-    const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
-    const parts = []; let u = 0;
-    ops2.forEach(o => {
-      const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = Math.max(elev + o.sill, z0), oz1 = Math.min(elev + o.sill + o.h, z1);
-      if (oz1 - oz0 < 0.02) return;                    // this opening is on another floor's part of the wall
-      parts.push(boxAlong(w, u, a, z0, z1, mat));
-      if (oz0 > z0 + 0.01) parts.push(boxAlong(w, a, b, z0, oz0, mat));
-      if (oz1 < z1 - 0.01 && o.op !== 'open') parts.push(boxAlong(w, a, b, oz1, z1, mat));
-      if (o.kind === 'window'){ const gl = boxAlong({...w, t: 0.01}, a, b, oz0, oz1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); } }
-      u = Math.max(u, b);
-    });
-    parts.push(boxAlong(w, u, L, z0, z1, mat));
+    // openings can sit one above another (a 1st-floor and a 2nd-floor window on a two-storey wall), so cut the wall
+    // into vertical strips at every opening edge and, in each strip, keep only the heights no opening uses
+    const ops2 = S.openings.filter(o => o.host === w.id).map(o => ({o, a: Math.max(0, o.off), b: Math.min(L, o.off + o.w),
+      z0: Math.max(elev + o.sill, z0), z1: Math.min(elev + o.sill + o.h, z1)})).filter(q => q.b - q.a > 0.005 && q.z1 - q.z0 > 0.02);
+    const parts = [], cuts = [...new Set([0, L, ...ops2.flatMap(q => [q.a, q.b])])].sort((x, y) => x - y);
+    for (let i = 0; i + 1 < cuts.length; i++){
+      const u0 = cuts[i], u1 = cuts[i + 1], mid = (u0 + u1) / 2; if (u1 - u0 < 0.003) continue;
+      const holes = ops2.filter(q => q.a < mid && q.b > mid).map(q => [q.z0, q.o.op === 'open' ? z1 : q.z1]).sort((x, y) => x[0] - y[0]);
+      let z = z0; holes.forEach(([h0, h1]) => { if (h0 > z + 0.01) parts.push(boxAlong(w, u0, u1, z, h0, mat)); z = Math.max(z, h1); });
+      if (z < z1 - 0.01) parts.push(boxAlong(w, u0, u1, z, z1, mat));
+    }
+    ops2.filter(q => q.o.kind === 'window').forEach(q => { const gl = boxAlong({...w, t: 0.01}, q.a, q.b, q.z0, q.z1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); } });
     const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { if (live) p.userData.wall = w.id; wg.add(p); });
     if (live){ wg.userData.wall = w.id; wallMeshes[w.id] = wg; }
     grp.add(wg);
