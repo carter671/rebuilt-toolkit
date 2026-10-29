@@ -1134,6 +1134,15 @@ function shed3D(o, u, v, L, W, zHigh, pitch, oh, rake, grp){
   mesh3([[...P(-rake, 0), zHigh], [...P(L + rake, 0), zHigh], [...P(L + rake, W + oh), zl - oh * pitch], [...P(-rake, W + oh), zl - oh * pitch]], RM.shingle, grp);
   [0, L].forEach(a => mesh3([[...P(a, 0), zl], [...P(a, W), zl], [...P(a, 0), zHigh]], M.ext, grp));
 }
+function underOtherRoof(piece, rf){
+  // most of this piece sits under a different roof of the house (on this floor or the one above): not an addition
+  const others = (S.roofs || []).filter(x => x !== rf).map(liveFp); if (!others.length) return false;
+  const xs = piece.map(p => p[0]), ys = piece.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  let n = 0, hit = 0;
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ const q = [x0 + (i + .5) * (x1 - x0) / 8, y0 + (j + .5) * (y1 - y0) / 8];
+    if (!inPoly(q, piece)) continue; n++; if (others.some(P => inPoly(q, P))) hit++; }
+  return n > 0 && hit / n >= 0.6;
+}
 function buildRoof3D(grp){
   (S.roofs || []).forEach(r => { const F = roofFrame(r), k = r.roles.indexOf('eave'), n = r.roles.length;
     const endRake = role => role === 'abut' ? 0 : r.rake;
@@ -1149,6 +1158,7 @@ function buildRoof3D(grp){
       const o = side.axis === 1 ? [0, side.line] : [side.line, 0];
       const piece = clipHalf(r.poly, add(o, mul(side.v, 0.02)), side.v, true);
       if (piece.length < 3 || Math.abs(polyArea(piece)) < 1.5) return;
+      if (underOtherRoof(piece, rf)) return;          // already under another of the house's own roofs (a rear wing)
       const xs = piece.map(p => p[0]), ys = piece.map(p => p[1]), e = 0.08;
       const x0 = Math.min(...xs) - e, x1 = Math.max(...xs) + e, y0 = Math.min(...ys), y1 = Math.max(...ys);
       const ws = S.walls.filter(w => w.st === r.st && w.ext && !PLAN.walls.some(b => b.id === w.id));
@@ -1184,7 +1194,7 @@ function buildRoof3D(grp){
           }
           // otherwise its own gable, ridge running out from the house, kept under the house ridge and run on into the old slope
           const gp = Math.max(2 / 12, Math.min(1 / 3, (F.z + F.rise - wallTop - 0.15) / Math.max(sd.L / 2, 0.1)));
-          const reach = Math.max(0, wallTop + sd.L / 2 * gp - F.z) / rf.pitch + 0.15;
+          const reach = Math.min(F.W / 2, Math.max(0, wallTop + sd.L / 2 * gp - F.z) / Math.max(rf.pitch, 2 / 12)) + 0.15;   // never past the old ridge, even on a near-flat roof
           gable3D(sub(sd.o, mul(sd.v, reach)), sd.v, sd.u, sd.W + reach, sd.L, wallTop, gp, 0.3, [0, 0.15], grp); return;
         }
       } else high = Math.min(high, F.z + 0.6);          // against a gable end: stay under the old roof's rake
