@@ -78,9 +78,12 @@ def plan(t, prop, jur, why, sc):
         ot = prop.get('old_town')
         if ot is None:
             todo.append('Old Town Overlay: look the parcel up on the Old Town Guidelines map (P&Z, 614-837-7501) and set old_town to historic / preservation / none.')
-        if ot in ('historic', 'preservation') and (sc['exterior_change'] or prop.get('demolish')):
+        if ot == 'yes':                     # inside Old Town, part not confirmed: plan for the stricter Historic rules
+            todo.append('Old Town: confirm Historic vs Preservation District with P&Z (614-837-7501) - planned as Historic (stricter) until then.')
+        if ot in ('historic', 'preservation', 'yes') and (sc['exterior_change'] or prop.get('demolish')):
             O = jur['overlays']['old_town']
-            add('coa', f'in the Old Town {ot.title()} District and the design changes the outside', lead=O['lead_note'], attach=O['application_contents'])
+            add('coa', f"in the Old Town {'(part not confirmed)' if ot == 'yes' else ot.title() + ' District'} and the design changes the outside", lead=O['lead_note'], attach=O['application_contents'])
+            if ot == 'yes': ot = 'historic'
             if ot == 'historic' and sc['vinyl_siding']:
                 warn.append('Historic District: traditional materials only (wood, brick, stone). The house has vinyl siding — new siding / trim on the addition must be wood (or ask the Commission); budget fiber-cement / vinyl lines need to change.')
             if ot == 'preservation':

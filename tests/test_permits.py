@@ -34,3 +34,11 @@ def test_township_septic_review_when_bedrooms_added():
     plan = P.plan(T, {'well_septic': True}, j, 'test', sc)
     assert 'health_dept' in [a['id'] for a in plan['applications']]
     assert 'health_dept' not in [a['id'] for a in P.plan(T, {'well_septic': False}, j, 'test', sc)['applications']]
+
+
+def test_old_town_part_unknown_plans_as_historic():
+    j = P.JUR['canal-winchester-city']; sc = P.scope_from_takeoff(T, ASB)
+    plan = P.plan(T, {'old_town': 'yes'}, j, 'test', sc)
+    assert 'coa' in [a['id'] for a in plan['applications']]
+    assert any('Historic vs Preservation' in x for x in plan['todo'])
+    assert any('paint' in w for w in plan['warnings'])
