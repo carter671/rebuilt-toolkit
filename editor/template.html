@@ -1911,6 +1911,32 @@ function fillSides(it, list){
   const what = list.map(sd => `${sd.side.toLowerCase()}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`).join('; ');
   commitSynced({do: 'batch', ops: ops2, label: `Base cabinets beside ${it.name} (${what})`}); showPop(null);
 }
+/* the ends of a shower / tub: the wall it backs to, and what is beside each end — a nearby wall (fill the gap with
+   wall, or move that wall over) or nothing (add a wall at that end) */
+function itemEnds(it){
+  const W = wallOfItem(it); if (!W) return [];
+  const {d: wd, n} = wallFrame(W.w), f = mul(n, W.side), a = itemFrame(it).a, face0 = add(W.w.s, mul(f, W.w.t / 2)), out = [];
+  for (const sgU of [-1, 1]){
+    const edgeU = W.u + sgU * it.w / 2; let best = null;
+    S.walls.forEach(o => { if (o.id === W.w.id || o.st !== W.w.st || Math.abs(dot(wallFrame(o).d, wd)) > 0.05) return;
+      const vs = [o.s, o.e].map(q => dot(sub(q, face0), f)); if (Math.max(...vs) < 0.02 || Math.min(...vs) > it.d - 0.02) return;   // beside the item
+      const faceU = dot(sub(o.s, W.w.s), wd) - sgU * o.t / 2, g = (faceU - edgeU) * sgU;
+      if (g > -0.01 && g < 30 * IN && (!best || g < best.g)) best = {o, g: Math.max(0, g)}; });
+    out.push({sgU, edgeU, W, wd, f, wall: best && best.o, gap: best ? best.g : null, side: dot(mul(wd, sgU), mul(a, -1)) > 0 ? 'right' : 'left'});
+  }
+  return out;
+}
+function endWall(it, E, mode){
+  const {W, wd, f, sgU, edgeU} = E, st = W.w.st, back = u => add(W.w.s, mul(wd, u)), len2 = W.w.t / 2 + it.d;
+  const mk = (u, t, name) => { const s0 = back(u); return {id: uid('N-W'), st, s: s0, e: add(s0, mul(f, len2)), t, h: W.w.h, b: W.w.b || 0, ext: false, stud: t >= 5.4 * IN ? 6 : 4, oc: 16, name}; };
+  if (mode === 'fill'){ const w = mk(edgeU + sgU * E.gap / 2, E.gap, `Wall beside ${it.name.toLowerCase()}`);
+    commit({do: 'add_wall', wall: w, label: `Filled the ${ftinHalf(E.gap).replace(/^0'-/, '')} beside the ${it.name.toLowerCase()} with wall`}); }
+  else if (mode === 'move'){ const g = groupStart([E.wall.id]), pv = groupPreview(g, mul(wd, -sgU * E.gap));
+    commit({do: 'set_walls', walls: pv.walls, openings: pv.offs, label: `Moved ${E.wall.name || 'wall'} ${ftinHalf(E.gap).replace(/^0'-/, '')} to the ${it.name.toLowerCase()}`}); }
+  else { const t = 4.5 * IN, w = mk(edgeU + sgU * t / 2, t, `Wall at ${it.name.toLowerCase()} end`);
+    commit({do: 'add_wall', wall: w, label: `Added a wall at the ${E.side} end of the ${it.name.toLowerCase()}`}); }
+  showPop(null);
+}
 function centerItem(it, which){
   const W = wallOfItem(it); if (!W) return;
   const sp = centerSpans(it, W.w, W.side, W.u)[which] || centerSpans(it, W.w, W.side, W.u).wall; if (!sp) return;
@@ -2019,6 +2045,12 @@ function itemPop(t){
     if (it.flush) btn('Back on the wall', () => setFlush(row.filter(c => c.k >= cf.k).map(c => c.it), false));
     else btn('Flush with fridge', () => setFlush(row.filter(c => c.k <= cf.k).map(c => c.it), true));
     brk(); }
+  if (it.cat === 'shower' || it.cat === 'tub'){ const ends = itemEnds(it);
+    if (ends.length){ brk(); ends.forEach(E => {
+      if (E.wall && E.gap > 0.5 * IN){ const g = ftinHalf(E.gap).replace(/^0'-/, '');
+        btn(`Fill ${g} ${E.side} with wall`, () => endWall(it, E, 'fill'));
+        if (isNewWall(E.wall)) btn(`Move ${E.side} wall ${g} to it`, () => endWall(it, E, 'move')); }
+      else if (!E.wall) btn(`Add wall at ${E.side} end`, () => endWall(it, E, 'add')); }); brk(); } }
   if (it.cat === 'table'){ brk(); const sh = tableShape(it);
     Object.entries(TABLE).forEach(([k, T]) => { const b = btn(T.label, () => { const cur = TABLE[k].sizes.find(z => Math.abs(z[0] * IN - Math.max(it.w, it.d)) < 0.01) || TABLE[k].sizes[Math.min(2, TABLE[k].sizes.length - 1)]; setTable(it, k, cur[0], cur[1]); }); if (sh === k) b.setAttribute('aria-pressed', 'true'); });
     brk(); TABLE[sh].sizes.forEach(([a, b2]) => { const b = btn(sh === 'rect' ? `${a}x${b2}` : `${a}"`, () => setTable(it, sh, a, b2)); if (Math.abs(it.w - a * IN) < 0.005 && Math.abs(it.d - b2 * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
