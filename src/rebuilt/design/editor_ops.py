@@ -468,6 +468,8 @@ def _place_items(E, items, layout):
         if (it.get("bump") or 0) > 0.002:
             bumps.append(it)
         kind, cat, cab = ITEM.get(it["cat"], ("furnishing", it["cat"], None))
+        if it["cat"] == "tall" and it.get("style") == "linen":      # a pantry at vanity depth is a linen cabinet
+            cat = "linen cabinet"
         E[it["id"]] = {"type": "component", "id": it["id"], "name": it.get("name", cat), "storey": it["st"], "kind": kind,
                        "phase": "new", "geometry": "box",
                        "placement": {"on": "point", "at": [round(it["at"][0], 6), round(it["at"][1], 6)],

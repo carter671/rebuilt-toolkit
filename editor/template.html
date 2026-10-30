@@ -1463,6 +1463,7 @@ const CAT = {
   range:   {g: 'Kitchen', label: 'Range', w: 30, d: 26, h: 36, z: 0, wall: true, widths: [30, 36], cab: 'range'},
   fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 33, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
   dw:      {g: 'Kitchen', label: 'Dishwasher', w: 24, d: 24, h: 34.5, z: 0, wall: true, widths: [18, 24]},
+  linen:   {g: 'Bath', label: 'Linen cabinet', w: 18, d: 21, h: 84, z: 0, wall: true, widths: [12, 15, 18, 24, 30, 36], cab: 'tall', as: 'tall', style: 'linen'},
   vanity:  {g: 'Bath', label: 'Vanity', w: 36, d: 21, h: 34.5, z: 0, wall: true, widths: [24, 30, 36, 48, 60, 72], cab: 'vanity'},
   toilet:  {g: 'Bath', label: 'Toilet', w: 20, d: 28, h: 30, z: 0, wall: true},
   tub:     {g: 'Bath', label: 'Tub', w: 60, d: 30, h: 20, z: 0, wall: true, widths: [60, 66, 72]},
@@ -1675,6 +1676,12 @@ function cabinetOverFridge(fr){
   commitSynced({do: 'add_item', item: it, label: `Added a ${ftin(it.h)} cabinet over the fridge, flush with its front`});
   sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
 }
+// a pantry at vanity depth (21") is a linen cabinet, and back at 24" it's a pantry again; the back stays on the wall
+function setTallDepth(it, di){
+  const d = di * IN, {f} = itemFrame(it), linen = di < 24, dflt = /^(Pantry cabinet|Linen cabinet)$/.test(it.name || '');
+  commitSynced({do: 'set_item', item: it.id, d, at: add(it.at, mul(f, (d - it.d) / 2)), style: linen ? 'linen' : 'pantry', name: dflt ? (linen ? 'Linen cabinet' : 'Pantry cabinet') : it.name,
+    label: `${it.name} → ${linen ? 'vanity depth 21" (linen cabinet)' : 'pantry depth 24"'}`}); showPop(null);
+}
 function setUpperHeight(it, inch){
   const fr = fridgeUnder(it);
   if (fr){                                                         // over a fridge the bottom stays just above the fridge
@@ -1684,6 +1691,7 @@ function setUpperHeight(it, inch){
   showPop(null);
 }
 function newItem(cat, extra){
+  if (CAT[cat] && CAT[cat].as){ const c0 = CAT[cat]; return newItem(c0.as, Object.assign({w: c0.w * IN, d: c0.d * IN, h: c0.h * IN, name: c0.label, style: c0.style}, extra || {})); }
   const c = CAT[cat];
   return Object.assign({id: uid('N-I'), cat, st: ST, at: [0, 0], rot: 0, w: c.w * IN, d: c.d * IN, h: c.h * IN, z: c.z * IN, name: cat === 'corner' ? 'Lazy susan corner' : c.label}, c.style ? {style: c.style} : {}, extra || {});
 }
@@ -1872,7 +1880,7 @@ function wallOfItem(it){
 // standard cabinet widths that fill a space best: least left over (that becomes a filler), then fewest boxes, then widest
 function bestFill(spaceIn){
   let best = null;
-  const tryIt = combo => { const sum = combo.reduce((a, b) => a + b, 0), r = spaceIn - sum; if (r < -1e-6) return;
+  const tryIt = combo => { const sum = combo.reduce((a, b) => a + b, 0), r = Math.max(0, spaceIn - sum); if (spaceIn - sum < -1 / 16) return;   // within 1/16" counts as a fit
     const score = [Math.round(r * 2) / 2, combo.length, -Math.min(...combo)];
     if (!best || score[0] < best.score[0] - 1e-6 || (Math.abs(score[0] - best.score[0]) < 1e-6 && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = {combo: combo.slice().sort((a, b) => b - a), r, score}; };
   for (const a of STD){ tryIt([a]); for (const b of STD){ if (b > a) continue; tryIt([a, b]); for (const c of STD){ if (c > b) continue; tryIt([a, b, c]); } } }
@@ -1923,7 +1931,7 @@ function drawItems(g, upper){
     const circ = (p, r) => el('circle', {cx: toSvg(p)[0], cy: toSvg(p)[1], r, class: 'sym', 'stroke-width': pxm()}, grp);
     const sw = pxm();
     switch (it.cat){
-      case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); } break;
+      case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); if (it.style === 'linen'){ const [x, y] = toSvg(L(0.35, -0.35)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'LINEN'; } } break;
       case 'panel': line(L(-1, -1), L(1, 1)); line(L(-1, 1), L(1, -1)); break;
       case 'trash': { line(L(-1, 0.8), L(1, 0.8)); const [x, y] = toSvg(L(0, -0.1)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = 'TRASH';
         el('polygon', {points: pts([L(-0.7, -0.75), L(-0.05, -0.75), L(-0.05, 0.55), L(-0.7, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp);
@@ -2014,6 +2022,8 @@ function itemPop(t){
     brk(); TABLE[sh].sizes.forEach(([a, b2]) => { const b = btn(sh === 'rect' ? `${a}x${b2}` : `${a}"`, () => setTable(it, sh, a, b2)); if (Math.abs(it.w - a * IN) < 0.005 && Math.abs(it.d - b2 * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
     btn('Size…', () => tableSizeInput(it)); brk(); }
   if (it.cat === 'tall'){ brk();
+    [['Pantry depth 24"', 24], ['Vanity depth 21" (linen)', 21]].forEach(([lb, di]) => { const b = btn(lb, () => setTallDepth(it, di)); if (Math.abs(it.d - di * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    brk();
     [84, 90, 96].forEach(inch => { const b = btn(`${inch}" tall`, () => { commitSynced({do: 'set_item', item: it.id, h: inch * IN, z: 0, label: `${it.name} → ${inch}" tall`}); showPop(null); }); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
     const tl = topLine(it); btn(`Up to the uppers (${ftinHalf(tl).replace(/^0'-/, '')})`, () => { commitSynced({do: 'set_item', item: it.id, h: tl, z: 0, label: `${it.name} → up to the uppers`}); showPop(null); });
     brk(); }

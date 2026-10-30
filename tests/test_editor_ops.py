@@ -68,3 +68,11 @@ def test_fridge_panel_and_dishwasher_top(raw):
     assert lines["fridge_panel"]["qty"] == 1
     assert lines["counter"]["qty"] > 0                     # dishwasher (and its spacer) get countertop
     assert dg["elements"]["N-I-P1"]["info"]["category"] == "refrigerator end panel"
+
+
+def test_pantry_at_vanity_depth_is_a_linen_cabinet(raw):
+    linen = {"id": "N-I-L1", "cat": "tall", "style": "linen", "st": "G", "at": [1.3, 0.3], "rot": 0, "w": 0.4572, "d": 21 * IN, "h": 84 * IN, "z": 0.0, "name": "Linen cabinet"}
+    dg, layout = apply_editor(copy.deepcopy(raw), {"cursor": 1, "ops": [{"do": "add_item", "item": linen}]})
+    assert dg["elements"]["N-I-L1"]["info"]["category"] == "linen cabinet"
+    lines = {x["key"]: x for x in next(x for x in layout if x["id"] == "layout:items")["options"]["do"]["lines"]}
+    assert lines["cab_tall"]["qty"] == 1.5
