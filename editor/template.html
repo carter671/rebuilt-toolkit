@@ -92,6 +92,16 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
 #toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--chrome);border:1px solid var(--line);border-radius:6px;padding:7px 12px;font-size:.84rem;z-index:11;pointer-events:none;opacity:0;transition:opacity .2s}
 #toast.on{opacity:1}
 #dims{position:absolute;pointer-events:none;font:600 .78rem var(--f-mono);color:#fff;background:var(--accent);border-radius:4px;padding:2px 6px;z-index:9;white-space:nowrap}
+#scope{position:absolute;right:12px;top:58px;bottom:12px;width:min(400px,calc(100% - 24px));z-index:12;display:flex;flex-direction:column;background:var(--chrome);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#scope header{border-bottom:1px solid var(--line);padding:8px 10px;justify-content:space-between;display:flex;align-items:center;gap:8px}
+#scope h2{margin:0;font:600 .9rem var(--f-head);letter-spacing:.02em;flex:1}
+#scopeBody{flex:1;overflow:auto;padding:4px 12px 12px;font-size:.86rem}
+#scopeBody h3{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--chrome-muted);margin:14px 0 4px}
+#scopeBody .row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:3px 0;border-bottom:1px solid var(--chrome-2)}
+#scopeBody .row b{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+#scopeBody .sub{color:var(--chrome-muted);font-size:.78rem}
+#scopeBody .note{color:var(--chrome-muted);font-size:.78rem;line-height:1.4;margin:8px 0 0}
+#scopeBtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 #chatBtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 #chat{position:absolute;right:12px;top:58px;bottom:12px;width:min(380px,calc(100% - 24px));z-index:12;display:flex;flex-direction:column;background:var(--chrome);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 #chat header{border-bottom:1px solid var(--line);padding:8px 10px;justify-content:space-between}
@@ -179,6 +189,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button id="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
       <button id="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
     </div>
+    <button id="scopeBtn" aria-pressed="false" title="The work and the quantities for this design, updated as you edit (S)">Scope &amp; takeoff</button>
     <button id="chatBtn" aria-pressed="false" hidden title="Ask Claude to change the plan">Chat</button>
     <span class="sp"></span>
     <div class="grp" role="group" aria-label="View">
@@ -236,6 +247,10 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
     <div class="view" id="plan"><span class="tag" id="planTag">Plan</span><svg id="svg" aria-label="Floor plan editor"></svg></div>
     <div class="view" id="three"><span class="tag">3D</span></div>
   </main>
+  <section id="scope" hidden aria-label="Scope and takeoff">
+    <header><h2>Scope &amp; takeoff</h2><button id="scopeCopy" title="Copy the list as text">Copy</button><button id="scopeClose" aria-label="Close scope">✕</button></header>
+    <div id="scopeBody"></div>
+  </section>
   <section id="chat" hidden aria-label="Chat with Claude">
     <header><h2>Ask Claude</h2><button id="chatClose" aria-label="Close chat">✕</button></header>
     <div id="chatLog">
@@ -2540,7 +2555,7 @@ async function initChat(){
   $('#chatBtn').hidden = !sampleFn;
 }
 
-$('#chatBtn').onclick = () => { const open = $('#chat').hidden; $('#chat').hidden = !open; $('#chatBtn').setAttribute('aria-pressed', open); if (open) $('#chatIn').focus(); };
+$('#chatBtn').onclick = () => { const open = $('#chat').hidden; if (open && scopeOpen) setScope(false); $('#chat').hidden = !open; $('#chatBtn').setAttribute('aria-pressed', open); if (open) $('#chatIn').focus(); };
 $('#chatClose').onclick = () => { $('#chat').hidden = true; $('#chatBtn').setAttribute('aria-pressed', 'false'); };
 $('#chatForm').onsubmit = e => { e.preventDefault(); const v = $('#chatIn').value.trim(); if (!v || !sampleFn) return; addBubble('user', v); $('#chatIn').value = ''; sendChat(v); };
 $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); $('#chatForm').requestSubmit(); } });
@@ -2549,6 +2564,7 @@ $('#propApply').onclick = applyProposal; $('#propDiscard').onclick = discardProp
 document.querySelectorAll('#chatLog .chips button').forEach(b => b.onclick = () => { $('#chatIn').value = b.textContent; $('#chatForm').requestSubmit(); });
 /* ---------------- side panel, buttons, keys ---------------- */
 function drawSide(){
+  if (typeof scopeOpen !== 'undefined' && scopeOpen) drawScope();
   const rl = $('#rooms'); rl.innerHTML = '';
   rooms.filter(r => r.area >= 0.3).forEach(r => { const d = document.createElement('div'); if (r.changed) d.className = 'new'; d.innerHTML = '<span></span><span></span>'; d.children[0].textContent = r.name; d.children[1].textContent = sqft(r.area); rl.appendChild(d); });
   [...SHOW].forEach(st => { const A = rooms.filter(r => r.st === st).reduce((a, r) => a + r.area, 0); if (!A) return;
@@ -2614,6 +2630,7 @@ document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if (e.key === 'l' || e.key === 'L'){ if (!e.ctrlKey && !e.metaKey){ setLock(!locked); return; } }
+  if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey){ setScope(!scopeOpen); return; }
   if (locked && e.key !== 'Escape') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? $('#redo').click() : $('#undo').click(); }
   else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
@@ -2624,6 +2641,120 @@ addEventListener('keydown', e => {
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');
 });
+/* ---------------- scope & takeoff: what this design changes, measured live from the plan ---------------- */
+let scopeOpen = false;
+const FTm = 3.28084, SFm = 10.7639, NOT_SCOPE = new Set(['king', 'queen', 'full', 'twin', 'night', 'dresser', 'sofa', 'table']);
+function scopeData(){
+  const B = baseState(), bw = Object.fromEntries(B.walls.map(w => [w.id, w])), bo = Object.fromEntries(B.openings.map(o => [o.id, o]));
+  const lf = w => dist(w.s, w.e) * FTm, same = (a, b) => dist(a.s, b.s) < 0.01 && dist(a.e, b.e) < 0.01;
+  const onLine = (p, w) => Math.abs((w.e[0] - w.s[0]) * (p[1] - w.s[1]) - (w.e[1] - w.s[1]) * (p[0] - w.s[0])) / Math.max(dist(w.s, w.e), 1e-9) < 0.03;
+  const demo = [], frame = [];
+  B.walls.forEach(o => { const w = S.walls.find(x => x.id === o.id);
+    if (!w) demo.push({name: o.name || o.id, ext: o.ext, lf: lf(o), why: 'taken out'});
+    else if (same(o, w)) return;
+    else if (onLine(w.s, o) && onLine(w.e, o)){ const d = lf(o) - lf(w); if (d > 0.5) demo.push({name: o.name || o.id, ext: o.ext, lf: d, why: 'shortened'}); }
+    else demo.push({name: o.name || o.id, ext: o.ext, lf: lf(o), why: 'moved (old wall comes down)'}); });
+  S.walls.forEach(w => { const o = bw[w.id]; const h = w.h * FTm;
+    if (!o) frame.push({name: w.name || 'New wall', ext: w.ext, lf: lf(w), h, how: 'new'});
+    else if (same(o, w)) return;
+    else if (onLine(w.s, o) && onLine(w.e, o)){ const d = lf(w) - lf(o); if (d > 0.5) frame.push({name: w.name || w.id, ext: w.ext, lf: d, h, how: 'extended'}); }
+    else frame.push({name: w.name || w.id, ext: w.ext, lf: lf(w), h, how: 'moved (rebuilt on its new line)'}); });
+  const ops = {new: S.openings.filter(o => !bo[o.id]),
+    gone: B.openings.filter(o => !S.openings.some(x => x.id === o.id) && S.walls.some(w => w.id === o.host)),
+    resized: S.openings.filter(o => { const b = bo[o.id]; return b && (Math.abs(o.w - b.w) > 0.02 || Math.abs(o.h - b.h) > 0.02 || Math.abs(o.sill - b.sill) > 0.02 || Math.abs(o.off - b.off) > 0.05 || o.host !== b.host); }),
+    keptWin: S.openings.filter(o => bo[o.id] && o.kind === 'window').length};
+  // rooms on every floor; the part of a room outside the old building is new floor area (an addition)
+  const all = LEVELS.flat().flatMap(st => roomsFor(st)).filter(r => r.area > 1);
+  const oldFp = (B.roofs || []).map(r => r.fp), oldWalls = B.walls.filter(w => w.ext);
+  const xs0 = oldWalls.flatMap(w => [w.s[0], w.e[0]]), ys0 = oldWalls.flatMap(w => [w.s[1], w.e[1]]);
+  const inOld = q => oldFp.length ? oldFp.some(P => inPoly(q, P)) : (q[0] > Math.min(...xs0) && q[0] < Math.max(...xs0) && q[1] > Math.min(...ys0) && q[1] < Math.max(...ys0));
+  const rooms2 = all.map(r => { const xs = r.poly.map(p => p[0]), ys = r.poly.map(p => p[1]); let n = 0, out = 0;
+    for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++){ const q = [Math.min(...xs) + (i + .5) * (Math.max(...xs) - Math.min(...xs)) / 10, Math.min(...ys) + (j + .5) * (Math.max(...ys) - Math.min(...ys)) / 10];
+      if (!inPoly(q, r.poly)) continue; n++; if (!inOld(q)) out++; }
+    const low = (r.name || '').toLowerCase();
+    return {name: r.name || 'Room', st: r.st, sf: r.area * SFm, addSf: n ? r.area * SFm * out / n : 0, changed: r.changed,
+      floor: /garage/.test(low) ? 'none' : /basement|crawl|cellar/.test(low + ' ' + (PLAN.storeys[r.st]?.name || '').toLowerCase()) ? 'unfinished' : /bath|laundry|utility|mud/.test(low) ? 'tile' : 'LVP'}; });
+  const roofs = (S.roofs || []).map(r => { const b = (B.roofs || []).find(x => x.id === r.id); const sf = Math.abs(polyArea(r.fp)) * Math.sqrt(1 + r.pitch * r.pitch) * SFm;
+    return {name: r.name || r.id, sf, p: r.pitch * 12, p0: b ? b.pitch * 12 : null, changed: !b || Math.abs(b.pitch - r.pitch) > 0.001}; }).filter(r => r.changed);
+  const cab = {base: 0, upper: 0, tall: 0}, count = {};
+  S.items.forEach(it => { const c = CAT[it.cat] || {}; if (NOT_SCOPE.has(it.cat)) return;
+    if (c.cab === 'base') cab.base += it.w * FTm;
+    else if (c.cab === 'wall') cab.upper += it.w * FTm; else if (c.cab === 'tall') cab.tall += it.w * FTm;
+    if (it.cat !== 'base' && it.cat !== 'upper' && it.cat !== 'filler'){ const k = it.cat === 'sink' ? 'Sink base (kitchen sink + faucet)' : c.label || it.cat;
+      const key = it.cat === 'island' ? `Island ${Math.round(it.w / IN)}"` : it.cat === 'fireplace' ? `Fireplace (decorative) ${Math.round(it.w / IN)}"` : it.cat === 'vanity' ? `Vanity ${Math.round(it.w / IN)}"` : k;
+      count[key] = (count[key] || 0) + 1; } });
+  const beams = (S.beams || []).map(b => ({name: b.name, lf: dist(b.s, b.e) * FTm, size: `${b.plies || 3}-ply 1¾" × ${Math.round(b.depth / IN * 4) / 4}" LVL`}));
+  return {demo, frame, ops, rooms: rooms2, roofs, cab, count, beams};
+}
+const f0 = x => Math.round(x).toLocaleString(), ft1 = x => (Math.round(x * 10) / 10).toLocaleString();
+function scopeLines(){
+  const D = scopeData(), out = [];
+  const H = t => out.push({h: t}), R = (t, q, sub) => out.push({t, q, sub});
+  // demolition
+  const di = D.demo.filter(d => !d.ext), de = D.demo.filter(d => d.ext);
+  if (D.demo.length || D.ops.gone.length){ H('Demolition');
+    if (di.length) R('Inside walls out', ft1(di.reduce((a, d) => a + d.lf, 0)) + ' lf', di.map(d => `${d.name}: ${d.why} (${ft1(d.lf)} lf)`).join(' · '));
+    if (de.length) R('Outside walls out', ft1(de.reduce((a, d) => a + d.lf, 0)) + ' lf', de.map(d => `${d.name}: ${d.why} (${ft1(d.lf)} lf)`).join(' · '));
+    if (D.ops.gone.length) R('Windows / doors removed (patch the wall)', D.ops.gone.length + ' ea', D.ops.gone.map(o => o.name || o.kind).join(' · ')); }
+  // framing
+  if (D.frame.length){ H('New framing');
+    const fi = D.frame.filter(f => !f.ext), fe = D.frame.filter(f => f.ext);
+    if (fi.length) R('Inside walls (2x4)', ft1(fi.reduce((a, f) => a + f.lf, 0)) + ' lf', fi.map(f => `${f.name}: ${f.how} ${ft1(f.lf)} lf`).join(' · '));
+    if (fe.length) R('Outside walls (2x6)', ft1(fe.reduce((a, f) => a + f.lf, 0)) + ' lf', fe.map(f => `${f.name}: ${f.how} ${ft1(f.lf)} lf × ${ft1(f.h)} ft`).join(' · '));
+    const dw = D.frame.reduce((a, f) => a + f.lf * f.h * (f.ext ? 1 : 2), 0);
+    R('Drywall on the new walls', f0(dw) + ' sf', 'both faces of inside walls, inside face of outside walls; openings not deducted'); }
+  if (D.beams.length){ H('Beams (first-pass sizes, engineer to confirm)'); D.beams.forEach(b => R(b.name, ft1(b.lf) + ' ft', b.size)); }
+  // openings
+  const byType = L => L.reduce((m, o) => { const k = typeof o === 'string' ? o : (({Window: 'New windows', 'Outside door': 'New outside doors', 'Inside door': 'New inside doors', 'Doorway / opening': 'New doorways / cased openings'})[typeOf(o)]); (m[k] = m[k] || []).push(o); return m; }, {});
+  if (D.ops.new.length || D.ops.resized.length || D.ops.keptWin){ H('Windows & doors');
+    Object.entries(byType(D.ops.new)).forEach(([k, L]) => R(k, L.length + ' ea', L.map(o => `${o.name || o.kind} ${Math.round(o.w / IN)}"×${Math.round(o.h / IN)}"`).join(' · ')));
+    if (D.ops.resized.length) R('Moved or resized (reframe + header)', D.ops.resized.length + ' ea', D.ops.resized.map(o => o.name || o.kind).join(' · '));
+    if (D.ops.keptWin) R('Existing windows staying in place', D.ops.keptWin + ' ea', 'replace or keep is your call'); }
+  // floor area
+  const fin = D.rooms.filter(r => r.floor !== 'none' && r.floor !== 'unfinished'), unf = D.rooms.filter(r => r.floor === 'unfinished'), add = D.rooms.reduce((a, r) => a + r.addSf, 0);
+  H('Floor area');
+  LEVELS.forEach(L => { const rs = fin.filter(r => L.includes(r.st)); if (!rs.length) return;
+    R(levelName(L), f0(rs.reduce((a, r) => a + r.sf, 0)) + ' sf', rs.map(r => `${r.name} ${f0(r.sf)}`).join(' · ')); });
+  const gar = D.rooms.filter(r => r.floor === 'none'); if (gar.length) R('Garage (not in the totals)', f0(gar.reduce((a, r) => a + r.sf, 0)) + ' sf');
+  if (unf.length) R('Basement / crawl (unfinished, not in the totals)', f0(unf.reduce((a, r) => a + r.sf, 0)) + ' sf');
+  R('Finished floor area, all floors', f0(fin.reduce((a, r) => a + r.sf, 0)) + ' sf');
+  if (add > 10) R('New floor area outside the old house (foundation + roof)', f0(add) + ' sf', D.rooms.filter(r => r.addSf > 5).map(r => `${r.name} ${f0(r.addSf)}`).join(' · '));
+  const lvp = fin.filter(r => r.floor === 'LVP').reduce((a, r) => a + r.sf, 0), tile = fin.filter(r => r.floor === 'tile').reduce((a, r) => a + r.sf, 0);
+  R('Flooring: LVP', f0(lvp) + ' sf', 'rooms not named bath / laundry / utility / mud'); if (tile) R('Flooring: tile', f0(tile) + ' sf', 'baths, laundry, utility, mud');
+  // roof
+  if (D.roofs.length || add > 10){ H('Roof');
+    D.roofs.forEach(r => R(`${r.name}: pitch ${r.p0 == null ? 'new' : ft1(r.p0) + '/12 → '}${ft1(r.p)}/12`, f0(r.sf) + ' sf', 'new framing + sheathing + shingles over the whole roof'));
+    if (add > 10) R('Roof over the new floor area', '≈ ' + f0(add * 1.15) + ' sf', 'plan area + slope and overhang allowance'); }
+  // kitchen, bath, fixtures
+  const any = D.cab.base + D.cab.upper + D.cab.tall > 0 || Object.keys(D.count).length;
+  if (any){ H('Cabinets, fixtures & appliances');
+    if (D.cab.base) R('Base cabinets', ft1(D.cab.base) + ' lf', 'countertop about the same length (more with an island)');
+    if (D.cab.upper) R('Upper cabinets', ft1(D.cab.upper) + ' lf');
+    if (D.cab.tall) R('Pantry cabinets', ft1(D.cab.tall) + ' lf');
+    Object.entries(D.count).sort().forEach(([k, n]) => R(k, n + ' ea')); }
+  return out;
+}
+function typeOf(o){ const w = S.walls.find(x => x.id === o.host); return o.kind === 'window' ? 'Window' : o.kind === 'door' ? (w && w.ext ? 'Outside door' : 'Inside door') : 'Doorway / opening'; }
+function drawScope(){
+  const b = $('#scopeBody'); b.innerHTML = ''; const L = scopeLines();
+  const p0 = document.createElement('p'); p0.className = 'note';
+  p0.textContent = `${designs[designId]?.name || 'This design'} compared with the house as it is now. Quantities only, measured from the plan as drawn; they update as you edit. The full takeoff and priced budget come from the review.`;
+  b.appendChild(p0);
+  if (L.filter(x => !x.h).length <= 3 && !ops.slice(0, cursor).length){ const p = document.createElement('p'); p.className = 'note'; p.textContent = 'No changes yet: the design matches the house as it is.'; b.appendChild(p); }
+  L.forEach(x => { if (x.h){ const h = document.createElement('h3'); h.textContent = x.h; b.appendChild(h); return; }
+    const d = document.createElement('div'); d.className = 'row'; const t = document.createElement('div'); t.textContent = x.t;
+    if (x.sub){ const s2 = document.createElement('div'); s2.className = 'sub'; s2.textContent = x.sub; t.appendChild(s2); }
+    const q = document.createElement('b'); q.textContent = x.q; d.append(t, q); b.appendChild(d); });
+  const n = document.createElement('p'); n.className = 'note'; n.textContent = 'Room areas are measured to the wall centrelines, so they run a few percent above the full takeoff. Not counted here: electrical, plumbing and HVAC runs, insulation, trim, paint, siding, permits. Those come with the full takeoff.'; b.appendChild(n);
+}
+function scopeText(){
+  const nm = designs[designId]?.name || 'Design', head = `${nm} — scope & takeoff (from the editor, quantities only)`;
+  return [head, ''].concat(scopeLines().map(x => x.h ? '\n' + x.h.toUpperCase() : `- ${x.t}: ${x.q}${x.sub ? ' (' + x.sub + ')' : ''}`)).join('\n');
+}
+function setScope(v){ scopeOpen = v; $('#scope').hidden = !v; $('#scopeBtn').setAttribute('aria-pressed', v); if (v){ if (!$('#chat').hidden) $('#chatBtn').click(); drawScope(); } }
+$('#scopeBtn').onclick = () => setScope(!scopeOpen); $('#scopeClose').onclick = () => setScope(false);
+$('#scopeCopy').onclick = () => { const t = scopeText(); try { navigator.clipboard.writeText(t).then(() => toast('Scope copied.'), () => showText(t)); } catch (e) { showText(t); } };
+
 /* ---------------- lock: look without changing ---------------- */
 let locked = false;
 try { locked = localStorage.getItem('rebuilt-lock-' + BASE_ID) === '1'; } catch (e) {}
