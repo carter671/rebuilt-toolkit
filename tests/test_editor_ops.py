@@ -44,3 +44,15 @@ def test_cabinets_flush_with_fridge_get_a_bump_out(raw):
     items = next(x for x in layout if x["id"] == "layout:items")["options"]["do"]["lines"]
     counter = next(x for x in items if x["key"] == "counter")["qty"]
     assert counter == round(0.762 / 0.3048 * (0.6096 + 3 * IN + 0.025) / 0.3048, 1)     # the top runs back over the bump-out
+
+
+def test_corner_and_trash_cabinets(raw):
+    lazy = {"id": "N-I-C1", "cat": "corner", "style": "lazy", "st": "G", "at": [0.5, 0.5], "rot": 0, "w": 0.9144, "d": 0.9144, "h": 0.9144, "z": 0.0, "name": "Lazy susan corner"}
+    trash = {"id": "N-I-T1", "cat": "trash", "st": "G", "at": [1.3, 0.35], "rot": 0, "w": 0.4572, "d": 0.6096, "h": 0.9144, "z": 0.0, "name": "Trash pull-out"}
+    doc = {"cursor": 2, "ops": [{"do": "add_item", "item": lazy}, {"do": "add_item", "item": trash}]}
+    dg, layout = apply_editor(copy.deepcopy(raw), doc)
+    assert dg["elements"]["N-I-C1"]["info"]["category"] == "corner base cabinet"
+    lines = {x["key"]: x for x in next(x for x in layout if x["id"] == "layout:items")["options"]["do"]["lines"]}
+    assert lines["trash_pullout"]["qty"] == 1 and lines["lazy_susan"]["qty"] == 1
+    assert "5.5 lf base" in lines["cab_base"]["note"]          # L corner 36" + 36" - 24" = 4 lf, plus the 18" trash = 5.5 lf
+    assert compile_genome(parse(dg)[0]).ok

@@ -290,6 +290,7 @@ ADDED = {
     'insul_spray': ('Closed-cell spray foam at vaulted ceilings (R-38+)', 'sf', 4.50), 'turf': ('Golf sim turf / carpet', 'sf', 6.00),
     'drip': ('Drip edge', 'lf', 3.50), 'ridge_cap': ('Ridge cap + ridge vent', 'lf', 9.00),
     'cab_bumpout': ('Framed bump-out behind cabinets set flush with the fridge (2x4 + drywall)', 'lf', 45.0),
+    'trash_pullout': ('Trash pull-out kit (double bin) in a base cabinet', 'ea', 220.0), 'lazy_susan': ('Lazy susan in a corner base', 'ea', 260.0),
 }
 for k, v in PB.items():          # a real pricebook entry always wins over an added rate
     ADDED.pop(k, None)
