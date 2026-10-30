@@ -453,6 +453,7 @@ const svg = $('#svg'), NS = 'http://www.w3.org/2000/svg';
 let vb = null;                                       // view box in plan metres: {x, y, w, h} with y up
 function fit(){
   const ws = S.walls.filter(w => SHOW.has(w.st)); const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+  if (!xs.length){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page (new building): start with a 12 m x 9 m window around the origin
   const r = svg.getBoundingClientRect(), pad = 1.5;
   let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
   const s = Math.max((x1 - x0) / Math.max(r.width, 1), (y1 - y0) / Math.max(r.height, 1));
@@ -1186,8 +1187,9 @@ function resize3(){
   R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
   if (!camSet){
     const ws = S.walls.filter(w => SHOW.has(w.st)), xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+    const blank = !xs.length; if (blank){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page: frame a 12 m x 9 m window until the first wall is drawn
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = true;
+    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = !blank;
   }
 }
 // pick + drag walls in 3D
