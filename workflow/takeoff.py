@@ -6,7 +6,7 @@ DESIGN.genome.json and .layout.json come from `python3 -m rebuilt.design.editor_
 Assumes a full (gut) interior rehab: every room except garages gets finishes, existing windows are replaced,
 open doorways get doors. Everything is a quantity; prices live in build_xlsx.py / the pricebook.
 """
-import argparse, json, math, sys
+import argparse, json, math, re, sys
 import numpy as np
 from shapely.geometry import Polygon, Point, LineString
 import os, pathlib; sys.path.insert(0, os.environ.get('REBUILT_SRC', str(pathlib.Path(__file__).resolve().parents[1] / 'src')))
@@ -198,9 +198,13 @@ for o in Q['openings']:
         else:
             act = 'Cased' if ('cased' in low or o['w_in'] > 40 or any('kitchen' in r.lower() or 'living' in r.lower() for r in rms) and len(rms) > 1 and not any(w in ' '.join(rms).lower() for w in ('bed', 'bath', 'closet'))) else 'Add door'
     cut = new and go['host'] in E0 and G[go['host']].get('phase') != 'new'      # a new opening cut into an existing wall
-    ops.append({'id': o['id'], 'name': nm, 'type': ty, 'action': act, 'w_in': o['w_in'], 'h_in': o['h_in'],
-                'sill_in': round(go['sill']['value'] / IN) if go.get('sill') and k == 'window' else None,
-                'rooms': ' / '.join(rms), 'new': new, 'cut_in_existing_wall': cut})
+    m = re.match(r'(\d+)-unit mulled', ((go.get('filling') or {}).get('operation') or '')) if k == 'window' else None
+    units = int(m.group(1)) if m else 1                    # a mulled unit is that many windows on the schedule
+    for u in range(units):
+        ops.append({'id': o['id'] if units == 1 else f"{o['id']}#{u + 1}", 'name': nm if units == 1 else f'{nm} ({u + 1} of {units})', 'type': ty, 'action': act,
+                    'w_in': o['w_in'] if units == 1 else round(o['w_in'] / units, 1), 'h_in': o['h_in'],
+                    'sill_in': round(go['sill']['value'] / IN) if go.get('sill') and k == 'window' else None,
+                    'rooms': ' / '.join(rms), 'new': new, 'cut_in_existing_wall': cut and u == 0})
 
 # ------------------------------------------------------------------ roofs + edges
 roofs = []
@@ -345,8 +349,9 @@ for k, r in roof_list:                 # ridge beams for vaulted rooms under a r
         n = max(1, math.ceil(Lr / 20)); rec = ENG.size_beam(f"Ridge beam, {r.get('name', k)}", Lr / n, Fr['W'] / 2 * F, 0)
         rec.update({'id': 'ridge:' + k, 'count': n, 'ridge': True}); structure['beams'].append(rec)
 for o in ops:                          # headers over new or widened openings in walls that hold the roof edge
-    if not o['new']: continue
-    go = G[o['id']]; w = G.get(go['host']) or {}
+    if not o['new'] or ('#' in o['id'] and not o['id'].endswith('#1')): continue     # a mulled unit gets one header over the whole unit
+    oid = o['id'].split('#')[0]; go = G[oid]; w = G.get(go['host']) or {}
+    if oid != o['id']: o = {**o, 'id': oid, 'name': go.get('name', oid), 'w_in': round(go['width']['value'] / IN, 1)}
     if w.get('type') != 'wall' or not w.get('exterior'): continue
     wd = (w['end'][0] - w['start'][0], w['end'][1] - w['start'][1]); wl = math.hypot(*wd) or 1
     rt, ct, rk, Fr = tributary(w['start'], w['end'], (wd[0] / wl, wd[1] / wl), w['storey'], True)

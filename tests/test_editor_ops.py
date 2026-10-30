@@ -91,3 +91,14 @@ def test_door_types_flow_to_the_takeoff_lines(raw):
     keys = [ln["key"] for x in layout for ln in x["options"]["do"]["lines"]]
     assert "door_pocket" in keys and "door_slider" in keys and "door_bifold" in keys and "door_int" not in keys
     assert compile_genome(parse(dg)[0]).ok
+
+
+def test_mulled_window_records_its_units(raw):
+    win = {"id": "N-O-W1", "host": "W-G-E", "kind": "window", "off": 4.0, "w": 2.7432, "h": 1.2192, "sill": 0.9144, "name": "Triple mulled window", "op": "double-hung", "mull": 3}
+    win2 = {"id": "N-O-W2", "host": "W-G-E", "kind": "window", "off": 0.4, "w": 0.9144, "h": 1.2192, "sill": 0.9144, "name": "New window", "op": "double-hung"}
+    doc = {"cursor": 3, "ops": [{"do": "add_opening", "opening": win}, {"do": "add_opening", "opening": win2},
+                                {"do": "set_opening", "opening": "N-O-W2", "mull": 2, "w": 1.8288, "name": "Double mulled window"}]}
+    dg, _ = apply_editor(copy.deepcopy(raw), doc)
+    assert dg["elements"]["N-O-W1"]["filling"]["operation"] == "3-unit mulled double-hung"
+    assert dg["elements"]["N-O-W2"]["filling"]["operation"] == "2-unit mulled double-hung" and dg["elements"]["N-O-W2"]["name"] == "Double mulled window"
+    assert compile_genome(parse(dg)[0]).ok

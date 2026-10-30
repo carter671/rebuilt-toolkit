@@ -351,7 +351,7 @@ function applyOp(st, op){
     case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null){ w.ext = !!op.ext; if (/^(New wall|Wall|Outside wall|New outside wall|Addition wall)$/.test(w.name || '')) w.name = w.ext ? 'Outside wall' : 'Wall'; } if (op.extSet) w.extSet = true; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
     case 'add_opening': st.openings.push(clone(op.opening)); break;
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
-    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge', 'op', 'name', 'lite']) if (op[k] != null) o[k] = op[k]; break; }
+    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge', 'op', 'name', 'lite', 'mull']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
     case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD', 'retW']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
@@ -542,8 +542,8 @@ function drawPlan(){
     const {d: wd0, L: wl} = wallFrame(w), cuts = S.openings.filter(o => o.host === w.id && o.op === 'open').map(o => [o.off, o.off + o.w]).sort((a, b) => a[0] - b[0]);
     const spans = []; let u0 = 0; cuts.forEach(([a, b]) => { if (a > u0) spans.push([u0, a]); u0 = Math.max(u0, b); }); if (wl > u0) spans.push([u0, wl]);
     const J = endJoins(w); if (spans.length && spans[0][0] < 0.001) spans[0][0] = -cornerExt(J.s); if (spans.length && spans[spans.length - 1][1] > wl - 0.001) spans[spans.length - 1][1] = wl + cornerExt(J.e);
-    spans.forEach(([a, b]) => { const piece = {...w, s: add(w.s, mul(wd0, a)), e: add(w.s, mul(wd0, b))};
-      const p = el('polygon', {points: pts(wallPoly(piece)), class: 'wall' + (w.ext ? ' ext' : '') + (isWallSel(w.id) ? ' sel' : ''), 'data-wall': w.id}, g);
+    spans.forEach(([a, b]) => {
+      const p = el('polygon', {points: pts(wallPiecePoly(w, a, b)), class: 'wall' + (w.ext ? ' ext' : '') + (isWallSel(w.id) ? ' sel' : ''), 'data-wall': w.id}, g);
       p.addEventListener('pointerdown', ev => startWallDrag(ev, w.id));
       p.addEventListener('pointermove', ev => { if (!drag && !draft && !roomDraft && !placing) showDims(ev, wallInfo(w)); });
       p.addEventListener('pointerleave', () => { if (!drag && !draft && !roomDraft) dims.hidden = true; }); });
@@ -553,8 +553,9 @@ function drawPlan(){
     const w = S.walls.find(x => x.id === o.host); if (!w || !SHOW.has(w.st)) return;
     const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), h = w.t / 2 + 0.01;
     if (o.op !== 'open') el('polygon', {points: pts([add(a, mul(n, h)), add(b, mul(n, h)), add(b, mul(n, -h)), add(a, mul(n, -h))]), class: o.kind === 'void' ? 'gap open' : 'gap'}, g);
-    const isSel = sel && sel.kind === 'opening' && sel.id === o.id, cls = 'op-line' + (isSel ? ' sel' : ''), sw = (isSel ? 2.2 : 1.2) * pxm();
+    const isSel = sel && ((sel.kind === 'opening' && sel.id === o.id) || (sel.kind === 'openings' && sel.ids.includes(o.id))), cls = 'op-line' + (isSel ? ' sel' : ''), sw = (isSel ? 2.2 : 1.2) * pxm();
     if (o.kind === 'window'){
+      for (let m = 1; m < (o.mull || 1); m++){ const q = add(w.s, mul(d, o.off + o.w * m / o.mull)); el('line', {x1: toSvg(add(q, mul(n, -w.t / 2)))[0], y1: toSvg(add(q, mul(n, -w.t / 2)))[1], x2: toSvg(add(q, mul(n, w.t / 2)))[0], y2: toSvg(add(q, mul(n, w.t / 2)))[1], class: cls, 'stroke-width': 1.6 * sw}, g); }
       for (const k of [-w.t / 2, 0, w.t / 2]) el('line', {x1: toSvg(add(a, mul(n, k)))[0], y1: toSvg(add(a, mul(n, k)))[1], x2: toSvg(add(b, mul(n, k)))[0], y2: toSvg(add(b, mul(n, k)))[1], class: cls, 'stroke-width': sw}, g);
     } else if (doorType(o) && doorType(o) !== 'swing'){
       const ty = doorType(o), side = swingSide(o, w), P = (u, v) => toSvg(add(add(w.s, mul(d, u)), mul(n, v))), ln = (u0, v0, u1, v1, extra) => { const [x1, y1] = P(u0, v0), [x2, y2] = P(u1, v1); el('line', Object.assign({x1, y1, x2, y2, class: cls, 'stroke-width': sw}, extra || {}), g); };
@@ -644,7 +645,7 @@ function showPop(ev){
     const hint = document.createElement('div'); hint.className = 't'; hint.textContent = 'Drag any of them to move them together.'; pop.appendChild(hint);
   } else if (sel.kind === 'opening'){
     const o = S.openings.find(x => x.id === sel.id); if (!o){ hidePop(); return; }
-    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide` + (doorType(o) && hostExt(o) ? ` · exterior, ${EXT_TYPES[extKey(o)].toLowerCase()}` : doorType(o) && doorType(o) !== 'swing' ? ` · ${DOOR_TYPES[doorType(o)].toLowerCase()}` : '');
+    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide` + ((o.mull || 1) > 1 ? ` · ${o.mull} units of ${ftinHalf(o.w / o.mull)}` : '') + (o.kind === 'window' ? ' · Shift-click more to group' : '') + (doorType(o) && hostExt(o) ? ` · exterior, ${EXT_TYPES[extKey(o)].toLowerCase()}` : doorType(o) && doorType(o) !== 'swing' ? ` · ${DOOR_TYPES[doorType(o)].toLowerCase()}` : '');
     if (isSwingDoor(o)){ const w = S.walls.find(x => x.id === o.host), {d, n} = wallFrame(w), mid = add(w.s, mul(d, o.off + o.w / 2)), side = swingSide(o, w);
       const into = roomName(add(mid, mul(n, side * (w.t / 2 + 0.4))), w.st), other = roomName(add(mid, mul(n, -side * (w.t / 2 + 0.4))), w.st);
       t.textContent += ` · swings ${into === 'outside' ? 'outside' : 'into ' + into} · hinge ${o.hinge === 'e' ? 'right' : 'left'}`;
@@ -665,10 +666,20 @@ function showPop(ev){
     const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : dt && hostExt(o) ? (extKey(o) === 'french' || extKey(o) === 'slider' ? [60, 72, 96] : [30, 32, 36, 60, 72, 96]) : dt ? DOOR_SIZES[dt].concat(dt === 'swing' ? [48, 72] : []) : [18, 24, 28, 30, 32, 36, 48, 72];
     sizes.forEach(inch => { const b = btn(inch >= 96 ? `${inch / 12}'` : `${inch}"`, () => resizeOpening(o, inch * IN)); if (Math.abs(o.w - inch * IN) < 0.01) b.setAttribute('aria-pressed', 'true'); });
     btn('Width…', () => widthInput(o));
+    if (o.kind === 'window' && (o.mull || 1) > 1) btn(`Split into ${o.mull} windows`, () => splitMull(o));
     btn('Rename', () => renameInput('opening', o.id, o.name || ''));
     if (o.op === 'open'){ const w = S.walls.find(x => x.id === o.host); if (w){ const {d} = wallFrame(w);
       btn('Make it two walls (add doors/windows)', () => { commit({do: 'batch', ops: [{do: 'remove_opening', opening: o.id}, {do: 'cut_wall', wall: w.id, a: add(w.s, mul(d, o.off)), b: add(w.s, mul(d, o.off + o.w)), nid: uid('N-W')}], label: `Turned ${o.name} into a gap between two walls`}); sel = null; hidePop(); }); } }
     btn(o.op === 'open' ? 'Put the wall back' : 'Remove', () => { commit({do: 'remove_opening', opening: o.id, label: o.op === 'open' ? `Put ${o.name} back` : `Removed ${o.name || o.kind}`}); sel = null; hidePop(); }, 'danger');
+  } else if (sel.kind === 'openings'){
+    const list = sel.ids.map(id => S.openings.find(o => o.id === id)).filter(Boolean); if (list.length < 2){ hidePop(); return; }
+    const one = list.every(o => o.host === list[0].host), wins = list.every(o => o.kind === 'window');
+    t.textContent = `${list.length} ${wins ? 'windows' : 'openings'} selected` + (one ? '' : ' (on different walls)') + ' · Shift-click to add or drop one';
+    if (one){ btn('Center as a group', () => groupDo(sel.ids, 'center')); btn('Space evenly', () => groupDo(sel.ids, 'even')); btn('Gap between…', () => gapInput(sel.ids));
+      if (wins){ const n = list.reduce((a, o) => a + (o.mull || 1), 0); btn(`Make one ${({2: 'double', 3: 'triple', 4: 'quad'}[n] || n + '-unit')} mulled unit`, () => groupDo(sel.ids, 'mull')); } }
+    btn('Same size as first', () => groupDo(sel.ids, 'size')); btn('Same height', () => groupDo(sel.ids, 'height'));
+    btn('Clear selection', () => { sel = null; hidePop(); drawPlan(); });
+    btn(`Remove all ${list.length}`, () => { commit({do: 'batch', ops: list.map(o => ({do: 'remove_opening', opening: o.id})), label: `Removed ${list.length} openings`}); sel = null; hidePop(); }, 'danger');
   } else if (sel.kind === 'room'){
     const r = rooms.find(x => x.id === sel.id); if (!r){ hidePop(); return; }
     t.textContent = `${r.name} · ${sqft(r.area)}`;
@@ -695,6 +706,7 @@ function showPop(ev){
     if (w){ const {d} = wallFrame(w), m = planToScreen(add(w.s, mul(d, o.off + o.w / 2))); x = m[0] - host.left - pr.width / 2; y = m[1] - host.top; dx = 0; dy = 28;
       if (y + dy + pr.height > host.height - 8) dy = -pr.height - 28; } }
   else if (sel.kind === 'wall') dy = 22;
+  else if (sel.kind === 'openings'){ const pr2 = svg.getBoundingClientRect(); x = pr2.left - host.left + 12; y = pr2.top - host.top + 30; dx = 0; dy = 0; }   // out of the way, so you can keep Shift-clicking
   pop.style.left = Math.max(8, Math.min(host.width - pr.width - 8, x + dx)) + 'px';
   pop.style.top = Math.max(56, Math.min(host.height - pr.height - 8, y + dy)) + 'px';
 }
@@ -903,7 +915,12 @@ function startOpEndDrag(ev, id, end){
 function startOpeningDrag(ev, id){
   if (placing) return;
   if (tool !== 'select' || ev.button > 0) return;
-  ev.stopPropagation(); svg.setPointerCapture(ev.pointerId);
+  ev.stopPropagation();
+  if (ev.shiftKey || ev.ctrlKey || ev.metaKey){             // Shift-click: add to / take out of the selection
+    const cur = !sel ? [] : sel.kind === 'opening' ? [sel.id] : sel.kind === 'openings' ? sel.ids.slice() : [];
+    const ids = cur.includes(id) ? cur.filter(x => x !== id) : cur.concat([id]);
+    sel = null; if (ids.length) select(ids.length === 1 ? {kind: 'opening', id: ids[0]} : {kind: 'openings', ids}, ev); else { hidePop(); drawPlan(); } return; }
+  svg.setPointerCapture(ev.pointerId);
   const o = S.openings.find(x => x.id === id);
   drag = {type: 'opening', id, p0: screenToPlan(ev), off0: o.off, ev0: ev}; dragMoved = false;
 }
@@ -1083,7 +1100,25 @@ function endJoins(w){
     } });
   return out;
 }
-const cornerExt = list => Math.max(0, ...list.filter(j => !j.tee).map(j => j.w2.t / 2));   // run on to the other wall's outside face
+const cornerExt = list => list.filter(j => !j.tee).length === 1 ? 0 : Math.max(0, ...list.filter(j => !j.tee).map(j => j.w2.t / 2));   // run on to the other wall's outside face (a single corner is mitred instead)
+// where two walls meet end to end at any angle (90°, 45° ...): the wall's end is cut so its faces meet the other wall's faces.
+// Returns the end's two corner points {l: on the +n face, r: on the -n face}, or null (no single corner there)
+function endCap(w, end){
+  const J = endJoins(w)[end].filter(j => !j.tee); if (J.length !== 1) return null;
+  const o = J[0].w2, P = w[end], {d, n} = wallFrame(w), dw = end === 's' ? d : mul(d, -1), dj = J[0].v, {d: od, n: nj} = wallFrame(o);
+  if (Math.abs(dot(dw, dj)) > 0.98) return null;
+  const toward = Math.sign(dot(dj, n)) || 1, jt = Math.sign(dot(dw, nj)) || 1;
+  const pt = sg => lineX({p: add(P, mul(n, sg * w.t / 2)), d}, {p: add(o.s, mul(nj, (sg === toward ? jt : -jt) * o.t / 2)), d: od});
+  const l = pt(1), r = pt(-1), lim = 3 * Math.max(w.t, o.t);
+  return dist(l, P) > lim || dist(r, P) > lim ? null : {l, r};
+}
+// a wall stretch [u0, u1] as a plan quad, with mitred ends where it starts / ends at a corner
+function wallPiecePoly(w, u0, u1){ const {d, L} = wallFrame(w), P4 = wallPoly({...w, s: add(w.s, mul(d, u0)), e: add(w.s, mul(d, u1))});
+  if (u0 <= 0.001){ const c = endCap(w, 's'); if (c){ P4[0] = c.l; P4[3] = c.r; } }
+  if (u1 >= L - 0.001){ const c = endCap(w, 'e'); if (c){ P4[1] = c.l; P4[2] = c.r; } }
+  return P4; }
+function prismMesh(P, z0, z1, mat){ const shape = new THREE.Shape(P.map(q => new THREE.Vector2(q[0], q[1])));
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {depth: z1 - z0, bevelEnabled: false}), mat); m.rotation.x = -Math.PI / 2; m.position.y = z0; m.castShadow = true; m.receiveShadow = true; return m; }
 // which side of the wall is inside: +1 = the left (n) side
 function insideSign(w){
   const {n} = wallFrame(w), mid = mul(add(w.s, w.e), 0.5), o = w.t / 2 + 0.3;
@@ -1305,17 +1340,19 @@ function build3D(){
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const elev = EL(w.st), {L} = wallFrame(w), z0 = elev + w.b, z1 = z0 + w.h, mat = w.ext ? M.ext : M.wall;
     const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
-    const J = endJoins(w), xs = cornerExt(J.s), xe = cornerExt(J.e);
+    const J = endJoins(w), xs = cornerExt(J.s), xe = cornerExt(J.e), cs = endCap(w, 's'), ce = endCap(w, 'e');
+    const piece = (a0, b0, za, zb) => (a0 <= 0.001 && cs) || (b0 >= L - 0.001 && ce) ? (b0 - a0 > 0.005 && zb - za > 0.005 ? prismMesh(wallPiecePoly(w, Math.max(0, a0), Math.min(L, b0)), za, zb, mat) : null) : boxAlong(w, a0, b0, za, zb, mat);
     const parts = []; let u = -xs;
     ops2.forEach(o => {
       const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = elev + o.sill, oz1 = oz0 + o.h;
-      parts.push(boxAlong(w, u, a, z0, z1, mat));
-      if (oz0 > z0 + 0.01) parts.push(boxAlong(w, a, b, z0, oz0, mat));
-      if (oz1 < z1 - 0.01 && o.op !== 'open') parts.push(boxAlong(w, a, b, oz1, z1, mat));
-      if (o.kind === 'window'){ const gl = boxAlong({...w, t: 0.01}, a, b, oz0, oz1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); } }
+      parts.push(piece(u, a, z0, z1));
+      if (oz0 > z0 + 0.01) parts.push(piece(a, b, z0, oz0));
+      if (oz1 < z1 - 0.01 && o.op !== 'open') parts.push(piece(a, b, oz1, z1));
+      if (o.kind === 'window'){ const gl = boxAlong({...w, t: 0.01}, a, b, oz0, oz1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); }
+        for (let m = 1; m < (o.mull || 1); m++){ const um = o.off + o.w * m / o.mull; parts.push(boxAlong({...w, t: w.t * 0.6}, um - 0.75 * IN, um + 0.75 * IN, oz0, oz1, mat)); } }
       u = Math.max(u, b);
     });
-    parts.push(boxAlong(w, u, L + xe, z0, z1, mat));
+    parts.push(piece(u, L + xe, z0, z1));
     const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { p.userData.wall = w.id; wg.add(p); });
     wg.userData.wall = w.id; wallMeshes[w.id] = wg; group.add(wg);
   });
@@ -2111,6 +2148,50 @@ function cornerPicker(r, k){
   [24, 30, 36, 48].forEach(i => btn(`${i}"`, () => angleCorner(r, k, i)));
   const inp = document.createElement('input'); inp.placeholder = 'inches'; inp.style.width = '70px'; inp.setAttribute('aria-label', 'Corner size in inches'); pop.appendChild(inp);
   btn('Go', () => { const v = parseFloat(inp.value); if (v >= 6 && v <= 120) angleCorner(r, k, v); else toast('Type inches, like 32'); });
+}
+/* several openings selected: line them up. Spacing and centring work within the wall face (between the walls it meets)
+   and the nearest openings that aren't selected. */
+function groupSpan(list){
+  const w = S.walls.find(x => x.id === list[0].host), {L} = wallFrame(w), side = insideSign(w);
+  const u0 = Math.min(...list.map(o => o.off)), u1 = Math.max(...list.map(o => o.off + o.w));
+  const dummy = {id: '_', st: w.st, z: 0, h: 0.01, d: 0.01, w: 0.01, at: [0, 0], rot: 0}, face = centerSpans(dummy, w, side, (u0 + u1) / 2).wall || [0, L];
+  let lo = face[0], hi = face[1];                                  // to the wall's inside face, or 2" clear of an opening that isn't selected
+  S.openings.filter(o => o.host === w.id && !list.includes(o)).forEach(o => { if (o.off + o.w <= u0 + 0.01) lo = Math.max(lo, o.off + o.w + 0.05); else if (o.off >= u1 - 0.01) hi = Math.min(hi, o.off - 0.05); });
+  return {w, lo, hi, u0, u1};
+}
+function layoutOps(list, offs, label){ return {do: 'batch', ops: list.map((o, i) => ({do: 'set_opening', opening: o.id, off: offs[i]})), label}; }
+function groupDo(ids, what){
+  const list = ids.map(id => S.openings.find(o => o.id === id)).filter(Boolean).sort((a, b) => a.off - b.off); if (list.length < 2) return;
+  const one = list.every(o => o.host === list[0].host), first = S.openings.find(o => o.id === ids[0]);
+  const nm = `${list.length} ${list.every(o => o.kind === 'window') ? 'windows' : 'openings'}`;
+  if (what === 'size') commit({do: 'batch', ops: list.map(o => ({do: 'set_opening', opening: o.id, w: first.w, h: first.h, sill: first.sill, off: o.off + (o.w - first.w) / 2})), label: `Made ${nm} ${ftin(first.w)} x ${ftin(first.h)}`});
+  else if (what === 'height') commit({do: 'batch', ops: list.map(o => ({do: 'set_opening', opening: o.id, h: first.h, sill: first.sill})), label: `Lined up the tops of ${nm} (head at ${ftin(first.sill + first.h)})`});
+  else if (!one){ toast('Those are on different walls — pick openings on one wall for that.'); return; }
+  else {
+    const G = groupSpan(list), tot = list.reduce((a, o) => a + o.w, 0);
+    if (what === 'center'){ const sh = (G.lo + G.hi) / 2 - (G.u0 + G.u1) / 2; commit(layoutOps(list, list.map(o => o.off + sh), `Centered ${nm} on ${G.w.name || 'the wall'}`)); }
+    else if (what === 'even'){ const gap = (G.hi - G.lo - tot) / (list.length + 1); if (gap < 0){ toast("They don't fit there."); return; }
+      let u = G.lo + gap; const offs = list.map(o => { const v = u; u += o.w + gap; return v; }); commit(layoutOps(list, offs, `Spaced ${nm} evenly (${ftinHalf(gap)} apart)`)); }
+    else if (typeof what === 'number'){ const span = tot + what * (list.length - 1), c = (G.u0 + G.u1) / 2; let u = Math.max(G.lo, Math.min(G.hi - span, c - span / 2));
+      if (span > G.hi - G.lo){ toast(`${ftinHalf(span)} won't fit there.`); return; }
+      const offs = list.map(o => { const v = u; u += o.w + what; return v; }); commit(layoutOps(list, offs, `${nm} ${ftinHalf(what)} apart`)); }
+    else if (what === 'mull'){ const units = list.reduce((a, o) => a + (o.mull || 1), 0), c = (G.u0 + G.u1) / 2, off = Math.max(G.lo, Math.min(G.hi - tot, c - tot / 2));
+      const word = {2: 'Double', 3: 'Triple', 4: 'Quad'}[units] || `${units}-unit`;
+      commit({do: 'batch', ops: [{do: 'set_opening', opening: list[0].id, off, w: tot, h: first.h, sill: first.sill, mull: units, name: `${word} mulled window`}].concat(list.slice(1).map(o => ({do: 'remove_opening', opening: o.id}))),
+        label: `Made ${nm} one ${word.toLowerCase()} mulled unit (${ftin(tot)})`}); sel = {kind: 'opening', id: list[0].id}; drawPlan(); showPop(null); return; }
+  }
+  sel = {kind: 'openings', ids}; drawPlan(); showPop(null);
+}
+function splitMull(o){
+  const n = o.mull || 1, uw = o.w / n, ops2 = [{do: 'set_opening', opening: o.id, w: uw, mull: 1, name: 'New window'}];
+  for (let k = 1; k < n; k++) ops2.push({do: 'add_opening', opening: {...clone(o), id: uid('N-O'), off: o.off + k * uw, w: uw, mull: 1, name: 'New window'}});
+  commit({do: 'batch', ops: ops2, label: `Split ${o.name} into ${n} windows`}); sel = {kind: 'openings', ids: [o.id].concat(ops2.slice(1).map(x => x.opening.id))}; drawPlan(); showPop(null);
+}
+function gapInput(ids){
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; t.textContent = 'Space between them, in inches (e.g. 12)'; pop.appendChild(t);
+  const inp = document.createElement('input'); inp.value = '12'; inp.setAttribute('aria-label', 'Gap in inches'); pop.appendChild(inp);
+  const go = () => { const v = parseFloat(inp.value); if (!(v >= 0 && v < 240)){ toast('Type inches, like 12'); return; } groupDo(ids, v * IN); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') hidePop(); }); btn('Apply', go); setTimeout(() => inp.select(), 0);
 }
 function centerItem(it, which){
   const W = wallOfItem(it); if (!W) return;
@@ -3399,6 +3480,7 @@ addEventListener('keydown', e => {
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
     if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && (!w.ext || isNewWall(w)))); }
     else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commitSynced({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
+    else if (sel.kind === 'openings'){ commit({do: 'batch', ops: sel.ids.map(id => ({do: 'remove_opening', opening: id})), label: `Removed ${sel.ids.length} openings`}); sel = null; hidePop(); }
     else if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id); commit({do: 'remove_opening', opening: o.id, label: `Removed ${o.name || o.kind}`}); sel = null; hidePop(); }
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');

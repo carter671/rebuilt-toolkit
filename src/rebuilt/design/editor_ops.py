@@ -71,6 +71,11 @@ def _door_text(op, lite, ext):
             "cased": "cased opening, no door", "overhead": "overhead"}.get(op, op)
 
 
+def _win_text(op, mull):
+    n = int(mull or 1)
+    return f"{n}-unit mulled {op or 'double-hung'}" if n > 1 else (op or "double-hung")
+
+
 def _door_key(op, lite, ext):
     op = op or "swing"
     if ext:
@@ -198,7 +203,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                           "kind": kind, "phase": "new", "offset": _v(v["off"], "design"), "width": _v(v["w"], "design"),
                           "height": _v(v["h"], "design"), "sill": _v(v.get("sill", 0.0), "design"),
                           "filling": {"type": "none"} if kind == "void" else
-                          {"type": kind, "operation": _door_text(v.get("op"), v.get("lite"), bool(w.get("exterior"))) if kind == "door" else (v.get("op") or "double-hung")}}
+                          {"type": kind, "operation": _door_text(v.get("op"), v.get("lite"), bool(w.get("exterior"))) if kind == "door" else _win_text(v.get("op"), v.get("mull"))}}
             overhead = (v.get("op") or "") == "overhead"
             if (v.get("op") or "") == "open":
                 E[v["id"]]["info"] = {"category": "opening", "subtype": "removed section"}
@@ -243,6 +248,12 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                 else:
                     line(i, f"Change door: {o.get('name', op['opening'])}", "", [{"key": key, "qty": 1, "note": _door_text(dop, dlite, ext)}])
                     o["phase"] = "new"
+            if op.get("mull") is not None and o.get("kind") == "window":   # mulled together / split apart
+                fl = o.get("filling") or {"type": "window"}
+                base = re.sub(r"^\d+-unit mulled ", "", fl.get("operation") or "double-hung")
+                o["filling"] = {**fl, "type": "window", "operation": _win_text(base, op["mull"])}
+                if op.get("name"):
+                    o["name"] = op["name"]
             if op.get("swing") is not None or op.get("hinge") is not None:
                 fl = o.get("filling") or {"type": "door"}
                 fl["operation"] = f"swing door, hinged at the {'end' if op.get('hinge') == 'e' else 'start'} jamb, swings to the {'+' if (op.get('swing') or 1) > 0 else '-'} side of the wall"
