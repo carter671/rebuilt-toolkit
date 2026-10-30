@@ -2300,8 +2300,13 @@ function doorSwings(st){
 function doorways(st){
   return S.openings.filter(o => (o.kind === 'door' || o.kind === 'void') && o.op !== 'open' && !['bifold', 'bypass'].includes(o.op) && o.sill < 0.3).map(o => {
     const w = S.walls.find(x => x.id === o.host); if (!w || w.st !== st) return null;
-    const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), k = w.t / 2 + 24 * IN;
-    return {o, poly: [add(a, mul(n, k)), add(b, mul(n, k)), add(b, mul(n, -k)), add(a, mul(n, -k))]};
+    // 24" of clear floor each side of the opening — but not inside a closet-type space (closet, laundry, pantry, linen,
+    // storage, or anything under 25 sf): what's in there is reached through the opening
+    const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), k = w.t / 2 + 24 * IN, mid = mul(add(a, b), 0.5);
+    const closety = sg => { const p = add(mid, mul(n, sg * (w.t / 2 + 0.3))), r = rooms.filter(x => x.st === w.st && inPoly(p, x.poly)).sort((x, y) => x.area - y.area)[0];
+      return !!r && (/closet|laundry|pantry|linen|storage|w\.?i\.?c|wardrobe/i.test(r.name) || r.area < 25 / 10.7639); };
+    const lo = closety(-1) ? 0 : -k, hi = closety(1) ? 0 : k; if (lo === 0 && hi === 0) return null;
+    return {o, poly: [add(a, mul(n, hi || w.t / 2)), add(b, mul(n, hi || w.t / 2)), add(b, mul(n, lo || -w.t / 2)), add(a, mul(n, lo || -w.t / 2))]};
   }).filter(Boolean);
 }
 function underWindow(it, o){
