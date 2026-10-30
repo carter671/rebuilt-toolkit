@@ -378,7 +378,7 @@ for k, r in E0roofs.items():     # a building made bigger by moving whole walls 
 
 # design scope items that are not otherwise measured (meter / AC moves, chimney, filled stairwell, closed openings...)
 SPECIAL = {'meter_relocate', 'ac_relocate', 'chimney_remove', 'dryer_vent', 'equip_relocate', 'frame_floor', 'opening_close',
-           'opening_widen', 'gas_relocate', 'stair_new', 'fireplace', 'patio', 'front_porch', 'driveway', 'culvert'}
+           'opening_widen', 'gas_relocate', 'cab_bumpout', 'trash_pullout', 'lazy_susan', 'fridge_panel', 'stair_new', 'fireplace', 'patio', 'front_porch', 'driveway', 'culvert'}
 extras = []
 for x in LAY:
     for ln in x['options']['do']['lines']:
