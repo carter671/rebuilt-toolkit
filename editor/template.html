@@ -240,6 +240,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
         <div><b>Add door / Add window</b>: click the button, then click the wall where it goes. Click the new door to change its size or drag it along the wall.</div>
         <div><b>Draw wall</b>: click where it starts and ends. Hold Shift for any angle.</div>
         <div><b>Click a door or window</b> to resize or remove it; drag it to slide it along the wall.</div>
+        <div><b>Arrow keys</b> nudge what's selected 1" (Shift 12", Alt &frac14;"). Hold <b>Shift</b> while placing a cabinet to place it without connecting.</div>
         <div><b>Cabinets &amp; furniture</b>: pick an item under <b>Add to the plan</b>, move to a wall and click. It backs up to the wall and snaps to its neighbours. Click a wall and choose <b>Cabinet run</b> to fill it with base and upper cabinets.</div>
         <div><b>Roof framing</b>: set each roof to trusses or rafters once you know. Walls outlined in amber may hold up the ceiling; removing one asks for a beam. <b>Show framing</b> draws the trusses in 3D.</div>
         <div><b>Click a room</b> to rename it. Scroll to zoom; drag empty space to pan.</div>
@@ -347,7 +348,7 @@ function applyOp(st, op){
       for (const [id, off] of Object.entries(op.openings || {})){ const o = O(id); if (o) o.off = off; }
       break;
     case 'add_wall': st.walls.push(clone(op.wall)); break;
-    case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null) w.ext = !!op.ext; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
+    case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null){ w.ext = !!op.ext; if (/^(New wall|Wall|Outside wall|New outside wall|Addition wall)$/.test(w.name || '')) w.name = w.ext ? 'Outside wall' : 'Wall'; } if (op.extSet) w.extSet = true; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
     case 'add_opening': st.openings.push(clone(op.opening)); break;
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
     case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
@@ -377,9 +378,32 @@ function applyOp(st, op){
   }
   return st;
 }
+// After any change: every new wall that has a room on one side and outdoors on the other (anywhere along it) is an outside
+// wall; one with rooms on both sides is an inside wall. Walls you set with Make exterior / interior keep your choice; walls
+// that aren't part of a room yet, and the as-built's walls, are left alone. Added to the same undo step.
+function extFlips(T){
+  const S0 = S; let R; S = T; try { R = computeRooms(); } finally { S = S0; }
+  const flips = [];
+  T.walls.forEach(w => {
+    if (!SHOW.has(w.st) || w.extSet || PLAN.walls.some(b => b.id === w.id)) return;
+    const {d, n, L} = wallFrame(w), o = w.t / 2 + 0.15; let any = false, out = false;
+    for (const k of [0.2, 0.5, 0.8]){ const m = add(w.s, mul(d, L * k)), inR = sg => R.some(r => r.st === w.st && inPoly(add(m, mul(n, sg * o)), r.poly));
+      const a = inR(1), b = inR(-1); if (a || b){ any = true; if (a !== b) out = true; } }
+    if (any && out !== !!w.ext) flips.push({id: w.id, ext: out});
+  });
+  return flips;
+}
+function withAutoExt(op){
+  const T = clone(S); applyOp(T, op);
+  const flips = extFlips(T); if (!flips.length) return op;
+  const sp = [true, false].map(e => ({do: 'set_wall_spec', walls: flips.filter(f => f.ext === e).map(f => f.id), ext: e})).filter(o => o.walls.length);
+  const nO = flips.filter(f => f.ext).length, nI = flips.length - nO;
+  return {do: 'batch', ops: [op, ...sp], label: (op.label || 'Change') + ` (${[nO ? `${nO} wall${nO > 1 ? 's' : ''} now outside` : '', nI ? `${nI} now inside` : ''].filter(Boolean).join(', ')})`};
+}
 function rebuild(){ S = baseState(); for (let i = 0; i < cursor; i++) applyOp(S, ops[i]); (typeof proposal !== 'undefined' ? proposal : []).forEach(op => applyOp(S, op)); }
 function commit(op){
   if (proposal.length){ proposal = []; rebuild(); showProposal(); toast('Chat preview discarded.'); }
+  op = withAutoExt(op);
   ops = ops.slice(0, cursor).concat([op]); cursor = ops.length;
   applyOp(S, op); afterChange(true);
 }
@@ -1025,7 +1049,7 @@ function faceLengths(w){
   }
   return {out, inn};
 }
-function ftinHalf(m){ const tot = Math.round(m / IN * 2) / 2, f = Math.floor(tot / 12), i = tot - f * 12, wh = Math.floor(i); return `${f}'-${wh}${i > wh ? '½' : ''}"`; }   // to the half inch
+function ftinHalf(m){ const tot = Math.round(m / IN * 2) / 2, f = Math.floor(tot / 12), i = tot - f * 12, wh = Math.floor(i); return f ? `${f}'-${wh}${i > wh ? '½' : ''}"` : `${wh || (i > wh ? '' : 0)}${i > wh ? '½' : ''}"`; }   // to the half inch
 function wallInfo(w){
   const f = faceLengths(w), sp = `2x${studOf(w)} @ ${ocOf(w)}" o.c.`;
   return w.ext ? `Outside ${ftinHalf(f.out)} · Inside ${ftinHalf(f.inn)} · ${sp}` : `Inside wall ${ftinHalf(Math.min(f.out, f.inn))} between walls · ${sp}`;
@@ -1036,7 +1060,7 @@ function lineX(l1, l2){ const den = l1.d[0] * l2.d[1] - l1.d[1] * l2.d[0]; if (M
 // change walls to outside / inside, 2x4 / 2x6, stud spacing. An outside wall keeps its outside face where it is.
 function setSpec(ws, patch){
   ws = ws.filter(Boolean); if (!ws.length) return;
-  const op = {do: 'set_wall_spec', walls: ws.map(w => w.id), ...patch}; if (patch.stud) op.t = wallT(patch.stud);
+  const op = {do: 'set_wall_spec', walls: ws.map(w => w.id), ...patch}; if (patch.stud) op.t = wallT(patch.stud); if (patch.ext != null) op.extSet = true;   // your choice sticks
   const cur = {}, offs = {}, get = w => cur[w.id] || (cur[w.id] = {s: w.s.slice(), e: w.e.slice()});
   ws.forEach(w => {
     const ext = patch.ext != null ? patch.ext : w.ext, nt = patch.stud ? wallT(patch.stud) : w.t, dt = nt - w.t;
@@ -3063,6 +3087,9 @@ document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? $('#redo').click() : $('#undo').click(); }
+  else if (e.key.startsWith('Arrow') && sel && !placing){ e.preventDefault();
+    const st = e.shiftKey ? 12 * IN : e.altKey ? 0.25 * IN : 1 * IN, v = {ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st]}[e.key];
+    if (v) nudge(v[0], v[1]); }
   else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; chain = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
     if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && (!w.ext || isNewWall(w)))); }
@@ -3071,6 +3098,34 @@ addEventListener('keydown', e => {
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');
 });
+let lastNudge = null;
+function nudgeOp(v){
+  if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (!it) return null;
+    const W = CAT[it.cat] && CAT[it.cat].wall ? wallOfItem(it) : null, dv = W ? mul(wallFrame(W.w).d, dot(v, wallFrame(W.w).d)) : v;   // against a wall: slides along it
+    if (len(dv) < 0.001) return {skip: 'It slides along its wall: use the other arrows.'};
+    return {op: {do: 'set_item', item: it.id, at: add(it.at, dv), label: `Nudged ${it.name} ${ftinHalf(len(dv)).replace(/^0'-/, '')}`}, synced: true}; }
+  if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id), w = o && S.walls.find(x => x.id === o.host); if (!w) return null;
+    const {d, L} = wallFrame(w), du = dot(v, d); if (Math.abs(du) < 0.001) return {skip: 'Doors and windows slide along their wall.'};
+    const off = Math.max(0.05, Math.min(L - o.w - 0.05, o.off + du));
+    return {op: {do: 'set_opening', opening: o.id, off, label: `Nudged ${o.name || o.kind} ${ftinHalf(Math.abs(du)).replace(/^0'-/, '')}`}}; }
+  if (sel.kind === 'wall' || sel.kind === 'walls'){ const ids = selWalls(); if (!ids.length) return null;
+    const g = groupStart(ids), vv = g.n0 ? mul(g.n0, dot(v, g.n0)) : v; if (len(vv) < 0.001) return {skip: 'A wall moves sideways: use the other arrows.'};
+    const pv = groupPreview(g, vv), w0 = S.walls.find(x => x.id === ids[0]);
+    return {op: {do: 'set_walls', walls: pv.walls, openings: pv.offs, label: `Nudged ${ids.length > 1 ? ids.length + ' walls' : (w0.name || 'wall')} ${ftinHalf(len(vv)).replace(/^0'-/, '')}`}}; }
+  return null;
+}
+function nudge(dx, dy){
+  if (!sel) return;
+  const key = sel.kind + ':' + JSON.stringify(sel.kind === 'walls' ? sel.ids : sel.id);
+  let tot = [dx, dy], prev = null;
+  if (lastNudge && lastNudge.key === key && cursor === ops.length && cursor === lastNudge.cursor && ops.length){ prev = ops.pop(); cursor--; rebuild(); tot = add(lastNudge.total, tot); }
+  const r = nudgeOp(tot);
+  if (!r || r.skip){ if (prev){ ops.push(prev); cursor++; rebuild(); afterChange(false); } if (r && r.skip) toast(r.skip); return; }
+  hidePop(); (r.synced ? commitSynced : commit)(r.op);
+  lastNudge = {key, total: tot, cursor};
+  const t = len(tot); showDims({clientX: innerWidth / 2, clientY: 70}, `moved ${ftinHalf(t).replace(/^0'-/, '')} ${Math.abs(tot[0]) > Math.abs(tot[1]) ? (tot[0] > 0 ? 'right' : 'left') : (tot[1] > 0 ? 'up' : 'down')}`);
+  clearTimeout(nudge.t); nudge.t = setTimeout(() => { dims.hidden = true; }, 1200);
+}
 let tt; function toast(t){ const el2 = $('#toast'); el2.textContent = t; el2.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el2.classList.remove('on'), 2600); }
 addEventListener('resize', () => { resize3(); drawPlan(); });
 

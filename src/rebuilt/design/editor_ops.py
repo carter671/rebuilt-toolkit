@@ -9,7 +9,7 @@ Ops (all lengths in metres, plan coordinates):
   remove_wall   {wall}
   set_walls     {walls: {id: {s, e}}, openings: {id: off}}
   add_wall      {wall: {id, st, s, e, t, h, b, ext, name, stud?: 4 | 6, oc?: 16 | 24}}
-  set_wall_spec {walls: [ids], ext?, stud?: 4 | 6, oc?: 16 | 24, t?}   outside / inside wall, 2x4 / 2x6, stud spacing (inches)
+  set_wall_spec {walls: [ids], ext?, extSet?, stud?: 4 | 6, oc?: 16 | 24, t?}   outside / inside wall, 2x4 / 2x6, stud spacing (inches); extSet = picked by hand
   add_opening   {opening: {id, host, kind, off, w, h, sill, name, op}}
   remove_opening{opening}
   set_opening   {opening, off?, w?, h?, sill?}
