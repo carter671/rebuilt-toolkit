@@ -1476,11 +1476,37 @@ const CAT = {
   night:   {g: 'Bedroom', label: 'Nightstand', w: 22, d: 16, h: 26, z: 0, wall: true},
   dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true},
   sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 36, h: 34, z: 0, wall: true},
-  table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false},
+  table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false, style: 'rect'},
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
   panel:   {g: null, label: 'Fridge end panel', w: 1.5, d: 33, h: 90, z: 0, wall: true},
 };
 const isUpper = it => it.z > 1.0;
+/* dining tables: rectangle / square / round (w = d = diameter), preset sizes or any size */
+const TABLE = {rect: {label: 'Rectangle', sizes: [[60, 36], [72, 40], [84, 40], [96, 42]]}, square: {label: 'Square', sizes: [[36, 36], [42, 42], [48, 48], [54, 54]]},
+               round: {label: 'Round', sizes: [[36, 36], [42, 42], [48, 48], [54, 54], [60, 60]]}};
+const tableShape = it => it.style || 'rect';
+function seats(it){ const w = it.w / IN, d = it.d / IN, sh = tableShape(it);
+  return sh === 'round' ? Math.max(2, Math.floor(Math.PI * w / 24)) : sh === 'square' ? 4 * Math.max(1, Math.floor(w / 24)) : 2 * Math.max(1, Math.floor(Math.max(w, d) / 24)) + (Math.min(w, d) >= 36 ? 2 : 0); }
+// chairs around a table, in the table's own frame (u along w, v along d, metres), each {u, v, a} with a = which way it faces in
+function chairsOf(it){ const sh = tableShape(it), out = [], off = 9 * IN, n = seats(it);
+  if (sh === 'round'){ const r = it.w / 2 + off; for (let k = 0; k < n; k++){ const t = k / n * 2 * Math.PI; out.push({u: Math.cos(t) * r, v: Math.sin(t) * r, t}); } return out; }
+  const long = it.w >= it.d, L = long ? it.w : it.d, S = long ? it.d : it.w, per = sh === 'square' ? Math.max(1, Math.floor(it.w / IN / 24)) : Math.max(1, Math.floor(L / IN / 24));
+  for (let k = 0; k < per; k++){ const x = -L / 2 + L * (k + 0.5) / per; for (const sg of [-1, 1]) out.push(long ? {u: x, v: sg * (S / 2 + off), t: sg > 0 ? Math.PI / 2 : -Math.PI / 2} : {u: sg * (S / 2 + off), v: x, t: sg > 0 ? 0 : Math.PI}); }
+  if (sh === 'square'){ for (let k = 0; k < per; k++){ const x = -L / 2 + L * (k + 0.5) / per; for (const sg of [-1, 1]) out.push({u: sg * (L / 2 + off), v: x, t: sg > 0 ? 0 : Math.PI}); } }
+  else if (S / IN >= 36) for (const sg of [-1, 1]) out.push(long ? {u: sg * (L / 2 + off), v: 0, t: sg > 0 ? 0 : Math.PI} : {u: 0, v: sg * (L / 2 + off), t: sg > 0 ? Math.PI / 2 : -Math.PI / 2});
+  return out; }
+function setTable(it, style, wIn, dIn){
+  const w = wIn * IN, d = (style === 'rect' ? dIn : wIn) * IN, nm = style === 'round' ? `${wIn}" round table` : style === 'square' ? `${wIn}" square table` : `${wIn}" x ${dIn}" table`;
+  commit({do: 'set_item', item: it.id, style, w, d, name: /table/i.test(it.name) ? nm : it.name, label: `Dining table → ${nm}`}); showPop(null);
+}
+function tableSizeInput(it){
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; t.textContent = tableShape(it) === 'rect' ? 'Size in inches, long x wide (e.g. 66 x 38)' : tableShape(it) === 'round' ? 'Diameter in inches (e.g. 50)' : 'Size in inches (e.g. 44)'; pop.appendChild(t);
+  const inp = document.createElement('input'); inp.value = tableShape(it) === 'rect' ? `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)}` : `${Math.round(it.w / IN)}`; inp.setAttribute('aria-label', 'Table size'); pop.appendChild(inp);
+  const go = () => { const nums = (inp.value.match(/\d+(\.\d+)?/g) || []).map(Number).filter(x => x >= 18 && x <= 180); if (!nums.length){ toast('Type a size in inches, like 66 x 38'); return; }
+    const sh = tableShape(it); setTable(it, sh, Math.max(...nums.slice(0, 2)), sh === 'rect' ? (nums[1] ? Math.min(nums[0], nums[1]) : Math.round(it.d / IN)) : nums[0]); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') hidePop(); });
+  btn('Save', go); setTimeout(() => inp.select(), 0);
+}
 /* corner base cabinets: lazy susan (36" each way, L-shaped front), diagonal (angled door), blind corner (one end dead under the
    other run). hand = which end of the item is in the corner (+1 = the +a end), worked out from the walls it sits against. */
 function cornerHand(it){
@@ -1888,7 +1914,8 @@ function drawBumps(g){
 }
 function drawItems(g, upper){
   S.items.filter(it => SHOW.has(it.st) && isUpper(it) === upper).forEach(it => {
-    const P = itemPoly(it), bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
+    const round = it.cat === 'table' && tableShape(it) === 'round', P = round ? Array.from({length: 40}, (_, k) => add(it.at, [Math.cos(k / 40 * 2 * Math.PI) * it.w / 2, Math.sin(k / 40 * 2 * Math.PI) * it.w / 2])) : itemPoly(it);
+    const bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
     const grp = el('g', {class: 'item' + (upper ? ' up' : '') + (bad ? ' bad' : '') + (on ? ' sel' : ''), 'data-item': it.id}, g);
     el('polygon', {points: pts(P), 'stroke-width': (on ? 2.2 : 1.2) * pxm(), 'stroke-dasharray': upper ? `${5 * pxm()} ${3 * pxm()}` : ''}, grp);
     const {a, f} = itemFrame(it), L = (u, v) => add(add(it.at, mul(a, u * it.w / 2)), mul(f, v * it.d / 2));
@@ -1917,6 +1944,10 @@ function drawItems(g, upper){
         k.forEach(([u, hw]) => el('polygon', {points: pts([L(u - hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.72), L(u - hw / 2 * 0.9, -0.72)]), class: 'sym', 'stroke-width': sw}, grp));
         line(L(-1, -0.45), L(1, -0.2)); break; }
       case 'sofa': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); break;
+      case 'table': chairsOf(it).forEach(ch => { const c = add(add(it.at, mul(a, ch.u)), mul(f, ch.v)), r = 8 * IN;
+        const ca = [Math.cos(ch.t), Math.sin(ch.t)], cA = add(mul(a, ca[0]), mul(f, ca[1])), cB = perp(cA);
+        el('polygon', {points: pts([add(add(c, mul(cA, -r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, r)), add(add(c, mul(cA, -r)), mul(cB, r))]), class: 'sym', 'stroke-width': sw, 'stroke-dasharray': `${3 * sw} ${2 * sw}`}, grp); });
+        { const [x, y] = toSvg(it.at); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = `seats ${seats(it)}`; } break;
       case 'fridge': case 'dw': case 'washer': case 'dryer': {
         const t = {fridge: 'REF', dw: 'DW', washer: 'W', dryer: 'D'}[it.cat], [x, y] = toSvg(it.at);
         el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 10 * pxm()}, grp).textContent = t; break; }
@@ -1958,7 +1989,7 @@ function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
   const frU = fridgeUnder(it);
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  t.textContent = it.cat === 'table' ? `${it.name} · seats about ${seats(it)}` : `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
   const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
   if (it.cat === 'corner'){ brk();
@@ -1978,6 +2009,10 @@ function itemPop(t){
     if (it.flush) btn('Back on the wall', () => setFlush(row.filter(c => c.k >= cf.k).map(c => c.it), false));
     else btn('Flush with fridge', () => setFlush(row.filter(c => c.k <= cf.k).map(c => c.it), true));
     brk(); }
+  if (it.cat === 'table'){ brk(); const sh = tableShape(it);
+    Object.entries(TABLE).forEach(([k, T]) => { const b = btn(T.label, () => { const cur = TABLE[k].sizes.find(z => Math.abs(z[0] * IN - Math.max(it.w, it.d)) < 0.01) || TABLE[k].sizes[Math.min(2, TABLE[k].sizes.length - 1)]; setTable(it, k, cur[0], cur[1]); }); if (sh === k) b.setAttribute('aria-pressed', 'true'); });
+    brk(); TABLE[sh].sizes.forEach(([a, b2]) => { const b = btn(sh === 'rect' ? `${a}x${b2}` : `${a}"`, () => setTable(it, sh, a, b2)); if (Math.abs(it.w - a * IN) < 0.005 && Math.abs(it.d - b2 * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    btn('Size…', () => tableSizeInput(it)); brk(); }
   if (it.cat === 'tall'){ brk();
     [84, 90, 96].forEach(inch => { const b = btn(`${inch}" tall`, () => { commitSynced({do: 'set_item', item: it.id, h: inch * IN, z: 0, label: `${it.name} → ${inch}" tall`}); showPop(null); }); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
     const tl = topLine(it); btn(`Up to the uppers (${ftinHalf(tl).replace(/^0'-/, '')})`, () => { commitSynced({do: 'set_item', item: it.id, h: tl, z: 0, label: `${it.name} → up to the uppers`}); showPop(null); });
@@ -2407,6 +2442,13 @@ function buildItems3D(grp){
       case 'king': case 'queen': case 'full': case 'twin':
         itemBox(it, -1, 1, -1, 1, 0, 0.3, on ? IM.pick : bad ? IM.bad : IM.wood, grp); itemBox(it, -0.97, 0.97, -0.97, 0.97, 0.3, 0.6, IM.bed, grp); itemBox(it, -1, 1, -1, -0.94, 0, 1.2, on ? IM.pick : IM.wood, grp); break;
       case 'sofa': itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
+      case 'table': { const mat = on ? IM.pick : bad ? IM.bad : IM.wood, z0 = EL(it.st) + it.z;
+        if (tableShape(it) === 'round'){ const top = new THREE.Mesh(new THREE.CylinderGeometry(it.w / 2, it.w / 2, 1.5 * IN, 40), mat); top.position.copy(P3(it.at[0], it.at[1], z0 + H - 0.75 * IN)); top.castShadow = true; top.userData.item = it.id; grp.add(top);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(2 * IN, 2 * IN, H - 1.5 * IN, 16), IM.wood); leg.position.copy(P3(it.at[0], it.at[1], z0 + (H - 1.5 * IN) / 2)); leg.userData.item = it.id; grp.add(leg);
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(10 * IN, it.w / 3), Math.min(10 * IN, it.w / 3), 1.5 * IN, 24), IM.wood); base.position.copy(P3(it.at[0], it.at[1], z0 + 0.75 * IN)); grp.add(base); }
+        else { itemBox(it, -1, 1, -1, 1, H - 1.5 * IN, H, mat, grp); const lu = 1 - 4 * IN / it.w, lv = 1 - 4 * IN / it.d, lw = 2.5 * IN / it.w, lh = 2.5 * IN / it.d;
+          for (const su of [-1, 1]) for (const sv of [-1, 1]) itemBox(it, su * lu - lw, su * lu + lw, sv * lv - lh, sv * lv + lh, 0, H - 1.5 * IN, IM.wood, grp); }
+        break; }
       default: itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.wood, grp);
     }
   });
