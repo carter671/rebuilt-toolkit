@@ -150,6 +150,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
 .beam{stroke:var(--danger);pointer-events:none}
 .joist{stroke:#C98A2B;opacity:.45;pointer-events:none}
 .stud{fill:#B98A4E;pointer-events:none}
+.bumpout{fill:#B98A4E;fill-opacity:.35;stroke:#8C6A3F;pointer-events:none}
 #wallOpts{border-left:1px solid var(--line);padding-left:8px}
 #wallOpts .lbl{font:500 .72rem var(--f-mono);color:var(--chrome-muted);letter-spacing:.06em;text-transform:uppercase;margin-right:2px}
 .roomfill{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
@@ -347,7 +348,7 @@ function applyOp(st, op){
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
     case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
-    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name']) if (op[k] != null) it[k] = clone(op[k]); break; }
+    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
     case 'set_roof': { const r = st.roofs.find(x => x.id === op.roof); if (r){ if (op.framing) r.framing = op.framing; if (op.roles && op.roles.length === r.fp.length) r.roles = op.roles.slice(); } break; }
     case 'add_beam': st.beams.push(clone(op.beam)); break;
@@ -506,6 +507,7 @@ function drawPlan(){
   });
   // components (fixtures etc.)
   PLAN.comps.filter(c => SHOW.has(c.st)).forEach(c => el('rect', {x: c.min[0], y: -c.max[1], width: c.max[0] - c.min[0], height: c.max[1] - c.min[1], class: 'comp', 'stroke-width': pxm()}, g));
+  drawBumps(g);
   drawItems(g, false);
   // walls
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
@@ -1094,6 +1096,16 @@ function frameLayout(w){
   for (let c = u0 + oc; c < u1 - 2 * t; c += oc) if (!busy(c) && c > u0 + 2 * t) studs.push(c);
   return {t, sd, oc, u0, u1, z0, z1, ops: ops2, hd, studs};
 }
+// a bump-out is a short 2x4 wall in front of the wall: plates top and bottom, studs at 16" and at the ends, drywall over
+function bumpFraming3D(it, top, grp){
+  const t = 1.5 * IN, {a, f} = itemFrame(it), b = backPt(it), z0 = EL(it.st) + it.z, depth = Math.min(3.5 * IN, it.bump), hw = it.w / 2;
+  const bx = (u0, u1, v0, v1, za, zb, mat) => { const L = u1 - u0, D = v1 - v0; if (L < 0.003 || D < 0.003 || zb - za < 0.003) return;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(L, zb - za, D), mat), c = add(add(b, mul(a, (u0 + u1) / 2)), mul(f, -(v0 + v1) / 2));
+    m.position.copy(P3(c[0], c[1], (za + zb) / 2)); m.rotation.y = it.rot * Math.PI / 180; grp.add(m); };
+  bx(-hw, hw, 0, it.bump, z0, z0 + t, FM.plate); bx(-hw, hw, 0, it.bump, z0 + top - t, z0 + top, FM.plate);
+  const xs = [-hw + t / 2, hw - t / 2]; for (let x = -hw + 16 * IN; x < hw - t; x += 16 * IN) xs.push(x);
+  xs.forEach(x => bx(x - t / 2, x + t / 2, 0, depth, z0 + t, z0 + top - t, FM.wood));
+}
 function buildWallFraming3D(grp){
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const F = frameLayout(w), {t, sd, u0, u1, z0, z1} = F, wf = {...w, t: sd};
@@ -1442,17 +1454,44 @@ const FRIDGE_D = {std: 33, counter: 27};              // inches, wall to the fro
 const UPPER_H = [30, 36, 42], OVER_FRIDGE_H = [12, 15, 18, 24];
 const isFridge = it => it.cat === 'fridge';
 function backPt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2)); }
+function facePt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2 + (it.bump || 0))); }   // the wall face the item backs to
+const CASEWORK = new Set(['base', 'sink', 'upper', 'tall', 'filler']);
+// cabinets running out from each side of a fridge on the same wall, same level (uppers / bases), touching each other
+function flushChain(fr, items){
+  const L = items || S.items, {a, f} = itemFrame(fr), fa = dot(fr.at, a), out = [];
+  for (const upper of [true, false]){
+    const row = L.filter(o => CASEWORK.has(o.cat) && o.st === fr.st && isUpper(o) === upper && dot(itemFrame(o).f, f) > 0.99
+      && Math.abs(dot(sub(facePt(o), backPt(fr)), f)) < 3 * IN && !fridgeUnder(o, L));
+    for (const sg of [1, -1]){
+      let edge = fa + sg * fr.w / 2, k = 0;
+      const side = row.filter(o => (dot(o.at, a) - fa) * sg > 0).sort((x, y) => (dot(x.at, a) - dot(y.at, a)) * sg);
+      for (const o of side){ const near = dot(o.at, a) - sg * o.w / 2; if (Math.abs(near - edge) > 1 * IN) break; out.push({it: o, upper, sg, k: k++}); edge = dot(o.at, a) + sg * o.w / 2; }
+    }
+  }
+  return out;
+}
+function chainOf(it, items){ const L = items || S.items; for (const fr of L.filter(isFridge)){ const c = flushChain(fr, L).find(q => q.it.id === it.id); if (c) return {fr, ...c}; } return null; }
+// where a cabinet should sit: pulled out so its front is flush with the fridge, or back on the wall
+function flushFit(it, items){
+  const c = it.flush ? chainOf(it, items) : null, bump = c ? Math.max(0, c.fr.d - it.d) : 0, {f} = itemFrame(it);
+  return {bump, flush: !!c, at: add(facePt(it), mul(f, bump + it.d / 2))};
+}
+function setFlush(list, on){
+  const ops2 = list.map(it => ({do: 'set_item', item: it.id, flush: on}));
+  commitSynced({do: 'batch', ops: ops2, label: on ? `Brought ${list.length} cabinet${list.length > 1 ? 's' : ''} flush with the fridge (framed bump-out behind)` : `Put ${list.length} cabinet${list.length > 1 ? 's' : ''} back on the wall`});
+  showPop(null);
+}
 // the fridge under an upper cabinet: same wall, same way, the cabinet's centre over the fridge
 function fridgeUnder(it, items){
   if (!isUpper(it)) return null; const fi = itemFrame(it).f;
   return (items || S.items).find(fr => isFridge(fr) && fr.st === it.st && dot(itemFrame(fr).f, fi) > 0.99
-    && Math.abs(dot(sub(it.at, fr.at), itemFrame(fr).a)) < fr.w / 2 - IN && Math.abs(dot(sub(backPt(it), backPt(fr)), fi)) < 3 * IN) || null;
+    && Math.abs(dot(sub(it.at, fr.at), itemFrame(fr).a)) < fr.w / 2 - IN && Math.abs(dot(sub(facePt(it), backPt(fr)), fi)) < 3 * IN) || null;
 }
 // where the tops of the other upper cabinets on that wall are (default 90" = 36" uppers starting at 54")
 function topLine(it, items){
   const fi = itemFrame(it).f, L = items || S.items;
   const tops = L.filter(o => o.id !== it.id && isUpper(o) && o.cat !== 'filler' && o.st === it.st && dot(itemFrame(o).f, fi) > 0.99
-    && Math.abs(dot(sub(backPt(o), backPt(it)), fi)) < 3 * IN && !fridgeUnder(o, L)).map(o => o.z + o.h);
+    && Math.abs(dot(sub(facePt(o), facePt(it)), fi)) < 3 * IN && !fridgeUnder(o, L)).map(o => o.z + o.h);
   return tops.length ? Math.max(...tops) : 90 * IN;
 }
 // a cabinet over a fridge: as deep as the fridge (front flush with it), top in line with the other uppers
@@ -1469,7 +1508,9 @@ function commitSynced(op){
   const ups = [];
   T.items.forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
     if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) ups.push({do: 'set_item', item: it.id, ...fit}); });
-  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + ' (cabinet over the fridge kept flush)'} : op);
+  T.items.forEach(it => { if (!it.flush && !it.bump) return; const fit = flushFit(it, T.items);
+    if (Math.abs(fit.bump - (it.bump || 0)) > 0.002 || fit.flush !== !!it.flush || dist(fit.at, it.at) > 0.002){ ups.push({do: 'set_item', item: it.id, ...fit}); Object.assign(it, fit); } });
+  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + (/flush|back on the wall/i.test(op.label || '') ? '' : ' (cabinets kept flush with the fridge)')} : op);
 }
 function setFridgeDepth(fr, inch){
   const {f} = itemFrame(fr), d = inch * IN;
@@ -1617,6 +1658,10 @@ function cabinetRun(w, at, dry){
 }
 
 /* plan symbols */
+function drawBumps(g){
+  S.items.filter(it => SHOW.has(it.st) && it.bump > 0.002).forEach(it => { const {a, f} = itemFrame(it), b = backPt(it), hw = it.w / 2;
+    el('polygon', {points: pts([add(b, mul(a, -hw)), add(b, mul(a, hw)), add(add(b, mul(a, hw)), mul(f, -it.bump)), add(add(b, mul(a, -hw)), mul(f, -it.bump))]), class: 'bumpout', 'stroke-width': pxm()}, g); });
+}
 function drawItems(g, upper){
   S.items.filter(it => SHOW.has(it.st) && isUpper(it) === upper).forEach(it => {
     const P = itemPoly(it), bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
@@ -1680,12 +1725,20 @@ function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
   const frU = fridgeUnder(it);
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ' · flush with the fridge' : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ' · flush with the fridge' : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
   const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
   if (isFridge(it)){ brk();
     [['Standard depth', FRIDGE_D.std], ['Counter depth', FRIDGE_D.counter]].forEach(([lb, inch]) => { const b = btn(`${lb} ${inch}"`, () => setFridgeDepth(it, inch)); if (Math.abs(it.d - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
     if (!S.items.some(o => fridgeUnder(o) === it)) btn('Cabinet above', () => cabinetOverFridge(it));
+    const ch = flushChain(it);
+    for (const [lb, up] of [['uppers', true], ['base cabinets', false]]){ const row = ch.filter(c => c.upper === up).map(c => c.it); if (!row.length) continue;
+      const allOn = row.every(o => o.flush); btn(allOn ? `Put ${lb} back on the wall` : `Bring ${lb} beside it flush`, () => setFlush(row, !allOn)); }
+    brk(); }
+  const cf = CASEWORK.has(it.cat) ? chainOf(it) : null;
+  if (cf){ brk(); const row = flushChain(cf.fr).filter(c => c.upper === cf.upper && c.sg === cf.sg);
+    if (it.flush) btn('Back on the wall', () => setFlush(row.filter(c => c.k >= cf.k).map(c => c.it), false));
+    else btn('Flush with fridge', () => setFlush(row.filter(c => c.k <= cf.k).map(c => c.it), true));
     brk(); }
   if (it.cat === 'upper'){ brk();
     (frU ? OVER_FRIDGE_H : UPPER_H).forEach(inch => { const b = btn(`${inch}" tall`, () => setUpperHeight(it, inch)); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
@@ -2080,7 +2133,10 @@ function itemBox(it, u0, u1, v0, v1, z0, z1, mat, grp){
 function buildItems3D(grp){
   S.items.filter(it => SHOW.has(it.st)).forEach(it => {
     const H = it.h, bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
-    const body = on ? IM.pick : bad ? IM.bad : IM.cab;
+    const body = on ? IM.pick : bad ? IM.bad : IM.cab, vb = it.bump > 0.002 ? -1 - 2 * it.bump / it.d : -1;
+    if (vb < -1){ const top = (it.cat === 'base' || it.cat === 'sink') ? H - 0.032 : H;
+      if (showFraming) bumpFraming3D(it, top, grp); else itemBox(it, -1, 1, vb, -1, 0, top, M.wall, grp);
+      if (it.cat === 'base' || it.cat === 'sink') itemBox(it, -1, 1, vb, -1, H - 0.032, H, IM.top, grp); }
     switch (it.cat){
       case 'base': case 'sink': case 'vanity': case 'island':
         itemBox(it, -1, 1, -1, it.cat === 'island' ? 1 : 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break;

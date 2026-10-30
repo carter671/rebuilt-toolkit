@@ -15,7 +15,7 @@ Ops (all lengths in metres, plan coordinates):
   set_opening   {opening, off?, w?, h?, sill?}
   name_room     {at: [x, y], name}
   add_item      {item: {id, cat, st, at, rot, w, d, h, z, name}}   catalogue item (cabinet, fixture, bed...)
-  set_item      {item, at?, rot?, w?, d?, h?, z?}
+  set_item      {item, at?, rot?, w?, d?, h?, z?, bump?, flush?}   bump = metres a cabinet sits out from the wall on a framed bump-out (flush with the fridge)
   remove_item   {item}
   set_roof      {roof, framing?: truss | rafter | unknown, roles?: [eave|rake|abut per footprint edge]}
   set_component {id, at?, wall?, u?, z?, remove?, label?, lines?}   move / remove an existing fixture (meter, AC, chimney)
@@ -341,7 +341,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         elif do == "set_item":
             it = items.get(op["item"])
             if it:
-                for k in ("at", "rot", "w", "d", "h", "z", "st", "name"):
+                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush"):
                     if op.get(k) is not None:
                         it[k] = copy.deepcopy(op[k])
         elif do == "remove_item":
@@ -460,7 +460,10 @@ def _place_items(E, items, layout):
     """Editor items become components (box at a point, rotated); casework also gets a renderer spec."""
     cabinets, lf = [], {"base": 0.0, "wall": 0.0, "tall": 0.0, "island": 0.0}
     counter_sf, fixtures, appliances = 0.0, [], 0
+    bumps = []                                              # cabinets pulled out flush with the fridge: framed bump-out behind
     for it in items.values():
+        if (it.get("bump") or 0) > 0.002:
+            bumps.append(it)
         kind, cat, cab = ITEM.get(it["cat"], ("furnishing", it["cat"], None))
         E[it["id"]] = {"type": "component", "id": it["id"], "name": it.get("name", cat), "storey": it["st"], "kind": kind,
                        "phase": "new", "geometry": "box",
@@ -483,7 +486,7 @@ def _place_items(E, items, layout):
         w_ft = it["w"] * FT
         if it["cat"] in ("base", "sink", "filler") and it.get("z", 0) < 1.0:
             lf["base"] += w_ft
-            counter_sf += w_ft * (it["d"] + 0.025) * FT
+            counter_sf += w_ft * (it["d"] + (it.get("bump") or 0) + 0.025) * FT     # the top runs back to the wall over a bump-out
         elif it["cat"] == "upper" or (it["cat"] == "filler" and it.get("z", 0) >= 1.0):
             lf["wall"] += w_ft
         elif it["cat"] == "tall":
@@ -511,6 +514,14 @@ def _place_items(E, items, layout):
         lines.append({"key": "appliances", "qty": 1, "note": f"{appliances} placed"})
     if fixtures:
         lines.append({"key": "plumb_fixture", "qty": len(fixtures), "note": ", ".join(fixtures)})
+    if bumps:
+        b_lf = sum(it["w"] for it in bumps) * FT
+        sizes = ", ".join(f"{it['w'] / 0.0254:.0f}\" wide x {it['h'] / 0.0254:.0f}\" tall x {it['bump'] / 0.0254:.1f}\" deep" for it in bumps)
+        layout.append({"id": "layout:bumpout", "group": "Layout changes", "label": "Framed bump-out behind cabinets flush with the fridge",
+                       "existing": "", "default": "do",
+                       "options": {"do": {"label": "Do it", "lines": [{"key": "cab_bumpout", "qty": round(b_lf, 1),
+                                                                       "note": f"2x4 plates + studs @ 16\" o.c., drywall; {sizes}"}]},
+                                   "skip": {"label": "Skip", "lines": []}}})
     if lines:
         layout.append({"id": "layout:items", "group": "Layout changes", "label": "Cabinets, fixtures + appliances (from the design)",
                        "existing": "", "default": "do",

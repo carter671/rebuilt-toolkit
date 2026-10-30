@@ -289,6 +289,7 @@ ADDED = {
     'recessed': ('Recessed LED light', 'ea', 165.0), 'firewall': ('5/8" Type X drywall, garage side', 'sf', 3.75),
     'insul_spray': ('Closed-cell spray foam at vaulted ceilings (R-38+)', 'sf', 4.50), 'turf': ('Golf sim turf / carpet', 'sf', 6.00),
     'drip': ('Drip edge', 'lf', 3.50), 'ridge_cap': ('Ridge cap + ridge vent', 'lf', 9.00),
+    'cab_bumpout': ('Framed bump-out behind cabinets set flush with the fridge (2x4 + drywall)', 'lf', 45.0),
 }
 for k, v in PB.items():          # a real pricebook entry always wins over an added rate
     ADDED.pop(k, None)
