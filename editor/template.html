@@ -825,7 +825,7 @@ function startOpeningDrag(ev, id){
 }
 svg.addEventListener('pointerdown', ev => {
   hidePop();
-  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commit({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
+  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commitSynced({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
   if (tool === 'door' || tool === 'window'){ placeOpeningAt(screenToPlan(ev), ev); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (!roomDraft){ roomDraft = {a: p, b: p}; } else { roomDraft.b = roomPoint(screenToPlan(ev)); finishRoom(ev); } drawPlan(); return; }
   if (tool === 'wall'){ const p = snapPoint(screenToPlan(ev)); if (!draft){ draft = {a: p, b: p}; } else { finishDraft(ev); } drawPlan(); return; }
@@ -1418,7 +1418,7 @@ const CAT = {
   tall:    {g: 'Kitchen', label: 'Pantry cabinet', w: 24, d: 24, h: 84, z: 0, wall: true, widths: [18, 24, 30, 36], cab: 'tall'},
   island:  {g: 'Kitchen', label: 'Island', w: 72, d: 36, h: 36, z: 0, wall: false, widths: [48, 60, 72, 84, 96], cab: 'island'},
   range:   {g: 'Kitchen', label: 'Range', w: 30, d: 26, h: 36, z: 0, wall: true, widths: [30, 36], cab: 'range'},
-  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 30, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
+  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 33, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
   dw:      {g: 'Kitchen', label: 'Dishwasher', w: 24, d: 24, h: 34.5, z: 0, wall: true, widths: [18, 24]},
   vanity:  {g: 'Bath', label: 'Vanity', w: 36, d: 21, h: 34.5, z: 0, wall: true, widths: [24, 30, 36, 48, 60, 72], cab: 'vanity'},
   toilet:  {g: 'Bath', label: 'Toilet', w: 20, d: 28, h: 30, z: 0, wall: true},
@@ -1437,6 +1437,57 @@ const CAT = {
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
 };
 const isUpper = it => it.z > 1.0;
+/* fridges + the cabinet over them */
+const FRIDGE_D = {std: 33, counter: 27};              // inches, wall to the front of the fridge doors
+const UPPER_H = [30, 36, 42], OVER_FRIDGE_H = [12, 15, 18, 24];
+const isFridge = it => it.cat === 'fridge';
+function backPt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2)); }
+// the fridge under an upper cabinet: same wall, same way, the cabinet's centre over the fridge
+function fridgeUnder(it, items){
+  if (!isUpper(it)) return null; const fi = itemFrame(it).f;
+  return (items || S.items).find(fr => isFridge(fr) && fr.st === it.st && dot(itemFrame(fr).f, fi) > 0.99
+    && Math.abs(dot(sub(it.at, fr.at), itemFrame(fr).a)) < fr.w / 2 - IN && Math.abs(dot(sub(backPt(it), backPt(fr)), fi)) < 3 * IN) || null;
+}
+// where the tops of the other upper cabinets on that wall are (default 90" = 36" uppers starting at 54")
+function topLine(it, items){
+  const fi = itemFrame(it).f, L = items || S.items;
+  const tops = L.filter(o => o.id !== it.id && isUpper(o) && o.cat !== 'filler' && o.st === it.st && dot(itemFrame(o).f, fi) > 0.99
+    && Math.abs(dot(sub(backPt(o), backPt(it)), fi)) < 3 * IN && !fridgeUnder(o, L)).map(o => o.z + o.h);
+  return tops.length ? Math.max(...tops) : 90 * IN;
+}
+// a cabinet over a fridge: as deep as the fridge (front flush with it), top in line with the other uppers
+function overFridgeFit(it, fr, items){
+  const top = topLine(it, items), room = top - (fr.z + fr.h + 1 * IN);
+  const best = (OVER_FRIDGE_H.slice().reverse().find(x => x * IN <= room + 1e-6) || 12) * IN;
+  const keep = it.d > 13 * IN && OVER_FRIDGE_H.some(x => Math.abs(x * IN - it.h) < 0.004) && it.h <= room + 1e-6;   // a height already picked for this spot
+  const h = keep ? it.h : best, {f} = itemFrame(fr);
+  return {d: fr.d, h, z: top - h, at: add(backPt(it), mul(f, fr.d / 2))};
+}
+// commit, then pull every cabinet that sits over a fridge out flush with that fridge (one undo step)
+function commitSynced(op){
+  const T = clone(S); applyOp(T, op);
+  const ups = [];
+  T.items.forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
+    if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) ups.push({do: 'set_item', item: it.id, ...fit}); });
+  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + ' (cabinet over the fridge kept flush)'} : op);
+}
+function setFridgeDepth(fr, inch){
+  const {f} = itemFrame(fr), d = inch * IN;
+  commitSynced({do: 'set_item', item: fr.id, d, at: add(fr.at, mul(f, (d - fr.d) / 2)), label: `${fr.name} → ${inch === FRIDGE_D.counter ? 'counter depth' : 'standard depth'}`}); showPop(null);
+}
+function cabinetOverFridge(fr){
+  const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+  const fit = overFridgeFit({...it, d: fr.d, at: fr.at}, fr); Object.assign(it, fit);
+  commitSynced({do: 'add_item', item: it, label: `Added a ${ftin(it.h)} cabinet over the fridge, flush with its front`});
+  sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
+}
+function setUpperHeight(it, inch){
+  const h = inch * IN, fr = fridgeUnder(it);
+  if (fr){ const top = it.z + it.h, z = top - h; if (z < fr.z + fr.h + 0.5 * IN){ toast(`A ${inch}" cabinet won't fit over the fridge with the tops lined up.`); return; }
+    commit({do: 'set_item', item: it.id, h, z, label: `${it.name} → ${inch}" tall`}); }      // over a fridge the top stays in line
+  else commit({do: 'set_item', item: it.id, h, label: `${it.name} → ${inch}" tall`});      // the bottom stays 18" over the counter
+  showPop(null);
+}
 function newItem(cat, extra){
   const c = CAT[cat];
   return Object.assign({id: uid('N-I'), cat, st: ST, at: [0, 0], rot: 0, w: c.w * IN, d: c.d * IN, h: c.h * IN, z: c.z * IN, name: c.label}, extra || {});
@@ -1492,7 +1543,7 @@ function cabinetRun(w, at, dry){
   let side = Math.sign(dot(sub(at, w.s), n));
   const inRoom = sd => rooms.some(r => r.st === w.st && inPoly(add(at, mul(n, sd * 0.5)), r.poly));
   if (!side || !inRoom(side)) side = inRoom(1) ? 1 : -1;
-  const uc = dot(sub(at, w.s), wd);
+  const uc = dot(sub(at, w.s), wd), faceLine = dot(w.s, n) + side * w.t / 2;
   const blocks = (forUpper) => {
     const bl = [];
     S.walls.forEach(o => {
@@ -1502,6 +1553,10 @@ function cabinetRun(w, at, dry){
       if (projOnSeg(w.s, o.s, o.e).d < o.t / 2 + TOL) bl.push([-1, o.t / 2]);
       if (projOnSeg(w.e, o.s, o.e).d < o.t / 2 + TOL) bl.push([L - o.t / 2, L + 1]);
     });
+    // fridge, range, pantry, dishwasher... already on this wall: the run stops at them
+    S.items.forEach(it => { if (it.st !== w.st || isUpper(it) || ['base', 'sink', 'filler'].includes(it.cat)) return;
+      if (dot(itemFrame(it).f, mul(n, side)) < 0.99 || Math.abs(dot(backPt(it), n) - faceLine) > 3 * IN) return;
+      const uu = dot(sub(it.at, w.s), wd); bl.push([uu - it.w / 2, uu + it.w / 2]); });
     S.openings.filter(o => o.host === w.id).forEach(o => {
       if (o.kind === 'door') bl.push([o.off - 3 * IN, o.off + o.w + 3 * IN]);
       else if (forUpper) bl.push([o.off - 2 * IN, o.off + o.w + 2 * IN]);
@@ -1549,10 +1604,15 @@ function cabinetRun(w, at, dry){
   ubl.forEach(([x0, x1]) => { segs = segs.flatMap(([s0, s1]) => x1 <= s0 || x0 >= s1 ? [[s0, s1]] : [[s0, x0], [x1, s1]].filter(([p, q]) => q - p >= 9 * IN)); });
   let nU = 0;
   segs.forEach(([s0, s1]) => fill(s0, s1).forEach(([x0, x1, inch]) => { items.push(inch < 9 ? place('filler', x0, x1, {d: 12 * IN, h: (tall ? 36 : 30) * IN, z: 54 * IN, name: 'Filler (upper)'}) : place('upper', x0, x1, {h: (tall ? 36 : 30) * IN})); nU++; }));
+  // a fridge at the end of the run gets a cabinet over it, flush with its front
+  S.items.filter(fr => isFridge(fr) && fr.st === w.st && dot(itemFrame(fr).f, mul(n, side)) > 0.99 && Math.abs(dot(backPt(fr), n) - faceLine) < 3 * IN).forEach(fr => {
+    const uu = dot(sub(fr.at, w.s), wd); if (uu + fr.w / 2 < b0 - 2 * IN || uu - fr.w / 2 > b1 + 2 * IN || S.items.some(o => fridgeUnder(o) === fr)) return;
+    const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+    Object.assign(it, overFridgeFit({...it, d: fr.d}, fr, S.items.concat(items))); items.push(it); nU++; });
   const nB = items.length - nU;
   const runOp = {do: 'batch', ops: items.map(it => ({do: 'add_item', item: it})), label: `Added cabinet run on ${w.name || 'wall'} (${ftin(b1 - b0)}: ${nB} base, ${nU} upper)`};
   if (dry) return runOp;
-  commit(runOp);
+  commitSynced(runOp);
   sel = null; hidePop();
 }
 
@@ -1613,14 +1673,23 @@ function itemDragEnd(d, ev){
   const it = S.items.find(x => x.id === d.id);
   if (!dragMoved){ select({kind: 'item', id: d.id}, ev); return; }
   const v = {at: it.at, rot: it.rot, st: it.st}; rebuild();
-  commit({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
+  commitSynced({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
   sel = {kind: 'item', id: d.id}; drawPlan();
 }
 function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  const frU = fridgeUnder(it);
+  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ' · flush with the fridge' : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+  const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
+  if (isFridge(it)){ brk();
+    [['Standard depth', FRIDGE_D.std], ['Counter depth', FRIDGE_D.counter]].forEach(([lb, inch]) => { const b = btn(`${lb} ${inch}"`, () => setFridgeDepth(it, inch)); if (Math.abs(it.d - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    if (!S.items.some(o => fridgeUnder(o) === it)) btn('Cabinet above', () => cabinetOverFridge(it));
+    brk(); }
+  if (it.cat === 'upper'){ brk();
+    (frU ? OVER_FRIDGE_H : UPPER_H).forEach(inch => { const b = btn(`${inch}" tall`, () => setUpperHeight(it, inch)); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    brk(); }
   btn('Rename', () => renameInput('item', it.id, it.name));
   btn('Rotate', () => { commit({do: 'set_item', item: it.id, rot: (it.rot + 90) % 360, label: `Rotated ${it.name}`}); showPop(null); });
   btn('Copy', () => { const {a} = itemFrame(it), cp = clone(it); cp.id = uid('N-I'); cp.at = add(it.at, mul(a, it.w)); commit({do: 'add_item', item: cp, label: `Copied ${it.name}`}); sel = {kind: 'item', id: cp.id}; drawPlan(); showPop(null); });
@@ -1629,7 +1698,7 @@ function itemPop(t){
 }
 function resizeItem(it, wNew){
   const {a} = itemFrame(it), at = add(it.at, mul(a, (wNew - it.w) / 2));   // keep the left end where it is
-  commit({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
+  commitSynced({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
 }
 
 /* ---------------- live checks ---------------- */
