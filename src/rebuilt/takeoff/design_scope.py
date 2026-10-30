@@ -96,6 +96,8 @@ def design_decisions(model, genome: dict, site: dict, remodel_rooms: list[str], 
             k = "door_fire"
         elif host.get("exterior"):
             k = "door_ext"
+        elif "cased" in op:
+            k = "cased_opening"
         elif "pocket" in op:
             k = "door_pocket"
         elif "french" in op:
