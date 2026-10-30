@@ -135,6 +135,10 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
 .handle{fill:#fff;stroke:var(--accent);cursor:ew-resize}
 .draft{stroke:var(--accent);fill:none;pointer-events:none}
 .snap{fill:var(--accent);pointer-events:none}
+.cguide{stroke:var(--ink);opacity:.55;pointer-events:none}
+.cguide.on{stroke:var(--accent);opacity:1}
+.cguide-t{font-family:var(--f-mono);font-weight:600;fill:var(--ink);opacity:.75;text-anchor:middle;pointer-events:none}
+.cguide-t.on{fill:var(--accent);opacity:1}
 .boxsel{fill:var(--accent-soft);fill-opacity:.35;stroke:var(--accent);stroke-dasharray:4 3;vector-effect:non-scaling-stroke;pointer-events:none}
 .item{cursor:grab}
 .item polygon:first-child{fill:var(--paper);fill-opacity:.85;stroke:var(--ink)}
@@ -149,6 +153,10 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
 .bearing.maybe{stroke-opacity:.55}
 .beam{stroke:var(--danger);pointer-events:none}
 .joist{stroke:#C98A2B;opacity:.45;pointer-events:none}
+.stud{fill:#B98A4E;pointer-events:none}
+.bumpout{fill:#B98A4E;fill-opacity:.35;stroke:#8C6A3F;pointer-events:none}
+#wallOpts{border-left:1px solid var(--line);padding-left:8px}
+#wallOpts .lbl{font:500 .72rem var(--f-mono);color:var(--chrome-muted);letter-spacing:.06em;text-transform:uppercase;margin-right:2px}
 .roomfill{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
 .newwall{fill:var(--accent);fill-opacity:.75;pointer-events:none}
 .gridl{stroke:var(--grid);stroke-width:1;vector-effect:non-scaling-stroke}
@@ -172,6 +180,14 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button id="tWin" aria-pressed="false" title="Click an outside wall to put a window there">Add window</button>
       <button id="tStretch" aria-pressed="false" title="Normally the walls attached to the one you move stretch to stay connected. Turn this on to move just the one wall. (Or hold Alt while dragging.)">Move one wall only</button>
     </div>
+    <div class="grp" id="wallOpts" role="group" aria-label="New wall settings" hidden>
+      <span class="lbl">New wall</span>
+      <button data-wext="1" aria-pressed="false" title="Outside wall: sheathed and sided, windows allowed">Exterior</button>
+      <button data-wext="0" aria-pressed="false" title="Inside wall (partition)">Interior</button>
+      <button data-wstud="4" aria-pressed="false" title="2x4 studs: 3-1/2&quot; framing, 4-1/2&quot; finished wall">2x4</button>
+      <button data-wstud="6" aria-pressed="false" title="2x6 studs: 5-1/2&quot; framing, 6-1/2&quot; finished wall">2x6</button>
+      <select id="wOc" aria-label="Stud spacing" title="Stud spacing"><option value="16">16" on center</option><option value="24">24" on center</option></select>
+    </div>
     <div class="grp">
       <button id="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
       <button id="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
@@ -183,6 +199,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button data-v="plan" aria-pressed="false">Plan</button>
       <button data-v="3d" aria-pressed="false">3D</button>
       <button id="tRoof" aria-pressed="false" title="Show the roof in the 3D view">Roof</button>
+      <button id="tFrameTop" aria-pressed="false" title="Show the studs, plates and headers (and roof framing) in 3D and on the plan">Framing</button>
       <button id="tLot" aria-pressed="false" title="Show the lot lines and the setbacks (no-build zone)">Lot</button>
     </div>
     <span class="save" id="save" aria-live="polite"></span>
@@ -223,6 +240,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
         <div><b>Add door / Add window</b>: click the button, then click the wall where it goes. Click the new door to change its size or drag it along the wall.</div>
         <div><b>Draw wall</b>: click where it starts and ends. Hold Shift for any angle.</div>
         <div><b>Click a door or window</b> to resize or remove it; drag it to slide it along the wall.</div>
+        <div><b>Arrow keys</b> nudge what's selected 1" (Shift 12", Alt &frac14;"). Hold <b>Shift</b> while placing a cabinet to place it without connecting.</div>
         <div><b>Cabinets &amp; furniture</b>: pick an item under <b>Add to the plan</b>, move to a wall and click. It backs up to the wall and snaps to its neighbours. Click a wall and choose <b>Cabinet run</b> to fill it with base and upper cabinets.</div>
         <div><b>Roof framing</b>: set each roof to trusses or rafters once you know. Walls outlined in amber may hold up the ceiling; removing one asks for a beam. <b>Show framing</b> draws the trusses in 3D.</div>
         <div><b>Click a room</b> to rename it. Scroll to zoom; drag empty space to pan.</div>
@@ -330,11 +348,12 @@ function applyOp(st, op){
       for (const [id, off] of Object.entries(op.openings || {})){ const o = O(id); if (o) o.off = off; }
       break;
     case 'add_wall': st.walls.push(clone(op.wall)); break;
+    case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null){ w.ext = !!op.ext; if (/^(New wall|Wall|Outside wall|New outside wall|Addition wall)$/.test(w.name || '')) w.name = w.ext ? 'Outside wall' : 'Wall'; } if (op.extSet) w.extSet = true; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
     case 'add_opening': st.openings.push(clone(op.opening)); break;
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
-    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
+    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge', 'op', 'name', 'lite']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
-    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name']) if (op[k] != null) it[k] = clone(op[k]); break; }
+    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD', 'retW']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
     case 'set_roof': { const r = st.roofs.find(x => x.id === op.roof); if (r){ if (op.framing) r.framing = op.framing; if (op.roles && op.roles.length === r.fp.length) r.roles = op.roles.slice(); } break; }
     case 'add_beam': st.beams.push(clone(op.beam)); break;
@@ -359,9 +378,32 @@ function applyOp(st, op){
   }
   return st;
 }
+// After any change: every new wall that has a room on one side and outdoors on the other (anywhere along it) is an outside
+// wall; one with rooms on both sides is an inside wall. Walls you set with Make exterior / interior keep your choice; walls
+// that aren't part of a room yet, and the as-built's walls, are left alone. Added to the same undo step.
+function extFlips(T){
+  const S0 = S; let R; S = T; try { R = computeRooms(); } finally { S = S0; }
+  const flips = [];
+  T.walls.forEach(w => {
+    if (!SHOW.has(w.st) || w.extSet || PLAN.walls.some(b => b.id === w.id)) return;
+    const {d, n, L} = wallFrame(w), o = w.t / 2 + 0.15; let any = false, out = false;
+    for (const k of [0.2, 0.5, 0.8]){ const m = add(w.s, mul(d, L * k)), inR = sg => R.some(r => r.st === w.st && inPoly(add(m, mul(n, sg * o)), r.poly));
+      const a = inR(1), b = inR(-1); if (a || b){ any = true; if (a !== b) out = true; } }
+    if (any && out !== !!w.ext) flips.push({id: w.id, ext: out});
+  });
+  return flips;
+}
+function withAutoExt(op){
+  const T = clone(S); applyOp(T, op);
+  const flips = extFlips(T); if (!flips.length) return op;
+  const sp = [true, false].map(e => ({do: 'set_wall_spec', walls: flips.filter(f => f.ext === e).map(f => f.id), ext: e})).filter(o => o.walls.length);
+  const nO = flips.filter(f => f.ext).length, nI = flips.length - nO;
+  return {do: 'batch', ops: [op, ...sp], label: (op.label || 'Change') + ` (${[nO ? `${nO} wall${nO > 1 ? 's' : ''} now outside` : '', nI ? `${nI} now inside` : ''].filter(Boolean).join(', ')})`};
+}
 function rebuild(){ S = baseState(); for (let i = 0; i < cursor; i++) applyOp(S, ops[i]); (typeof proposal !== 'undefined' ? proposal : []).forEach(op => applyOp(S, op)); }
 function commit(op){
   if (proposal.length){ proposal = []; rebuild(); showProposal(); toast('Chat preview discarded.'); }
+  op = withAutoExt(op);
   ops = ops.slice(0, cursor).concat([op]); cursor = ops.length;
   applyOp(S, op); afterChange(true);
 }
@@ -453,6 +495,7 @@ const svg = $('#svg'), NS = 'http://www.w3.org/2000/svg';
 let vb = null;                                       // view box in plan metres: {x, y, w, h} with y up
 function fit(){
   const ws = S.walls.filter(w => SHOW.has(w.st)); const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+  if (!xs.length){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page (new building): start with a 12 m x 9 m window around the origin
   const r = svg.getBoundingClientRect(), pad = 1.5;
   let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
   const s = Math.max((x1 - x0) / Math.max(r.width, 1), (y1 - y0) / Math.max(r.height, 1));
@@ -492,14 +535,18 @@ function drawPlan(){
   });
   // components (fixtures etc.)
   PLAN.comps.filter(c => SHOW.has(c.st)).forEach(c => el('rect', {x: c.min[0], y: -c.max[1], width: c.max[0] - c.min[0], height: c.max[1] - c.min[1], class: 'comp', 'stroke-width': pxm()}, g));
+  drawBumps(g);
   drawItems(g, false);
   // walls
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const {d: wd0, L: wl} = wallFrame(w), cuts = S.openings.filter(o => o.host === w.id && o.op === 'open').map(o => [o.off, o.off + o.w]).sort((a, b) => a[0] - b[0]);
     const spans = []; let u0 = 0; cuts.forEach(([a, b]) => { if (a > u0) spans.push([u0, a]); u0 = Math.max(u0, b); }); if (wl > u0) spans.push([u0, wl]);
+    const J = endJoins(w); if (spans.length && spans[0][0] < 0.001) spans[0][0] = -cornerExt(J.s); if (spans.length && spans[spans.length - 1][1] > wl - 0.001) spans[spans.length - 1][1] = wl + cornerExt(J.e);
     spans.forEach(([a, b]) => { const piece = {...w, s: add(w.s, mul(wd0, a)), e: add(w.s, mul(wd0, b))};
       const p = el('polygon', {points: pts(wallPoly(piece)), class: 'wall' + (w.ext ? ' ext' : '') + (isWallSel(w.id) ? ' sel' : ''), 'data-wall': w.id}, g);
-      p.addEventListener('pointerdown', ev => startWallDrag(ev, w.id)); });
+      p.addEventListener('pointerdown', ev => startWallDrag(ev, w.id));
+      p.addEventListener('pointermove', ev => { if (!drag && !draft && !roomDraft && !placing) showDims(ev, wallInfo(w)); });
+      p.addEventListener('pointerleave', () => { if (!drag && !draft && !roomDraft) dims.hidden = true; }); });
   });
   // openings: gap + symbol
   S.openings.forEach(o => {
@@ -509,6 +556,18 @@ function drawPlan(){
     const isSel = sel && sel.kind === 'opening' && sel.id === o.id, cls = 'op-line' + (isSel ? ' sel' : ''), sw = (isSel ? 2.2 : 1.2) * pxm();
     if (o.kind === 'window'){
       for (const k of [-w.t / 2, 0, w.t / 2]) el('line', {x1: toSvg(add(a, mul(n, k)))[0], y1: toSvg(add(a, mul(n, k)))[1], x2: toSvg(add(b, mul(n, k)))[0], y2: toSvg(add(b, mul(n, k)))[1], class: cls, 'stroke-width': sw}, g);
+    } else if (doorType(o) && doorType(o) !== 'swing'){
+      const ty = doorType(o), side = swingSide(o, w), P = (u, v) => toSvg(add(add(w.s, mul(d, u)), mul(n, v))), ln = (u0, v0, u1, v1, extra) => { const [x1, y1] = P(u0, v0), [x2, y2] = P(u1, v1); el('line', Object.assign({x1, y1, x2, y2, class: cls, 'stroke-width': sw}, extra || {}), g); };
+      const A = o.off, B = o.off + o.w, dash = {'stroke-dasharray': `${4 * pxm()} ${3 * pxm()}`};
+      if (ty === 'cased') for (const k of [-w.t / 2, w.t / 2]) ln(A, k, B, k, dash);
+      else if (ty === 'double'){ for (const [hp, dir] of [[A, 1], [B, -1]]){ const r = o.w / 2; ln(hp, side * w.t / 2, hp, side * (w.t / 2 + r)); const arc = []; for (let k = 0; k <= 10; k++){ const th = k / 10 * Math.PI / 2; arc.push(P(hp + dir * r * Math.sin(th), side * (w.t / 2 + r * Math.cos(th))).join(',')); } el('polyline', {points: arc.join(' '), class: cls, fill: 'none', 'stroke-width': sw, ...dash}, g); } }
+      else if (ty === 'bifold'){ const q = o.w / 4, v0 = side * w.t / 2, v1 = side * (w.t / 2 + q * 0.9); ln(A, v0, A + q, v1); ln(A + q, v1, A + 2 * q, v0); ln(B, v0, B - q, v1); ln(B - q, v1, B - 2 * q, v0); }
+      else if (ty === 'slider'){ const ov = 2 * IN; ln(A, w.t / 6, A + o.w / 2 + ov, w.t / 6, {'stroke-width': 2 * sw}); ln(B - o.w / 2 - ov, -w.t / 6, B, -w.t / 6, {'stroke-width': 2 * sw}); ln(A, 0, B, 0, {'stroke-width': 0.6 * sw}); }
+      else if (ty === 'bypass'){ const ov = 1.5 * IN; ln(A, w.t / 6, A + o.w / 2 + ov, w.t / 6, {'stroke-width': 2 * sw}); ln(B - o.w / 2 - ov, -w.t / 6, B, -w.t / 6, {'stroke-width': 2 * sw}); }
+      else if (ty === 'pocket'){ const [pa, pb] = pocketSpan(o); ln(pa, w.t / 4, pb, w.t / 4, dash); ln(pa, -w.t / 4, pb, -w.t / 4, dash); ln(pa, -w.t / 4, pa, w.t / 4, dash); ln(slideDir(o) < 0 ? A : B, 0, slideDir(o) < 0 ? A + o.w * 0.35 : B - o.w * 0.35, 0, {'stroke-width': 2.4 * sw});
+        ln(slideDir(o) < 0 ? A : B, 0, slideDir(o) < 0 ? A - o.w * 0.65 : B + o.w * 0.65, 0, {'stroke-width': 2.4 * sw, ...dash}); }
+      else if (ty === 'barn'){ const v = side * (w.t / 2 + 1.5 * IN), sd = slideDir(o), u0 = sd < 0 ? A - o.w + 1 * IN : A - 1 * IN, u1 = sd < 0 ? B + 1 * IN : B + o.w - 1 * IN;
+        ln(u0, v, u1, v, {'stroke-width': 0.8 * sw}); ln(A - 1 * IN, v + side * 1 * IN, B + 1 * IN, v + side * 1 * IN, {'stroke-width': 2.4 * sw}); }
     } else if (isSwingDoor(o)){
       // swing door: leaf from the hinge jamb + quarter arc, on the side it swings to
       const side = swingSide(o, w), hp = o.hinge === 'e' ? b : a, op2 = o.hinge === 'e' ? a : b, tip = add(hp, mul(n, side * o.w));
@@ -543,6 +602,7 @@ function drawPlan(){
   if (draft){ el('line', {x1: toSvg(draft.a)[0], y1: toSvg(draft.a)[1], x2: toSvg(draft.b)[0], y2: toSvg(draft.b)[1], class: 'draft', 'stroke-width': 3 * pxm(), 'stroke-dasharray': `${6 * pxm()} ${4 * pxm()}`}, g); }
   if (drag && drag.type === 'box' && dragMoved){ const x = Math.min(drag.a[0], drag.b[0]), y = Math.max(drag.a[1], drag.b[1]); el('rect', {x, y: -y, width: Math.abs(drag.b[0] - drag.a[0]), height: Math.abs(drag.b[1] - drag.a[1]), class: 'boxsel'}, g); }
   if (snapMark){ const [x, y] = toSvg(snapMark); el('circle', {cx: x, cy: y, r: 4 * pxm(), class: 'snap'}, g); }
+  if (itemGuide && (placing || (drag && drag.type === 'item' && dragMoved))) drawGuide(g, itemGuide);
   drawLot(g, true);
   if (tool === 'lot') el('rect', {x: vb.x, y: -(vb.y + vb.h), width: vb.w, height: vb.h, fill: 'transparent', style: 'cursor:move'}, g);   // drag anywhere moves the lot
 }
@@ -560,10 +620,11 @@ function showPop(ev){
   if (sel.kind === 'wall'){
     const w = S.walls.find(x => x.id === sel.id); if (!w){ hidePop(); return; }
     const bi = bearingWalls().get(w.id);
-    t.textContent = `${w.name || 'Wall'} · ${ftin(wallFrame(w).L)}${w.ext ? ' · exterior' : ''}${bi && bi.why !== 'eave' ? (bi.why === 'joists' ? ' · bearing' : ' · may be bearing') : ''}`;
+    t.textContent = `${w.name || 'Wall'} · ${wallInfo(w)}${bi && bi.why !== 'eave' ? (bi.why === 'joists' ? ' · bearing' : ' · may be bearing') : ''}`;
     const at = sel.at || mul(add(w.s, w.e), 0.5);
     const roomsBoth = [1, -1].every(sg => rooms.some(r => r.st === w.st && inPoly(add(mul(add(w.s, w.e), 0.5), mul(wallFrame(w).n, sg * (w.t / 2 + 0.3))), r.poly)));
-    if (!w.ext || roomsBoth) btn('Remove wall', () => { commit({do: 'remove_wall', wall: w.id, label: `Removed ${w.name || 'wall'}`}); sel = null; hidePop(); }, 'danger');
+    if (!w.ext || roomsBoth || isNewWall(w)) btn('Remove wall', () => { commit({do: 'remove_wall', wall: w.id, label: `Removed ${w.name || 'wall'}`}); sel = null; hidePop(); }, 'danger');
+    specButtons([w]);
     btn('Remove part of wall', () => openUp(w, at));
     btn('Add door', () => addOpening(w, 'door', at));
     if (w.ext) btn('Add garage door', () => addOpening(w, 'garage', at));
@@ -575,21 +636,33 @@ function showPop(ev){
     if (!itemPop(t)) return;
   } else if (sel.kind === 'walls'){
     const ws = sel.ids.map(id => S.walls.find(x => x.id === id)).filter(Boolean); if (!ws.length){ hidePop(); return; }
-    const inner = ws.filter(w => !w.ext), total = ws.reduce((a, w) => a + wallFrame(w).L, 0);
+    const inner = ws.filter(w => !w.ext || isNewWall(w)), total = ws.reduce((a, w) => a + wallFrame(w).L, 0);
     t.textContent = `${ws.length} walls selected · ${ftin(total)} total` + (inner.length < ws.length ? ` · ${ws.length - inner.length} exterior` : '');
     if (inner.length) btn(inner.length === ws.length ? `Remove all ${inner.length}` : `Remove the ${inner.length} interior`, () => removeWalls(inner), 'danger');
+    specButtons(ws);
     btn('Clear selection', () => { sel = null; hidePop(); drawPlan(); highlight3D(); });
     const hint = document.createElement('div'); hint.className = 't'; hint.textContent = 'Drag any of them to move them together.'; pop.appendChild(hint);
   } else if (sel.kind === 'opening'){
     const o = S.openings.find(x => x.id === sel.id); if (!o){ hidePop(); return; }
-    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide`;
+    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide` + (doorType(o) && hostExt(o) ? ` · exterior, ${EXT_TYPES[extKey(o)].toLowerCase()}` : doorType(o) && doorType(o) !== 'swing' ? ` · ${DOOR_TYPES[doorType(o)].toLowerCase()}` : '');
     if (isSwingDoor(o)){ const w = S.walls.find(x => x.id === o.host), {d, n} = wallFrame(w), mid = add(w.s, mul(d, o.off + o.w / 2)), side = swingSide(o, w);
       const into = roomName(add(mid, mul(n, side * (w.t / 2 + 0.4))), w.st), other = roomName(add(mid, mul(n, -side * (w.t / 2 + 0.4))), w.st);
       t.textContent += ` · swings ${into === 'outside' ? 'outside' : 'into ' + into} · hinge ${o.hinge === 'e' ? 'right' : 'left'}`;
       btn(other === 'outside' ? 'Swing outside' : `Swing into ${other.length > 18 ? 'the other room' : other}`, () => { commit({do: 'set_opening', opening: o.id, swing: -side, label: `${o.name || 'Door'} now swings ${other === 'outside' ? 'outside' : 'into ' + other}`}); showPop(null); });
       btn('Flip hinge', () => { commit({do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e', label: `Flipped the hinge on ${o.name || 'the door'}`}); showPop(null); });
     }
-    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : [28, 30, 32, 36, 48, 72];
+    const dt = doorType(o);
+    if (dt && hostExt(o)){ const brk2 = () => { const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv); }; brk2();
+      const ek = extKey(o); Object.entries(EXT_TYPES).forEach(([k, lb]) => { if ((k === 'french' || k === 'slider') && o.w < 59 * IN) return; const b = btn(lb, () => setExtType(o, k)); if (ek === k) b.setAttribute('aria-pressed', 'true'); });
+      if (o.w < 59 * IN) { const nb = document.createElement('span'); nb.className = 'save'; nb.textContent = 'French / slider: 60"+'; pop.appendChild(nb); }
+      brk2(); }
+    else if (dt){ const brk2 = () => { const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv); }; brk2();
+      Object.entries(DOOR_TYPES).forEach(([k, lb]) => { const b = btn(lb, () => setDoorType(o, k)); if (dt === k) b.setAttribute('aria-pressed', 'true'); });
+      brk2();
+      if (dt === 'pocket' || dt === 'barn') btn(dt === 'pocket' ? 'Pocket other side ⇄' : 'Slide other way ⇄', () => { commit({do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e', label: `${o.name || 'Door'} slides the other way`}); showPop(null); });
+      if (dt === 'bifold' || dt === 'double' || dt === 'barn'){ const w = S.walls.find(x => x.id === o.host), side = swingSide(o, w);
+        btn(dt === 'barn' ? 'Track on other face' : 'Opens into other room', () => { commit({do: 'set_opening', opening: o.id, swing: -side, label: `${o.name || 'Door'} flipped to the other side`}); showPop(null); }); } }
+    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : dt && hostExt(o) ? (extKey(o) === 'french' || extKey(o) === 'slider' ? [60, 72, 96] : [30, 32, 36, 60, 72, 96]) : dt ? DOOR_SIZES[dt].concat(dt === 'swing' ? [48, 72] : []) : [18, 24, 28, 30, 32, 36, 48, 72];
     sizes.forEach(inch => { const b = btn(inch >= 96 ? `${inch / 12}'` : `${inch}"`, () => resizeOpening(o, inch * IN)); if (Math.abs(o.w - inch * IN) < 0.01) b.setAttribute('aria-pressed', 'true'); });
     btn('Width…', () => widthInput(o));
     btn('Rename', () => renameInput('opening', o.id, o.name || ''));
@@ -609,6 +682,7 @@ function showPop(ev){
     const vb2 = btn('Vaulted', () => setC('vault', null, 'vaulted ceiling')); if (r.ceil.mode === 'vault') vb2.setAttribute('aria-pressed', 'true');
     btn('Height…', () => ceilingInput(r));
     if (r.ceil.given) btn('As-built', () => setC('reset', null, 'ceiling back to as-built'));
+    btn('Angle a corner…', () => cornerPicker(r));
     setTimeout(() => inp.select(), 0);
   }
   pop.hidden = false;
@@ -626,22 +700,51 @@ function showPop(ev){
 }
 // which side a door swings to (+1 / -1 along the wall's normal) and which jamb it hangs on
 const swingSide = (o, w) => o.swing != null ? o.swing : (w.ext ? -1 : 1);
-const isSwingDoor = o => o.kind === 'door' && o.op !== 'overhead' && o.w < 1.25;
+const isSwingDoor = o => o.kind === 'door' && (!o.op || o.op === 'swing') && o.w < 1.25;
+/* door types: o.op. Pocket / barn slide to the o.hinge side ('s' = toward the wall's start, 'e' = toward its end);
+   bifold / double swing to swingSide(); bypass and cased take no floor */
+const DOOR_TYPES_ALL = {slider: 'Slider'};
+const DOOR_TYPES = {swing: 'Swing', double: 'Double (French)', pocket: 'Pocket', bifold: 'Bifold', bypass: 'Bypass slider', barn: 'Barn door', cased: 'Cased opening'};
+const DOOR_SIZES = {swing: [18, 24, 28, 30, 32, 36], double: [48, 60, 72], pocket: [24, 28, 30, 32, 36], bifold: [24, 30, 36, 48, 60, 72], bypass: [48, 60, 72, 96], barn: [30, 32, 36, 42, 48], cased: [30, 36, 48, 60, 72, 96]};
+const doorType = o => o.kind === 'door' && o.op !== 'overhead' && !/garage/i.test(o.name || '') ? (DOOR_TYPES[o.op] || DOOR_TYPES_ALL[o.op] ? o.op : 'swing') : null;
+const slideDir = o => o.hinge === 'e' ? 1 : -1;      // pocket / barn: which way along the wall it slides open
+function setDoorType(o, ty){
+  const w = S.walls.find(x => x.id === o.host), {L} = wallFrame(w), sizes = DOOR_SIZES[ty];
+  let wd = o.w; if (!sizes.some(i => Math.abs(i * IN - wd) < 0.01)) wd = (sizes.slice().reverse().find(i => i * IN <= o.w + 0.01) || sizes[0]) * IN;   // nearest standard size for that type
+  if (ty === 'double' && wd < 48 * IN) wd = 48 * IN; if (ty === 'bypass' && wd < 48 * IN) wd = 48 * IN;
+  let off = Math.max(0.05, Math.min(L - wd - 0.05, o.off + (o.w - wd) / 2));
+  const nm = /^(New door|Door|.*door|Cased opening|Opening)$/i.test(o.name || '') ? (ty === 'cased' ? 'Cased opening' : DOOR_TYPES[ty].replace(/ \(French\)/, ' door').replace(/^Swing$/, 'Door').replace(/^(Pocket|Bifold|Bypass slider)$/, '$1 door').replace('Bypass slider door', 'Bypass sliders')) : o.name;
+  commit({do: 'set_opening', opening: o.id, op: ty, w: wd, off, name: nm, label: `${o.name || 'Door'} → ${DOOR_TYPES[ty].toLowerCase()}`}); showPop(null);
+}
+/* exterior doors (a door in an outside wall): hinged with a glass lite, or a French pair / patio slider once the opening is 60"+ */
+const EXT_TYPES = {none: 'Solid', quarter: '¼ lite', half: '½ lite', tq: '¾ lite', full: 'Full lite', french: 'French pair', slider: 'Slider'};
+const extKey = o => o.op === 'slider' ? 'slider' : o.op === 'double' ? 'french' : (o.lite && EXT_TYPES[o.lite] ? o.lite : 'none');
+const hostExt = o => { const w = S.walls.find(x => x.id === o.host); return !!(w && w.ext); };
+function setExtType(o, k){
+  const w = S.walls.find(x => x.id === o.host), {L} = wallFrame(w), wide = k === 'french' || k === 'slider';
+  let wd = wide ? Math.max(o.w, 60 * IN) : (o.w > 42 * IN ? 36 * IN : o.w), off = Math.max(0.05, Math.min(L - wd - 0.05, o.off + (o.w - wd) / 2));
+  const nm = /^(New door|Door|Exterior door|.*lite door|French doors|Patio slider)$/i.test(o.name || '') ? (k === 'french' ? 'French doors' : k === 'slider' ? 'Patio slider' : k === 'none' ? 'Exterior door' : `${EXT_TYPES[k]} door`) : o.name;
+  commit({do: 'set_opening', opening: o.id, op: k === 'slider' ? 'slider' : k === 'french' ? 'double' : 'swing', lite: k === 'french' ? 'full' : k === 'slider' ? 'full' : k, w: wd, off, name: nm, label: `${o.name || 'Door'} → ${EXT_TYPES[k].toLowerCase()}`}); showPop(null);
+}
+// where a pocket door's pocket goes (along the wall, metres from the start); null if it doesn't fit
+function pocketSpan(o){ const a = slideDir(o) < 0 ? o.off - o.w : o.off + o.w, b = a + o.w; return [a, b]; }
 function roomName(p, st){ const r = rooms.filter(x => x.st === st && inPoly(p, x.poly)).sort((a, b) => a.area - b.area)[0]; return r ? r.name : 'outside'; }
 function addOpening(w, kind, at){
   const garage = kind === 'garage'; if (garage) kind = 'door';
-  const {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? 32 * IN : 36 * IN;
+  let {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? (w.ext ? 36 * IN : 32 * IN) : 36 * IN;
   let off = snapIn(dot(sub(at, w.s), d) - wd / 2); off = Math.max(0.1, Math.min(L - wd - 0.1, off));
   // stay inside the solid stretch you clicked (not over a removed section or another opening)
   const u = dot(sub(at, w.s), d), solid = []; let a0 = 0.1;
   S.openings.filter(q => q.host === w.id).sort((x, y) => x.off - y.off).forEach(q => { if (q.off - 0.1 > a0) solid.push([a0, q.off - 0.1]); a0 = Math.max(a0, q.off + q.w + 0.1); });
   if (L - 0.1 > a0) solid.push([a0, L - 0.1]);
+  // a door on a short stretch of wall: the widest standard door that fits, down to 18"
+  if (kind === 'door' && !garage && !solid.some(([x, y]) => y - x >= wd)){ const room = Math.max(0, ...solid.map(([x, y]) => y - x)); const fit = [30, 28, 24, 18].find(i => i * IN <= room + 1e-6); if (fit) wd = fit * IN; }
   const fits = solid.filter(([x, y]) => y - x >= wd).sort((p1, p2) => Math.max(0, p1[0] - u, u - p1[1]) - Math.max(0, p2[0] - u, u - p2[1]));
   if (fits.length){ const [x, y] = fits[0]; off = snapIn(Math.max(x, Math.min(y - wd, u - wd / 2))); if (off < x) off = x; if (off + wd > y) off = y - wd; }
   else if (!garage){ toast(`There isn't ${ftin(wd)} of solid wall left on ${w.name || 'that wall'} for a ${kind}.`); return; }
   if (L < wd + 0.2){ toast('That wall is too short for a ' + (garage ? 'garage door' : kind) + '.'); return; }
   const o = garage ? {id: uid('N-O'), host: w.id, kind: 'door', off, w: wd, h: 7 * FT, sill: 0, name: 'Garage door', op: 'overhead'}
-    : {id: uid('N-O'), host: w.id, kind, off, w: wd, h: kind === 'door' ? 80 * IN : 48 * IN, sill: kind === 'door' ? 0 : 36 * IN, name: kind === 'door' ? 'New door' : 'New window', op: kind === 'door' ? 'swing' : 'double-hung'};
+    : {id: uid('N-O'), host: w.id, kind, off, w: wd, h: kind === 'door' ? 80 * IN : 48 * IN, sill: kind === 'door' ? 0 : 36 * IN, name: kind === 'door' ? (w.ext ? 'Exterior door' : 'New door') : 'New window', op: kind === 'door' ? 'swing' : 'double-hung', ...(kind === 'door' && w.ext ? {lite: 'none'} : {})};
   if (garage && w.h < o.h + 8 * IN) o.h = Math.max(6.5 * FT, w.h - 10 * IN);     // leave room for the header
   commit({do: 'add_opening', opening: o, label: `Added ${ftin(o.w)} ${garage ? 'garage door' : kind} in ${w.name || 'wall'}`});
   sel = {kind: 'opening', id: o.id}; drawPlan(); showPop(null);
@@ -806,7 +909,7 @@ function startOpeningDrag(ev, id){
 }
 svg.addEventListener('pointerdown', ev => {
   hidePop();
-  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commit({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
+  if (placing){ if (ev.button > 0){ stopPlacing(); return; } shiftFree = ev.shiftKey; snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commitSynced({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
   if (tool === 'door' || tool === 'window'){ placeOpeningAt(screenToPlan(ev), ev); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (!roomDraft){ roomDraft = {a: p, b: p}; } else { roomDraft.b = roomPoint(screenToPlan(ev)); finishRoom(ev); } drawPlan(); return; }
   if (tool === 'wall'){ const p = snapPoint(screenToPlan(ev)); if (!draft){ draft = {a: p, b: p}; } else { finishDraft(ev); } drawPlan(); return; }
@@ -816,9 +919,9 @@ svg.addEventListener('pointerdown', ev => {
   drag = {type: 'pan', c0: [ev.clientX, ev.clientY], vb0: {...vb}}; dragMoved = false;
 });
 svg.addEventListener('pointermove', ev => {
-  if (placing){ snapItem(placing, screenToPlan(ev)); drawPlan(); return; }
+  if (placing){ shiftFree = ev.shiftKey; snapItem(placing, screenToPlan(ev)); drawPlan(); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (roomDraft){ roomDraft.b = p; showDims(ev, `${ftin(Math.abs(p[0] - roomDraft.a[0]))} × ${ftin(Math.abs(p[1] - roomDraft.a[1]))}`); } drawPlan(); return; }
-  if (tool === 'wall' && draft){ let p = snapPoint(screenToPlan(ev)); if (!ev.shiftKey) p = ortho(draft.a, p); draft.b = p; drawPlan(); showDims(ev, ftin(dist(draft.a, draft.b))); return; }
+  if (tool === 'wall' && draft){ let p = snapPoint(screenToPlan(ev)); if (!ev.shiftKey) p = ortho(draft.a, p); draft.b = p; drawPlan(); showDims(ev, ftin(dist(draft.a, draft.b)) + (chain && chain.ids.length >= 2 ? ' · click the first corner to close' : ' · click again to stop')); return; }
   if (tool === 'wall'){ snapPoint(screenToPlan(ev)); drawPlan(); return; }
   if (!drag) return;
   if (drag.type === 'pan'){ const r = svg.getBoundingClientRect(), k = vb.w / r.width; vb.x = drag.vb0.x - (ev.clientX - drag.c0[0]) * k; vb.y = drag.vb0.y + (ev.clientY - drag.c0[1]) * k; drawPlan(); dragMoved = true; return; }
@@ -868,6 +971,7 @@ svg.addEventListener('pointermove', ev => {
     drawPlan(); build3D(); showDims(ev, `${ftin(o.off)} from the end`);
   }
 });
+svg.addEventListener('dblclick', () => { if (tool === 'wall'){ endChain(); drawPlan(); } });
 svg.addEventListener('pointerup', ev => {
   dims.hidden = true;
   if (!drag) return;
@@ -949,13 +1053,166 @@ function wallKind(st, a, b){
   if (outside){ const ex = S.walls.filter(w => w.st === st && w.ext); return {ext: true, t: pick(ex, 't', 0.1524), h: pick(ex, 'h', 2.44), b: pick(ex, 'b', 0)}; }
   const inn = S.walls.filter(w => w.st === st && !w.ext); return {ext: false, t: 4.5 * IN, h: pick(inn, 'h', 2.44), b: pick(inn, 'b', 0)};
 }
+/* ---------------- wall settings, corners, framing ---------------- */
+const STUD_D = {4: 3.5 * IN, 6: 5.5 * IN};
+const studOf = w => w.stud || (w.t >= 5.4 * IN ? 6 : 4);
+const ocOf = w => w.oc || 16;
+const wallT = stud => STUD_D[stud] + 1 * IN;                         // studs + 1/2" drywall + 1/2" drywall or sheathing (siding not counted)
+const isNewWall = w => !PLAN.walls.some(b => b.id === w.id);
+// what Draw wall makes; null = match the building (as-built houses). A blank page starts on a 2x6 outside wall.
+let drawSpec = PLAN.walls.length ? {ext: null, stud: null, oc: 16} : {ext: true, stud: 6, oc: 16};
+try { const k = JSON.parse(localStorage.getItem('rebuilt-wallspec-' + BASE_ID) || 'null'); if (k) drawSpec = {...drawSpec, ...k}; } catch (e) {}
+function syncWallOpts(){
+  document.querySelectorAll('[data-wext]').forEach(b => b.setAttribute('aria-pressed', drawSpec.ext != null && String(+drawSpec.ext) === b.dataset.wext));
+  document.querySelectorAll('[data-wstud]').forEach(b => b.setAttribute('aria-pressed', drawSpec.stud != null && String(drawSpec.stud) === b.dataset.wstud));
+  $('#wOc').value = String(drawSpec.oc || 16);
+  try { localStorage.setItem('rebuilt-wallspec-' + BASE_ID, JSON.stringify(drawSpec)); } catch (e) {}
+}
+document.querySelectorAll('[data-wext]').forEach(b => b.onclick = () => { drawSpec.ext = b.dataset.wext === '1'; if (drawSpec.stud == null) drawSpec.stud = drawSpec.ext ? 6 : 4; syncWallOpts(); });
+document.querySelectorAll('[data-wstud]').forEach(b => b.onclick = () => { drawSpec.stud = +b.dataset.wstud; syncWallOpts(); });
+$('#wOc').onchange = () => { drawSpec.oc = +$('#wOc').value; syncWallOpts(); };
+syncWallOpts();
+
+// walls meeting at an end: corners (end to end, not in line) and tees (end on the side of another wall)
+function endJoins(w){
+  const out = {s: [], e: []}, {d} = wallFrame(w);
+  S.walls.forEach(w2 => { if (w2 === w || w2.st !== w.st) return;
+    for (const end of ['s', 'e']){
+      for (const e2 of ['s', 'e']) if (dist(w[end], w2[e2]) < TOL){ const v = unit(sub(e2 === 's' ? w2.e : w2.s, w2[e2])); if (Math.abs(dot(v, d)) < 0.95) out[end].push({w2, v}); }
+      if (!out[end].some(j => j.w2 === w2)){ const pr = projOnSeg(w[end], w2.s, w2.e); if (pr.d < TOL && pr.t > 0.001 && pr.t < 0.999 && Math.abs(dot(wallFrame(w2).d, d)) < 0.95) out[end].push({w2, tee: true}); }
+    } });
+  return out;
+}
+const cornerExt = list => Math.max(0, ...list.filter(j => !j.tee).map(j => j.w2.t / 2));   // run on to the other wall's outside face
+// which side of the wall is inside: +1 = the left (n) side
+function insideSign(w){
+  const {n} = wallFrame(w), mid = mul(add(w.s, w.e), 0.5), o = w.t / 2 + 0.3;
+  const inRoom = sg => rooms.some(r => r.st === w.st && inPoly(add(mid, mul(n, sg * o)), r.poly));
+  if (inRoom(1) !== inRoom(-1)) return inRoom(1) ? 1 : -1;
+  const ws = S.walls.filter(x => x.st === w.st && x.ext), c = ws.length ? mul(ws.reduce((a, x) => add(a, add(x.s, x.e)), [0, 0]), 1 / (2 * ws.length)) : mid;
+  return dot(sub(c, mid), n) >= 0 ? 1 : -1;
+}
+// length of each face: outside / inside for an outside wall, the clear length between walls for an inside wall
+function faceLengths(w){
+  const {n, L} = wallFrame(w), sg = insideSign(w), J = endJoins(w); let out = L, inn = L;
+  for (const end of ['s', 'e']){
+    const j = J[end].find(q => !q.tee), tj = J[end].find(q => q.tee);
+    if (j){ const k = j.w2.t / 2; if (dot(j.v, mul(n, sg)) > 0){ out += k; inn -= k; } else { out -= k; inn += k; } }
+    else if (tj){ out -= tj.w2.t / 2; inn -= tj.w2.t / 2; }
+  }
+  return {out, inn};
+}
+function ftinHalf(m){ const tot = Math.round(m / IN * 2) / 2, f = Math.floor(tot / 12), i = tot - f * 12, wh = Math.floor(i); return f ? `${f}'-${wh}${i > wh ? '½' : ''}"` : `${wh || (i > wh ? '' : 0)}${i > wh ? '½' : ''}"`; }   // to the half inch
+function wallInfo(w){
+  const f = faceLengths(w), sp = `2x${studOf(w)} @ ${ocOf(w)}" o.c.`;
+  return w.ext ? `Outside ${ftinHalf(f.out)} · Inside ${ftinHalf(f.inn)} · ${sp}` : `Inside wall ${ftinHalf(Math.min(f.out, f.inn))} between walls · ${sp}`;
+}
+// where two lines meet (each {p, d})
+function lineX(l1, l2){ const den = l1.d[0] * l2.d[1] - l1.d[1] * l2.d[0]; if (Math.abs(den) < 1e-6) return l2.p.slice(); const t = ((l2.p[0] - l1.p[0]) * l2.d[1] - (l2.p[1] - l1.p[1]) * l2.d[0]) / den; return add(l1.p, mul(l1.d, t)); }
+
+// change walls to outside / inside, 2x4 / 2x6, stud spacing. An outside wall keeps its outside face where it is.
+function setSpec(ws, patch){
+  ws = ws.filter(Boolean); if (!ws.length) return;
+  const op = {do: 'set_wall_spec', walls: ws.map(w => w.id), ...patch}; if (patch.stud) op.t = wallT(patch.stud); if (patch.ext != null) op.extSet = true;   // your choice sticks
+  const cur = {}, offs = {}, get = w => cur[w.id] || (cur[w.id] = {s: w.s.slice(), e: w.e.slice()});
+  ws.forEach(w => {
+    const ext = patch.ext != null ? patch.ext : w.ext, nt = patch.stud ? wallT(patch.stud) : w.t, dt = nt - w.t;
+    if (!ext || Math.abs(dt) < 0.001) return;
+    const {d, n} = wallFrame(w), sh = mul(n, insideSign(w) * dt / 2), me = get(w), J = endJoins(w);
+    const line2 = {p: add(me.s, sh), d};
+    for (const end of ['s', 'e']){
+      const j = J[end].find(q => !q.tee), old = w[end];
+      if (!j){ me[end] = add(me[end], sh); continue; }
+      const w2 = j.w2, e2 = dist(w2.s, old) < TOL ? 's' : 'e', o2 = get(w2), np = lineX(line2, {p: o2[e2], d: wallFrame(w2).d});
+      if (e2 === 's') S.openings.filter(o => o.host === w2.id).forEach(o => { offs[o.id] = (offs[o.id] != null ? offs[o.id] : o.off) - dot(sub(np, o2.s), wallFrame(w2).d); });
+      o2[e2] = np; me[end] = np.slice();
+    }
+  });
+  const parts = Object.keys(cur).length ? [{do: 'set_walls', walls: cur, openings: offs}, op] : [op];
+  const what = [patch.ext != null ? (patch.ext ? 'outside' : 'inside') : '', patch.stud ? `2x${patch.stud}` : '', patch.oc ? `${patch.oc}" o.c.` : ''].filter(Boolean).join(', ');
+  commit({do: 'batch', ops: parts, label: `Made ${ws.length === 1 ? (ws[0].name || 'wall') : ws.length + ' walls'} ${what}`});
+  const x0 = pop.style.left, y0 = pop.style.top; showPop(null); pop.style.left = x0; pop.style.top = y0;   // the popup stays where it was
+}
+function specButtons(ws){
+  const allExt = ws.every(w => w.ext), all6 = ws.every(w => studOf(w) === 6), all16 = ws.every(w => ocOf(w) === 16);
+  btn(allExt ? 'Make interior' : 'Make exterior', () => setSpec(ws, {ext: !allExt}));
+  btn(all6 ? 'Make 2x4' : 'Make 2x6', () => setSpec(ws, {stud: all6 ? 4 : 6}));
+  btn(all16 ? 'Studs 24" o.c.' : 'Studs 16" o.c.', () => setSpec(ws, {oc: all16 ? 24 : 16}));
+}
+
+let chain = null;                       // walls drawn one after another: {start, st, ids}
+function endChain(){ chain = null; draft = null; snapMark = null; }
 function finishDraft(ev){
   const L = dist(draft.a, draft.b);
-  if (L < 0.3){ draft = null; return; }
-  const st = storeyAt(draft.a), k = wallKind(st, draft.a, draft.b);
-  const w = {id: uid('N-W'), st, s: draft.a, e: draft.b, ...k, name: k.ext ? 'New outside wall' : 'New wall'};
-  draft = null; snapMark = null;
-  commit({do: 'add_wall', wall: w, label: `Added a ${ftin(L)} ${k.ext ? 'outside ' : ''}wall`});
+  if (L < 0.3){ endChain(); return; }                                    // click the same point again to stop
+  const st = chain ? chain.st : storeyAt(draft.a), k = wallKind(st, draft.a, draft.b);
+  const ext = drawSpec.ext != null ? drawSpec.ext : k.ext, stud = drawSpec.stud || studOf(k), oc = drawSpec.oc || 16;
+  const w = {id: uid('N-W'), st, s: draft.a.slice(), e: draft.b.slice(), h: k.h, b: k.b, ext, t: drawSpec.stud ? wallT(stud) : k.t, stud, oc, name: ext ? 'Outside wall' : 'Wall'};
+  if (!chain) chain = {start: draft.a.slice(), st, ids: []};
+  chain.ids.push(w.id);
+  const end = draft.b.slice(), closed = chain.ids.length >= 3 && dist(end, chain.start) < TOL;
+  draft = closed ? null : {a: end, b: end.slice()};
+  commit({do: 'add_wall', wall: w, label: `Added a ${ftin(L)} ${ext ? 'outside' : 'inside'} 2x${stud} wall`});
+  if (closed){ const c = chain; endChain(); if (ext) faceOutLoop(c); }
+}
+// a closed ring of outside walls: what you drew is the OUTSIDE face, so the wall centre lines move in by half a wall
+function faceOutLoop(c){
+  const ws = c.ids.map(id => S.walls.find(w => w.id === id)); if (ws.some(w => !w) || !ws.every(w => w.ext)) return;
+  const A = polyArea(ws.map(w => w.s)), sg = A > 0 ? 1 : -1, n = ws.length;
+  const lines = ws.map(w => { const {d, n: nn} = wallFrame(w); return {p: add(w.s, mul(nn, sg * w.t / 2)), d}; });
+  const map = {}; ws.forEach((w, i) => { map[w.id] = {s: lineX(lines[(i - 1 + n) % n], lines[i]), e: lineX(lines[i], lines[(i + 1) % n])}; });
+  commit({do: 'set_walls', walls: map, openings: {}, label: 'Outside walls closed: the lines you drew are the outside face'});
+  toast('Closed. The lines you drew are the outside of the walls.');
+}
+
+// stud layout of one wall (lengths along the wall from its start): plates, studs, openings
+function frameLayout(w){
+  const t = 1.5 * IN, sd = STUD_D[studOf(w)], oc = ocOf(w) * IN, {L} = wallFrame(w), J = endJoins(w), {d} = wallFrame(w);
+  const runs = Math.abs(d[0]) >= Math.abs(d[1]);                     // at a corner the east-west wall runs through, the other one butts into it
+  const endU = list => { const j = list.find(q => !q.tee); if (j){ const k = STUD_D[studOf(j.w2)] / 2; return runs ? k : -k; } const tj = list.find(q => q.tee); return tj ? -STUD_D[studOf(tj.w2)] / 2 : 0; };
+  const u0 = -endU(J.s), u1 = L + endU(J.e), elev = EL(w.st), z0 = elev + w.b, z1 = z0 + w.h;
+  const ops2 = S.openings.filter(o => o.host === w.id && o.op !== 'open').map(o => { let a0 = o.off, b0 = o.off + o.w; if (o.op === 'pocket'){ const [pa, pb] = pocketSpan(o); a0 = Math.min(a0, pa); b0 = Math.max(b0, pb); }
+    return {o, a: Math.max(u0 + 2 * t, a0), b: Math.min(u1 - 2 * t, b0), z0: elev + o.sill, z1: elev + o.sill + o.h}; });
+  const hd = wd => wd <= 4 * FT ? 7.25 * IN : wd <= 6 * FT ? 9.25 * IN : 11.25 * IN;   // header depth, first pass
+  const busy = c => ops2.some(q => c > q.a - 2.2 * t && c < q.b + 2.2 * t);
+  const studs = [u0 + t / 2, u0 + 1.5 * t, u1 - t / 2, u1 - 1.5 * t];   // two studs at each end (corner / tee)
+  for (let c = u0 + oc; c < u1 - 2 * t; c += oc) if (!busy(c) && c > u0 + 2 * t) studs.push(c);
+  return {t, sd, oc, u0, u1, z0, z1, ops: ops2, hd, studs};
+}
+// a bump-out is a short 2x4 wall in front of the wall: plates top and bottom, studs at 16" and at the ends, drywall over
+function bumpFraming3D(it, top, grp){
+  const t = 1.5 * IN, {a, f} = itemFrame(it), b = backPt(it), z0 = EL(it.st) + it.z, depth = Math.min(3.5 * IN, it.bump), hw = it.w / 2;
+  const bx = (u0, u1, v0, v1, za, zb, mat) => { const L = u1 - u0, D = v1 - v0; if (L < 0.003 || D < 0.003 || zb - za < 0.003) return;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(L, zb - za, D), mat), c = add(add(b, mul(a, (u0 + u1) / 2)), mul(f, -(v0 + v1) / 2));
+    m.position.copy(P3(c[0], c[1], (za + zb) / 2)); m.rotation.y = it.rot * Math.PI / 180; grp.add(m); };
+  bx(-hw, hw, 0, it.bump, z0, z0 + t, FM.plate); bx(-hw, hw, 0, it.bump, z0 + top - t, z0 + top, FM.plate);
+  const xs = [-hw + t / 2, hw - t / 2]; for (let x = -hw + 16 * IN; x < hw - t; x += 16 * IN) xs.push(x);
+  xs.forEach(x => bx(x - t / 2, x + t / 2, 0, depth, z0 + t, z0 + top - t, FM.wood));
+}
+function buildWallFraming3D(grp){
+  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+    const F = frameLayout(w), {t, sd, u0, u1, z0, z1} = F, wf = {...w, t: sd};
+    const fb = (a, b, za, zb, mat) => { const m = boxAlong(wf, a, b, za, zb, mat || FM.wood); if (m){ m.castShadow = false; grp.add(m); } };
+    let u = u0; F.ops.filter(q => q.z0 < z0 + 0.05).sort((x, y) => x.a - y.a).forEach(q => { fb(u, q.a, z0, z0 + t, FM.plate); u = q.b; }); fb(u, u1, z0, z0 + t, FM.plate);   // bottom plate, cut at doors
+    fb(u0, u1, z1 - 2 * t, z1 - t, FM.plate); fb(u0, u1, z1 - t, z1, FM.plate);                     // double top plate
+    F.studs.forEach(c => fb(c - t / 2, c + t / 2, z0 + t, z1 - 2 * t));
+    F.ops.forEach(q => {
+      const hd = F.hd(q.b - q.a), hTop = Math.min(z1 - 2 * t, q.z1 + hd);
+      fb(q.a - 2 * t, q.a - t, z0 + t, z1 - 2 * t); fb(q.b + t, q.b + 2 * t, z0 + t, z1 - 2 * t);    // king studs
+      fb(q.a - t, q.a, z0 + t, hTop - hd); fb(q.b, q.b + t, z0 + t, hTop - hd);                      // jack studs
+      fb(q.a - t, q.b + t, hTop - hd, hTop, FM.header);                                              // header
+      const lay = []; for (let c = u0 + F.oc; c < u1; c += F.oc) if (c > q.a + t / 2 && c < q.b - t / 2) lay.push(c);
+      lay.forEach(c => { if (z1 - 2 * t - hTop > IN) fb(c - t / 2, c + t / 2, hTop, z1 - 2 * t); });  // cripples above
+      if (q.z0 > z0 + 0.05){ fb(q.a, q.b, q.z0 - t, q.z0, FM.plate); lay.forEach(c => fb(c - t / 2, c + t / 2, z0 + t, q.z0 - t)); }   // window sill + cripples below
+    });
+  });
+}
+function drawStudsPlan(g){
+  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+    const F = frameLayout(w), {d} = wallFrame(w), at = u => add(w.s, mul(d, u));
+    const cs = F.studs.concat(...F.ops.map(q => [q.a - 1.5 * F.t, q.a - F.t / 2, q.b + F.t / 2, q.b + 1.5 * F.t]));
+    cs.forEach(c => el('polygon', {points: pts(wallPoly({...w, s: at(c - F.t / 2), e: at(c + F.t / 2), t: F.sd})), class: 'stud'}, g));
+  });
 }
 
 /* ---------------- add a room: drag a rectangle ---------------- */
@@ -1029,6 +1286,8 @@ const M = {
   sel: new THREE.MeshStandardMaterial({color: '#D9732F', roughness: .6}), floor: new THREE.MeshStandardMaterial({color: '#C9A77A', roughness: .7}),
   floorNew: new THREE.MeshStandardMaterial({color: '#D8B88A', roughness: .7}), glass: new THREE.MeshStandardMaterial({color: '#BFD9E6', roughness: .1, transparent: true, opacity: .35}),
   comp: new THREE.MeshStandardMaterial({color: '#FAFAF7', roughness: .5}),
+  ghost: new THREE.MeshStandardMaterial({color: '#E4E1D8', roughness: .9, transparent: true, opacity: .12, depthWrite: false}),
+  selGhost: new THREE.MeshStandardMaterial({color: '#D9732F', roughness: .6, transparent: true, opacity: .3, depthWrite: false}),
 };
 let group = new THREE.Group(); scene.add(group);
 const wallMeshes = {};
@@ -1046,7 +1305,8 @@ function build3D(){
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const elev = EL(w.st), {L} = wallFrame(w), z0 = elev + w.b, z1 = z0 + w.h, mat = w.ext ? M.ext : M.wall;
     const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
-    const parts = []; let u = 0;
+    const J = endJoins(w), xs = cornerExt(J.s), xe = cornerExt(J.e);
+    const parts = []; let u = -xs;
     ops2.forEach(o => {
       const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = elev + o.sill, oz1 = oz0 + o.h;
       parts.push(boxAlong(w, u, a, z0, z1, mat));
@@ -1055,7 +1315,7 @@ function build3D(){
       if (o.kind === 'window'){ const gl = boxAlong({...w, t: 0.01}, a, b, oz0, oz1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); } }
       u = Math.max(u, b);
     });
-    parts.push(boxAlong(w, u, L, z0, z1, mat));
+    parts.push(boxAlong(w, u, L + xe, z0, z1, mat));
     const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { p.userData.wall = w.id; wg.add(p); });
     wg.userData.wall = w.id; wallMeshes[w.id] = wg; group.add(wg);
   });
@@ -1177,7 +1437,7 @@ function buildRoof3D(grp){
 function highlight3D(){
   for (const [id, g] of Object.entries(wallMeshes)){
     const on = isWallSel(id), w = S.walls.find(x => x.id === id);
-    g.children.forEach(m => { if (m.material !== M.glass) m.material = on ? M.sel : (w && w.ext ? M.ext : M.wall); });
+    g.children.forEach(m => { if (m.material !== M.glass) m.material = showFraming ? (on ? M.selGhost : M.ghost) : on ? M.sel : (w && w.ext ? M.ext : M.wall); m.castShadow = !showFraming; });
   }
 }
 let camSet = false;
@@ -1186,8 +1446,9 @@ function resize3(){
   R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
   if (!camSet){
     const ws = S.walls.filter(w => SHOW.has(w.st)), xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+    const blank = !xs.length; if (blank){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page: frame a 12 m x 9 m window until the first wall is drawn
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = true;
+    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = !blank;
   }
 }
 // pick + drag walls in 3D
@@ -1248,32 +1509,307 @@ const STD = [9, 12, 15, 18, 21, 24, 27, 30, 33, 36];
 const CAT = {
   base:    {g: 'Kitchen', label: 'Base cabinet', w: 30, d: 24, h: 36, z: 0, wall: true, widths: STD, cab: 'base'},
   sink:    {g: 'Kitchen', label: 'Sink base', w: 36, d: 24, h: 36, z: 0, wall: true, widths: [30, 33, 36], cab: 'base'},
+  trash:   {g: 'Kitchen', label: 'Trash pull-out', w: 18, d: 24, h: 36, z: 0, wall: true, widths: [15, 18, 21, 24], cab: 'base'},
+  corner:  {g: 'Kitchen', label: 'Corner base', w: 36, d: 36, h: 36, z: 0, wall: true, widths: [], cab: 'base', style: 'lazy'},
+  micro:   {g: 'Kitchen', label: 'Microwave + cabinet', w: 30, d: 15, h: 32, z: 58, wall: true, widths: [30]},
+  hood:    {g: 'Kitchen', label: 'Vent hood', w: 30, d: 20, h: 30, z: 66, wall: true, widths: [30, 36, 42, 48]},
   upper:   {g: 'Kitchen', label: 'Upper cabinet', w: 30, d: 12, h: 36, z: 54, wall: true, widths: STD, cab: 'wall'},
   tall:    {g: 'Kitchen', label: 'Pantry cabinet', w: 24, d: 24, h: 84, z: 0, wall: true, widths: [18, 24, 30, 36], cab: 'tall'},
   island:  {g: 'Kitchen', label: 'Island', w: 72, d: 36, h: 36, z: 0, wall: false, widths: [48, 60, 72, 84, 96], cab: 'island'},
   range:   {g: 'Kitchen', label: 'Range', w: 30, d: 26, h: 36, z: 0, wall: true, widths: [30, 36], cab: 'range'},
-  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 30, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
+  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 33, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
   dw:      {g: 'Kitchen', label: 'Dishwasher', w: 24, d: 24, h: 34.5, z: 0, wall: true, widths: [18, 24]},
+  linen:   {g: 'Bath', label: 'Linen cabinet', w: 18, d: 21, h: 84, z: 0, wall: true, widths: [12, 15, 18, 24, 30, 36], cab: 'tall', as: 'tall', style: 'linen'},
   vanity:  {g: 'Bath', label: 'Vanity', w: 36, d: 21, h: 34.5, z: 0, wall: true, widths: [24, 30, 36, 48, 60, 72], cab: 'vanity'},
   toilet:  {g: 'Bath', label: 'Toilet', w: 20, d: 28, h: 30, z: 0, wall: true},
-  tub:     {g: 'Bath', label: 'Tub', w: 60, d: 30, h: 20, z: 0, wall: true, widths: [60, 66, 72]},
-  shower:  {g: 'Bath', label: 'Shower', w: 48, d: 36, h: 4, z: 0, wall: true, widths: [36, 48, 60]},
+  tub:     {g: 'Bath', label: 'Tub', w: 60, d: 30, h: 20, z: 0, wall: true, style: 'alcove'},
+  shower:  {g: 'Bath', label: 'Shower', w: 60, d: 32, h: 4, z: 0, wall: true, style: 'rect'},
   washer:  {g: 'Laundry', label: 'Washer', w: 27, d: 30, h: 38, z: 0, wall: true},
   dryer:   {g: 'Laundry', label: 'Dryer', w: 27, d: 30, h: 38, z: 0, wall: true},
   king:    {g: 'Bedroom', label: 'King bed', w: 76, d: 80, h: 24, z: 0, wall: true},
   queen:   {g: 'Bedroom', label: 'Queen bed', w: 60, d: 80, h: 24, z: 0, wall: true},
   full:    {g: 'Bedroom', label: 'Full bed', w: 54, d: 75, h: 24, z: 0, wall: true},
   twin:    {g: 'Bedroom', label: 'Twin bed', w: 39, d: 75, h: 24, z: 0, wall: true},
-  night:   {g: 'Bedroom', label: 'Nightstand', w: 22, d: 16, h: 26, z: 0, wall: true},
-  dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true},
-  sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 36, h: 34, z: 0, wall: true},
-  table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false},
+  night:   {g: 'Bedroom', label: 'Nightstand', w: 22, d: 16, h: 26, z: 0, wall: true, style: 'std'},
+  dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true, style: 'low'},
+  sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 38, h: 34, z: 0, wall: true, style: 'sofa'},
+  chair:   {g: 'Living', label: 'Club chair', w: 33, d: 36, h: 32, z: 0, wall: false, style: 'club'},
+  coffee:  {g: 'Living', label: 'Coffee table', w: 48, d: 24, h: 18, z: 0, wall: false, style: 'rect'},
+  table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false, style: 'rect'},
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
+  panel:   {g: null, label: 'Fridge end panel', w: 1.5, d: 33, h: 90, z: 0, wall: true},
 };
 const isUpper = it => it.z > 1.0;
+/* furniture configurations and sizes (inches): [w, d] or, for an L sectional / chaise, [w, d, return width] (d = full depth on
+   the long side; the seat is 38" deep along the back) */
+const FURN = {
+  sofa: {sofa: {label: 'Sofa', h: 34, sizes: [[72, 38], [84, 38], [90, 38], [96, 40]]}, love: {label: 'Loveseat', h: 34, sizes: [[56, 36], [60, 38], [64, 38]]},
+         sect: {label: 'L sectional', h: 34, sizes: [[96, 84, 38], [108, 90, 38], [120, 96, 38], [132, 108, 40]]}, chaise: {label: 'Sofa + chaise', h: 34, sizes: [[90, 64, 34], [100, 65, 36], [110, 68, 36]]},
+         sleeper: {label: 'Sleeper sofa', h: 34, sizes: [[78, 38], [88, 40]]}},
+  chair: {club: {label: 'Club chair', h: 32, sizes: [[30, 34], [33, 36], [36, 38]]}, accent: {label: 'Accent chair', h: 32, sizes: [[26, 30], [28, 32], [30, 32]]},
+          recliner: {label: 'Recliner', h: 40, sizes: [[34, 38], [38, 40]]}, swivel: {label: 'Swivel chair', h: 32, sizes: [[32, 34], [34, 36]]}},
+  coffee: {rect: {label: 'Rectangle', h: 18, sizes: [[42, 22], [48, 24], [54, 28], [60, 30]]}, square: {label: 'Square', h: 18, sizes: [[30, 30], [36, 36], [42, 42]]},
+           round: {label: 'Round', h: 18, sizes: [[30, 30], [36, 36], [42, 42]]}, oval: {label: 'Oval', h: 18, sizes: [[48, 28], [54, 30]]}},
+  dresser: {low: {label: 'Dresser', h: 32, sizes: [[36, 18], [48, 18], [60, 18], [66, 20], [72, 20]]}, tall: {label: 'Tall chest', h: 50, sizes: [[32, 18], [36, 20], [40, 20]]},
+            media: {label: 'Media console', h: 24, sizes: [[60, 18], [72, 18], [84, 20]]}},
+  shower: {rect: {label: 'Alcove', h: 4, sizes: [[48, 32], [48, 36], [54, 30], [60, 30], [60, 32], [60, 36], [60, 42]]}, square: {label: 'Square', h: 4, sizes: [[32, 32], [36, 36], [42, 42], [48, 48]]},
+           neo: {label: 'Neo-angle', h: 4, sizes: [[36, 36], [38, 38], [42, 42]]}, tile: {label: 'Tiled (curbless)', h: 1, sizes: [[60, 36], [60, 42], [72, 42]]}},
+  tub: {alcove: {label: 'Alcove tub', h: 20, sizes: [[60, 30], [60, 32], [66, 32], [72, 36]]}, free: {label: 'Freestanding', h: 22, sizes: [[59, 30], [67, 32]]}, dropin: {label: 'Drop-in', h: 20, sizes: [[60, 32], [72, 36]]}},
+  night: {std: {label: 'Nightstand', h: 26, sizes: [[18, 16], [22, 16], [24, 18], [28, 18]]}, chest: {label: '3-drawer chest', h: 28, sizes: [[24, 18], [30, 18]]}},
+};
+const furnStyle = it => FURN[it.cat] ? (FURN[it.cat][it.style] ? it.style : Object.keys(FURN[it.cat])[0]) : null;
+const isL = it => it.cat === 'sofa' && (it.style === 'sect' || it.style === 'chaise') && it.retW;
+const isRoundish = it => (it.cat === 'table' || it.cat === 'coffee') && (it.style === 'round' || it.style === 'oval');
+function setFurn(it, style, size){
+  const F = FURN[it.cat][style], [w, d, rw] = size, c = CAT[it.cat], {f} = itemFrame(it);
+  const lb = it.cat === 'coffee' ? `${F.label} coffee table` : it.cat === 'shower' ? (style === 'tile' ? 'Tiled shower (curbless)' : `${F.label} shower`) : F.label;
+  const nm = (it.cat === 'shower' || it.cat === 'tub') ? `${lb} ${w}x${d}` : `${lb} ${w}"` + (it.cat === 'coffee' && (style === 'round' || style === 'square') ? '' : F.sizes[0].length > 2 || it.cat === 'coffee' || it.cat === 'dresser' ? ` x ${d}"` : '');
+  const keep = new RegExp('^(' + Object.values(FURN[it.cat]).map(x => x.label.replace(/[+]/g, '\\+')).join('|') + '|' + c.label + ')').test(it.name || '') || /coffee table|shower|tub/i.test(it.name || '');
+  // things against a wall keep their back on the wall
+  const at = c.wall ? add(it.at, mul(f, (d * IN - it.d) / 2)) : it.at;
+  commit({do: 'set_item', item: it.id, style, w: w * IN, d: d * IN, h: F.h * IN, at, retW: rw ? rw * IN : 0, name: keep ? nm : it.name, label: `${it.name} → ${nm}`}); showPop(null);
+}
+function furnSizeInput(it){
+  const st = furnStyle(it), F = FURN[it.cat][st], L3 = F.sizes[0].length > 2;
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; t.textContent = L3 ? 'Inches: long side x depth x return width (e.g. 112 x 90 x 38)' : 'Inches: wide x deep (e.g. 80 x 38)'; pop.appendChild(t);
+  const inp = document.createElement('input'); inp.value = L3 ? `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)} x ${Math.round((it.retW || 38 * IN) / IN)}` : `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)}`; inp.setAttribute('aria-label', 'Size'); pop.appendChild(inp);
+  const go = () => { const n = (inp.value.match(/\d+(\.\d+)?/g) || []).map(Number).filter(x => x >= 8 && x <= 200); if (n.length < (L3 ? 3 : 1)){ toast(L3 ? 'Type three sizes, like 112 x 90 x 38' : 'Type a size, like 80 x 38'); return; }
+    setFurn(it, st, L3 ? n.slice(0, 3) : [n[0], n[1] || Math.round(it.d / IN)]); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') hidePop(); });
+  btn('Save', go); setTimeout(() => inp.select(), 0);
+}
+function neoShape(it){ const W = it.w, D = it.d, s2 = 12 * IN, P = (x, y) => cornerPt(it, x / W, y / D); return [P(0, 0), P(W, 0), P(W, s2), P(s2, D), P(0, D)]; }
+function partsOf(it){ if (!isL(it)) return [itemPoly(it)];       // an L as two rectangles (the overlap test needs convex shapes)
+  const {a, f} = itemFrame(it), W = it.w, D = it.d, sd = Math.min(D, 38 * IN), rw = it.retW, R = (u0, u1, v0, v1) => [[u0, v0], [u1, v0], [u1, v1], [u0, v1]].map(([u, v]) => add(add(it.at, mul(a, u)), mul(f, v)));
+  const r0 = it.flip ? -W / 2 : W / 2 - rw; return [R(-W / 2, W / 2, -D / 2, -D / 2 + sd), R(r0, r0 + rw, -D / 2, D / 2)]; }
+// an L sectional / chaise in the item's own frame: back strip along the whole width, return on the flip side
+function lShape(it){ const {a, f} = itemFrame(it), hd = it.flip ? -1 : 1, W = it.w, D = it.d, sd = Math.min(D, 38 * IN), rw = it.retW;
+  const P = (u, v) => add(add(it.at, mul(a, u)), mul(f, v)), x0 = -W / 2, x1 = W / 2, yb = -D / 2, ys = yb + sd, yf = D / 2;
+  return hd > 0 ? [P(x0, yb), P(x1, yb), P(x1, yf), P(x1 - rw, yf), P(x1 - rw, ys), P(x0, ys)] : [P(x0, yb), P(x1, yb), P(x1, ys), P(x0 + rw, ys), P(x0 + rw, yf), P(x0, yf)]; }
+/* dining tables: rectangle / square / round (w = d = diameter), preset sizes or any size */
+const TABLE = {rect: {label: 'Rectangle', sizes: [[60, 36], [72, 40], [84, 40], [96, 42]]}, square: {label: 'Square', sizes: [[36, 36], [42, 42], [48, 48], [54, 54]]},
+               round: {label: 'Round', sizes: [[36, 36], [42, 42], [48, 48], [54, 54], [60, 60]]}};
+const tableShape = it => it.style || 'rect';
+function seats(it){ const w = it.w / IN, d = it.d / IN, sh = tableShape(it);
+  return sh === 'round' ? Math.max(2, Math.floor(Math.PI * w / 24)) : sh === 'square' ? 4 * Math.max(1, Math.floor(w / 24)) : 2 * Math.max(1, Math.floor(Math.max(w, d) / 24)) + (Math.min(w, d) >= 36 ? 2 : 0); }
+// chairs around a table, in the table's own frame (u along w, v along d, metres), each {u, v, a} with a = which way it faces in
+function chairsOf(it){ const sh = tableShape(it), out = [], off = 9 * IN, n = seats(it);
+  if (sh === 'round'){ const r = it.w / 2 + off; for (let k = 0; k < n; k++){ const t = k / n * 2 * Math.PI; out.push({u: Math.cos(t) * r, v: Math.sin(t) * r, t}); } return out; }
+  const long = it.w >= it.d, L = long ? it.w : it.d, S = long ? it.d : it.w, per = sh === 'square' ? Math.max(1, Math.floor(it.w / IN / 24)) : Math.max(1, Math.floor(L / IN / 24));
+  for (let k = 0; k < per; k++){ const x = -L / 2 + L * (k + 0.5) / per; for (const sg of [-1, 1]) out.push(long ? {u: x, v: sg * (S / 2 + off), t: sg > 0 ? Math.PI / 2 : -Math.PI / 2} : {u: sg * (S / 2 + off), v: x, t: sg > 0 ? 0 : Math.PI}); }
+  if (sh === 'square'){ for (let k = 0; k < per; k++){ const x = -L / 2 + L * (k + 0.5) / per; for (const sg of [-1, 1]) out.push({u: sg * (L / 2 + off), v: x, t: sg > 0 ? 0 : Math.PI}); } }
+  else if (S / IN >= 36) for (const sg of [-1, 1]) out.push(long ? {u: sg * (L / 2 + off), v: 0, t: sg > 0 ? 0 : Math.PI} : {u: 0, v: sg * (L / 2 + off), t: sg > 0 ? Math.PI / 2 : -Math.PI / 2});
+  return out; }
+function setTable(it, style, wIn, dIn){
+  const w = wIn * IN, d = (style === 'rect' ? dIn : wIn) * IN, nm = style === 'round' ? `${wIn}" round table` : style === 'square' ? `${wIn}" square table` : `${wIn}" x ${dIn}" table`;
+  commit({do: 'set_item', item: it.id, style, w, d, name: /table/i.test(it.name) ? nm : it.name, label: `Dining table → ${nm}`}); showPop(null);
+}
+function tableSizeInput(it){
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; t.textContent = tableShape(it) === 'rect' ? 'Size in inches, long x wide (e.g. 66 x 38)' : tableShape(it) === 'round' ? 'Diameter in inches (e.g. 50)' : 'Size in inches (e.g. 44)'; pop.appendChild(t);
+  const inp = document.createElement('input'); inp.value = tableShape(it) === 'rect' ? `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)}` : `${Math.round(it.w / IN)}`; inp.setAttribute('aria-label', 'Table size'); pop.appendChild(inp);
+  const go = () => { const nums = (inp.value.match(/\d+(\.\d+)?/g) || []).map(Number).filter(x => x >= 18 && x <= 180); if (!nums.length){ toast('Type a size in inches, like 66 x 38'); return; }
+    const sh = tableShape(it); setTable(it, sh, Math.max(...nums.slice(0, 2)), sh === 'rect' ? (nums[1] ? Math.min(nums[0], nums[1]) : Math.round(it.d / IN)) : nums[0]); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') hidePop(); });
+  btn('Save', go); setTimeout(() => inp.select(), 0);
+}
+/* corner base cabinets: lazy susan (36" each way, L-shaped front), diagonal (angled door), blind corner (one end dead under the
+   other run). hand = which end of the item is in the corner (+1 = the +a end), worked out from the walls it sits against. */
+function cornerHand(it){
+  const flip = it.flip ? -1 : 1, W = wallOfItem(it); if (!W) return flip;
+  const sp = centerSpans(it, W.w, W.side, W.u).wall; if (!sp) return flip;
+  const {a} = itemFrame(it), sgn = dot(a, wallFrame(W.w).d) >= 0 ? 1 : -1;     // item's +a along the wall or against it
+  return (W.u - it.w / 2 - sp[0] < sp[1] - (W.u + it.w / 2) ? -1 : 1) * sgn * flip;
+}
+// point in the corner's own frame: x from the corner along this wall, y out from the wall (fractions of 36")
+function cornerPt(it, x, y){ const {a, f} = itemFrame(it), h = cornerHand(it), c = add(add(it.at, mul(a, h * it.w / 2)), mul(f, -it.d / 2)); return add(add(c, mul(a, -h * x * it.w)), mul(f, y * it.d)); }
+function cornerShape(it, grow){
+  const g = (grow || 0), W = it.w, D = it.d, leg = 24 * IN + g, P = (x, y) => cornerPt(it, x / W, y / D);
+  return it.style === 'diag' ? [P(0, 0), P(W + g, 0), P(W + g, leg), P(leg, D + g), P(0, D + g)]
+                             : [P(0, 0), P(W + g, 0), P(W + g, leg), P(leg, leg), P(leg, D + g), P(0, D + g)];
+}
+// a flat plan polygon raised from z0 to z1 (metres)
+function polyPrism(P, z0, z1, mat, grp){
+  const shape = new THREE.Shape(P.map(q => new THREE.Vector2(q[0], q[1])));
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {depth: z1 - z0, bevelEnabled: false}), mat);
+  m.rotation.x = -Math.PI / 2; m.position.y = z0; m.castShadow = true; m.receiveShadow = true; grp.add(m); return m;
+}
+const CORNER = {lazy: {label: 'Lazy susan 36"', w: 36, d: 36}, diag: {label: 'Diagonal 36"', w: 36, d: 36}, blind: {label: 'Blind corner', w: 42, d: 24}};
+function setCorner(it, style, wIn){
+  const c = CORNER[style], w = (wIn || c.w) * IN, d = c.d * IN, h = cornerHand(it), {a, f} = itemFrame(it);
+  const cpt = add(add(it.at, mul(a, h * it.w / 2)), mul(f, -it.d / 2));                     // the corner stays put
+  const at = add(add(cpt, mul(a, -h * w / 2)), mul(f, d / 2));
+  commitSynced({do: 'set_item', item: it.id, style, w, d, at, name: style === 'blind' ? `Blind corner ${wIn || c.w}"` : c.label.replace(' 36"', ' corner'), label: `Corner base → ${style === 'blind' ? `blind corner ${wIn || c.w}"` : c.label.toLowerCase()}`});
+  showPop(null);
+}
+/* fridges + the cabinet over them */
+const FRIDGE_D = {std: 33, counter: 27};              // inches, wall to the front of the fridge doors
+const UPPER_H = [30, 36, 42], OVER_FRIDGE_H = [12, 15, 18, 21, 24];
+const overFridgeBottom = fr => fr.z + fr.h + 1 * IN;    // a cabinet over a fridge starts 1" above it
+const isFridge = it => it.cat === 'fridge';
+function backPt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2)); }
+function facePt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2 + (it.bump || 0))); }   // the wall face the item backs to
+const CASEWORK = new Set(['base', 'sink', 'trash', 'upper', 'tall', 'filler']);
+// cabinets running out from each side of a fridge on the same wall, same level (uppers / bases), touching each other
+function flushChain(fr, items){
+  const L = items || S.items, {a, f} = itemFrame(fr), fa = dot(fr.at, a), out = [];
+  const panelW = sg => { const pn = L.find(o => o.auto === 'panel' && o.of === fr.id && o.side === sg); return pn ? pn.w : 0; };
+  for (const upper of [true, false]){
+    const row = L.filter(o => CASEWORK.has(o.cat) && o.st === fr.st && isUpper(o) === upper && dot(itemFrame(o).f, f) > 0.99
+      && Math.abs(dot(sub(facePt(o), backPt(fr)), f)) < 3 * IN && !fridgeUnder(o, L));
+    for (const sg of [1, -1]){
+      let edge = fa + sg * (fr.w / 2 + panelW(sg)), k = 0;
+      const side = row.filter(o => (dot(o.at, a) - fa) * sg > 0).sort((x, y) => (dot(x.at, a) - dot(y.at, a)) * sg);
+      for (const o of side){ const near = dot(o.at, a) - sg * o.w / 2; if (Math.abs(near - edge) > 1 * IN) break; out.push({it: o, upper, sg, k: k++}); edge = dot(o.at, a) + sg * o.w / 2; }
+    }
+  }
+  return out;
+}
+function chainOf(it, items){ const L = items || S.items; for (const fr of L.filter(isFridge)){ const c = flushChain(fr, L).find(q => q.it.id === it.id); if (c) return {fr, ...c}; } return null; }
+// where a cabinet should sit: pulled out so its front is flush with the fridge, or back on the wall
+function flushFit(it, items){
+  const c = it.flush ? chainOf(it, items) : null, bump = c ? Math.max(0, c.fr.d - it.d) : 0, {f} = itemFrame(it);
+  return {bump, flush: !!c, at: add(facePt(it), mul(f, bump + it.d / 2))};
+}
+function setFlush(list, on){
+  const ops2 = list.map(it => ({do: 'set_item', item: it.id, flush: on}));
+  commitSynced({do: 'batch', ops: ops2, label: on ? `Brought ${list.length} cabinet${list.length > 1 ? 's' : ''} flush with the fridge (framed bump-out behind)` : `Put ${list.length} cabinet${list.length > 1 ? 's' : ''} back on the wall`});
+  showPop(null);
+}
+// the fridge under an upper cabinet: same wall, same way, the cabinet's centre over the fridge
+function fridgeUnder(it, items){
+  if (!isUpper(it)) return null; const fi = itemFrame(it).f;
+  return (items || S.items).find(fr => isFridge(fr) && fr.st === it.st && dot(itemFrame(fr).f, fi) > 0.99
+    && Math.abs(dot(sub(it.at, fr.at), itemFrame(fr).a)) < fr.w / 2 - IN && Math.abs(dot(sub(facePt(it), backPt(fr)), fi)) < 3 * IN) || null;
+}
+// where the tops of the other upper cabinets on that wall are (default 90" = 36" uppers starting at 54")
+function topLine(it, items){
+  const fi = itemFrame(it).f, L = items || S.items;
+  const tops = L.filter(o => o.id !== it.id && isUpper(o) && o.cat !== 'filler' && o.st === it.st && dot(itemFrame(o).f, fi) > 0.99
+    && Math.abs(dot(sub(facePt(o), facePt(it)), fi)) < 3 * IN && !fridgeUnder(o, L)).map(o => o.z + o.h);
+  return tops.length ? Math.max(...tops) : 90 * IN;
+}
+// a cabinet over a fridge: as deep as the fridge (front flush with it), bottom 1" above the fridge,
+// up to the tops of the other uppers unless a height has been picked for it
+function overFridgeFit(it, fr, items){
+  // a standard cabinet box (24" deep unless 12" was picked) on a framed bump-out, so its front is flush with the fridge
+  const z = overFridgeBottom(fr), fill = Math.max(6 * IN, topLine(it, items) - z), {f} = itemFrame(fr);
+  const h = it.pick ? it.h : fill, d = Math.min(fr.d, (it.boxD || 24) * IN), bump = Math.max(0, fr.d - d);
+  return {d, bump, h, z, at: add(facePt(it), mul(f, bump + d / 2))};
+}
+// Kevin's kitchen rules, applied after every cabinet / appliance change as part of the same undo step:
+//  dishwasher: 1" spacer each side (and a countertop over it) · fridge: full-height end panel on a side with no pantry
+//  (a pantry against the fridge closes up to it) · cabinet over a fridge: flush, 1" above it · flush cabinets on bump-outs
+//  · a gap under 9" between cabinets (or a cabinet and a wall) gets a filler
+const PAD = {dw: 1 * IN, fridge: 1.5 * IN};
+const padOf = it => isUpper(it) ? 0 : (PAD[it.cat] || 0);
+let shiftFree = false;                                    // Shift held while placing / dragging: no connecting, no centring
+const near = (a, b, e) => Math.abs(a - b) < (e || 0.003);
+function sameItem(it, v){ return near(it.w, v.w) && near(it.d, v.d) && near(it.h, v.h) && near(it.z, v.z) && dist(it.at, v.at) < 0.003 && near(it.rot, v.rot, 0.5) && near(it.bump || 0, v.bump || 0); }
+function syncPads(T, push){
+  const want = [];
+  T.items.filter(o => PAD[o.cat] && !isUpper(o) && !o.auto).forEach(o => {
+    const {a, f} = itemFrame(o), pw = PAD[o.cat];
+    for (const sg of [-1, 1]){
+      const edge = dot(o.at, a) + sg * o.w / 2;
+      if (isFridge(o)){
+        const tall = T.items.find(t => t.cat === 'tall' && t.st === o.st && dot(itemFrame(t).f, f) > 0.99 && Math.abs(dot(sub(facePt(t), facePt(o)), f)) < 3 * IN
+          && (dot(t.at, a) - edge) * sg > 0 && Math.abs((dot(t.at, a) - sg * t.w / 2) - edge) < pw + 1 * IN);
+        if (tall){ const g = (dot(tall.at, a) - sg * tall.w / 2) - edge; if (Math.abs(g) > 0.003) push({do: 'set_item', item: tall.id, at: add(tall.at, mul(a, -g))}, 'pantry moved up to the fridge'); continue; }
+      }
+      const cab = isFridge(o) ? T.items.find(x => fridgeUnder(x, T.items) === o) : null;
+      const h = isFridge(o) ? Math.max(o.h + 1 * IN, cab ? cab.z + cab.h : topLine(o, T.items)) : 36 * IN;
+      want.push({of: o.id, side: sg, kind: isFridge(o) ? 'panel' : 'sp', st: o.st, rot: o.rot, w: pw, d: o.d, h, z: 0, bump: 0, at: add(o.at, mul(a, sg * (o.w / 2 + pw / 2)))});
+    }
+  });
+  const have = T.items.filter(x => x.auto === 'sp' || x.auto === 'panel');
+  want.forEach(v => { const ex = have.find(x => x.of === v.of && x.side === v.side && x.auto === v.kind);
+    if (!ex) push({do: 'add_item', item: {id: uid('N-I'), cat: v.kind === 'panel' ? 'panel' : 'filler', auto: v.kind, of: v.of, side: v.side, st: v.st, rot: v.rot, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z,
+      name: v.kind === 'panel' ? 'Fridge end panel' : 'DW spacer 1"'}}, v.kind === 'panel' ? 'fridge end panel' : 'dishwasher spacers');
+    else if (!sameItem(ex, v)) push({do: 'set_item', item: ex.id, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, rot: v.rot, st: v.st}); });
+  have.forEach(x => { if (!want.some(v => v.of === x.of && v.side === x.side && v.kind === x.auto)) push({do: 'remove_item', item: x.id}, x.auto === 'panel' ? 'end panel off (pantry there)' : ''); });
+}
+// rows of cabinets / appliances along each wall face, base level and upper level; gaps under 9" get a filler
+const BASE_ROW = new Set(['base', 'sink', 'trash', 'corner', 'filler', 'dw', 'range', 'fridge', 'tall', 'panel']);
+function syncGaps(T, push){
+  const want = [], rows = {};
+  T.items.filter(o => !(o.auto === 'gap')).forEach(o => {
+    const up = isUpper(o), row = up ? ['upper', 'filler', 'micro', 'hood'].includes(o.cat) : BASE_ROW.has(o.cat);
+    const rowsOf = up ? (row ? ['upper'] : []) : row ? (o.cat === 'tall' || o.cat === 'panel' ? ['base', 'upper'] : ['base']) : [];
+    if (!rowsOf.length) return; const W = wallOfItem(o); if (!W) return;
+    rowsOf.forEach(r => { const k = W.w.id + '|' + W.side + '|' + r; (rows[k] = rows[k] || {w: W.w, side: W.side, row: r, list: []}).list.push({o, u0: W.u - o.w / 2, u1: W.u + o.w / 2}); });
+  });
+  Object.values(rows).forEach(R => {
+    if (R.row === 'upper' && !R.list.some(x => isUpper(x.o))) return;
+    const L = R.list.sort((x, y) => x.u0 - y.u0), Lz = L[L.length - 1];
+    const s0 = centerSpans(L[0].o, R.w, R.side, (L[0].u0 + L[0].u1) / 2), s1 = centerSpans(Lz.o, R.w, R.side, (Lz.u0 + Lz.u1) / 2);
+    const sp = [(s0.gap || s0.wall || [-1e9])[0], (s1.gap || s1.wall || [0, 1e9])[1]];
+    const pick = (x, y) => { const cand = [x, y].filter(Boolean).map(q => q.o); return cand.find(o => R.row === 'upper' ? o.cat === 'upper' : ['base', 'sink', 'trash', 'filler'].includes(o.cat)) || cand[0]; };
+    const gap = (u0, u1, nb) => { if (u1 - u0 < 0.25 * IN || u1 - u0 >= 9 * IN) return;
+      const {d: wd, n} = wallFrame(R.w), f = mul(n, R.side), up = R.row === 'upper', src = up && nb.cat !== 'upper' ? {d: 12 * IN, h: 36 * IN, z: 54 * IN, bump: 0} : !up && !['base', 'sink', 'trash', 'filler'].includes(nb.cat) ? {d: 24 * IN, h: 36 * IN, z: 0, bump: 0} : nb;
+      const bump = src.bump || 0, at = add(add(R.w.s, mul(wd, (u0 + u1) / 2)), mul(f, R.w.t / 2 + 0.003 + bump + src.d / 2));
+      want.push({wall: R.w.id, side: R.side, row: R.row, st: R.w.st, rot: rotOf(f), at, w: u1 - u0, d: src.d, h: src.h, z: src.z, bump, flush: !!(bump && nb.flush)}); };
+    let prev = null; L.forEach(x => { if (!prev){ if (x.u0 - sp[0] > 0) gap(sp[0], x.u0, x.o); } else if (x.u0 > prev.u1) gap(prev.u1, x.u0, pick(prev, x)); if (!prev || x.u1 > prev.u1) prev = x; });
+    if (prev && sp[1] - prev.u1 > 0) gap(prev.u1, sp[1], prev.o);
+  });
+  const have = T.items.filter(x => x.auto === 'gap'), used = new Set();
+  want.forEach(v => { const ex = have.find(x => !used.has(x.id) && x.wall === v.wall && x.side === v.side && x.row === v.row && dist(x.at, v.at) < v.w / 2 + x.w / 2);
+    if (ex){ used.add(ex.id); if (!sameItem(ex, v)) push({do: 'set_item', item: ex.id, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, bump: v.bump, flush: v.flush}); return; }
+    push({do: 'add_item', item: {id: uid('N-I'), cat: 'filler', auto: 'gap', wall: v.wall, side: v.side, row: v.row, st: v.st, rot: v.rot, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, bump: v.bump, flush: v.flush,
+      name: v.row === 'upper' ? 'Filler (upper)' : 'Filler'}}, `${ftinHalf(v.w).replace(/^0'-/, '')} filler`); });
+  have.forEach(x => { if (!used.has(x.id)) push({do: 'remove_item', item: x.id}); });
+}
+function commitSynced(op){
+  const T = clone(S); applyOp(T, op);
+  const ups = [], notes = new Set(), push = (o, note) => { ups.push(o); applyOp(T, o); if (note) notes.add(note); };
+  syncPads(T, push);
+  T.items.slice().forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
+    if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.bump - (it.bump || 0)) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) push({do: 'set_item', item: it.id, ...fit}, 'cabinet over the fridge fitted'); });
+  T.items.slice().forEach(it => { if ((!it.flush && !it.bump) || fridgeUnder(it, T.items)) return; const fit = flushFit(it, T.items);
+    if (Math.abs(fit.bump - (it.bump || 0)) > 0.002 || fit.flush !== !!it.flush || dist(fit.at, it.at) > 0.002) push({do: 'set_item', item: it.id, ...fit}, /flush|back on the wall/i.test(op.label || '') ? '' : 'kept flush with the fridge'); });
+  syncPads(T, push);                                      // end-panel heights follow the cabinet over the fridge
+  syncGaps(T, push);
+  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + (notes.size ? ` (+ ${[...notes].join(', ')})` : '')} : op);
+}
+function setFridgeDepth(fr, inch){
+  const {f} = itemFrame(fr), d = inch * IN;
+  commitSynced({do: 'set_item', item: fr.id, d, at: add(fr.at, mul(f, (d - fr.d) / 2)), label: `${fr.name} → ${inch === FRIDGE_D.counter ? 'counter depth' : 'standard depth'}`}); showPop(null);
+}
+/* over the range: an over-the-range microwave with a cabinet above it (cabinet top in line with the uppers), or a stainless
+   chimney hood (canopy 30" over the cooktop, chimney to the ceiling) */
+function overRangeFit(it, items){
+  const W = wallOfItem(it), top = topLine(it, items), wallH = W ? W.w.h : 2.44;
+  return it.cat === 'micro' ? {z: top - 32 * IN, h: 32 * IN, d: 15 * IN} : {z: 66 * IN, h: Math.max(18 * IN, wallH - 66 * IN), d: 20 * IN};
+}
+function aboveRange(rg, cat){
+  const it = newItem(cat, {st: rg.st, rot: rg.rot, w: cat === 'micro' ? 30 * IN : rg.w}), {f} = itemFrame(rg);
+  it.at = add(facePt(rg), mul(f, it.d / 2 + 0.003)); const back = facePt(rg); Object.assign(it, overRangeFit(it)); it.at = add(back, mul(f, it.d / 2 + 0.003));
+  S.items.filter(o => isUpper(o) && o.cat === 'upper' && Math.abs(dot(sub(o.at, rg.at), itemFrame(rg).a)) < (o.w + it.w) / 2 - 0.01 && dot(itemFrame(o).f, f) > 0.99).forEach(o => toast(`${o.name} is over the range — remove it first or it will overlap.`));
+  commitSynced({do: 'add_item', item: it, label: `Added ${cat === 'micro' ? 'a microwave + cabinet' : 'a vent hood'} over the range`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
+}
+function cabinetOverFridge(fr){
+  const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+  const fit = overFridgeFit({...it, d: fr.d, at: fr.at, bump: 0}, fr); Object.assign(it, fit);
+  commitSynced({do: 'add_item', item: it, label: `Added a ${ftin(it.h)} cabinet over the fridge, flush with its front`});
+  sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
+}
+// a pantry at vanity depth (21") is a linen cabinet, and back at 24" it's a pantry again; the back stays on the wall
+function setTallDepth(it, di){
+  const d = di * IN, {f} = itemFrame(it), linen = di < 24, dflt = /^(Pantry cabinet|Linen cabinet)$/.test(it.name || '');
+  commitSynced({do: 'set_item', item: it.id, d, at: add(it.at, mul(f, (d - it.d) / 2)), style: linen ? 'linen' : 'pantry', name: dflt ? (linen ? 'Linen cabinet' : 'Pantry cabinet') : it.name,
+    label: `${it.name} → ${linen ? 'vanity depth 21" (linen cabinet)' : 'pantry depth 24"'}`}); showPop(null);
+}
+function setUpperHeight(it, inch){
+  const fr = fridgeUnder(it);
+  if (fr){                                                         // over a fridge the bottom stays just above the fridge
+    const z = overFridgeBottom(fr), h = inch ? inch * IN : Math.max(6 * IN, topLine(it) - z);
+    commit({do: 'set_item', item: it.id, h, z, pick: !!inch, label: `${it.name} → ${inch ? inch + '"' : 'up to the other uppers (' + ftinHalf(h).replace(/^0'-/, '') + ')'} tall`}); }
+  else commit({do: 'set_item', item: it.id, h: inch * IN, label: `${it.name} → ${inch}" tall`});      // the bottom stays 18" over the counter
+  showPop(null);
+}
 function newItem(cat, extra){
+  if (CAT[cat] && CAT[cat].as){ const c0 = CAT[cat]; return newItem(c0.as, Object.assign({w: c0.w * IN, d: c0.d * IN, h: c0.h * IN, name: c0.label, style: c0.style}, extra || {})); }
   const c = CAT[cat];
-  return Object.assign({id: uid('N-I'), cat, st: ST, at: [0, 0], rot: 0, w: c.w * IN, d: c.d * IN, h: c.h * IN, z: c.z * IN, name: c.label}, extra || {});
+  return Object.assign({id: uid('N-I'), cat, st: ST, at: [0, 0], rot: 0, w: c.w * IN, d: c.d * IN, h: c.h * IN, z: c.z * IN, name: cat === 'corner' ? 'Lazy susan corner' : c.label}, c.style ? {style: c.style} : {}, extra || {});
 }
 // item frame: w along a, d along f (f = front, away from the wall it backs to)
 function itemFrame(it){ const r = it.rot * Math.PI / 180; return {a: [Math.cos(r), Math.sin(r)], f: [-Math.sin(r), Math.cos(r)]}; }
@@ -1284,6 +1820,34 @@ function itemPoly(it, grow){
 const rotOf = f => Math.round(Math.atan2(-f[0], f[1]) * 180 / Math.PI * 1000) / 1000;
 
 // place an item so its back sits on the nearest wall face, then snap its ends to neighbours / corners
+/* centring: the open space an item sits in on a wall face (between walls, doors and other items in front of the
+   face at its height) and the whole wall face between the walls it meets */
+let itemGuide = null;
+function centerSpans(it, w, side, u){
+  const {d: wd, n, L} = wallFrame(w), f = mul(n, side), face0 = add(w.s, mul(f, w.t / 2));
+  const edges = [0, L];
+  S.walls.forEach(o => {
+    if (o.id === w.id || o.st !== w.st || Math.abs(dot(wallFrame(o).d, wd)) > 0.3) return;
+    for (const end of ['s', 'e']){ const pr = projOnSeg(o[end], w.s, w.e), other = end === 's' ? o.e : o.s;
+      if (pr.d < w.t / 2 + TOL && dot(sub(other, o[end]), n) * side > 0){ const uu = dot(sub(o[end], w.s), wd); edges.push(uu - o.t / 2, uu + o.t / 2); } }
+    if (projOnSeg(w.s, o.s, o.e).d < o.t / 2 + TOL) edges.push(o.t / 2);
+    if (projOnSeg(w.e, o.s, o.e).d < o.t / 2 + TOL) edges.push(L - o.t / 2);
+  });
+  const lo0 = Math.max(...edges.filter(x => x <= u + 1e-6)), hi0 = Math.min(...edges.filter(x => x >= u - 1e-6));
+  let lo = lo0, hi = hi0;
+  const take = (a, b) => { if (b <= u) lo = Math.max(lo, b); else if (a >= u) hi = Math.min(hi, a); };
+  if (!isUpper(it)) S.openings.filter(o => o.host === w.id && o.kind !== 'window').forEach(o => take(o.off, o.off + o.w));
+  else S.openings.filter(o => o.host === w.id && (o.kind === 'window' || o.h + o.sill > it.z)).forEach(o => take(o.off - 2 * IN, o.off + o.w + 2 * IN));
+  const reach = (it.d || 0.3) + (it.bump || 0);
+  S.items.forEach(o => {
+    if (o.id === it.id || o.of === it.id || o.st !== it.st || !zOverlap(o, it)) return;
+    const P = itemPoly(o), us = P.map(q => dot(sub(q, w.s), wd)), vs = P.map(q => dot(sub(q, face0), f));
+    if (Math.min(...vs) > reach - 0.02 || Math.max(...vs) < 0.01) return;      // not in the strip in front of this face
+    take(Math.min(...us), Math.max(...us));
+  });
+  const same = Math.abs(lo - lo0) < 0.005 && Math.abs(hi - hi0) < 0.005;
+  return {wall: hi0 - lo0 > 0.05 ? [lo0, hi0] : null, gap: !same && hi - lo > 0.05 ? [lo, hi] : null};
+}
 function snapItem(it, back){
   const c = CAT[it.cat];
   it.st = storeyAt(back);
@@ -1295,8 +1859,9 @@ function snapItem(it, back){
   let side = Math.sign(dot(sub(back, best.pr.q), n)) || 1;
   const f = mul(n, side); it.rot = rotOf(f);
   let u = snapIn(dot(sub(back, w.s), wd));
-  // edge snaps (within 3 in): wall faces at corners, then other items on the same wall face
-  const tol = 3 * IN, half = it.w / 2, cands = [];
+  // edge snaps: wall faces at corners, then other items on the same wall face. Connects within 12" (Shift: no snapping at all).
+  // A dishwasher / fridge counts its 1" spacers / end panels, so it leaves room for them.
+  const tol = shiftFree ? 0 : 12 * IN, half = it.w / 2 + padOf(it), cands = [];
   S.walls.forEach(o => {
     if (o.id === w.id || o.st !== w.st || Math.abs(dot(wallFrame(o).d, wd)) > 0.3) return;
     for (const end of ['s', 'e']){ const pr = projOnSeg(o[end], w.s, w.e); const other = end === 's' ? o.e : o.s;
@@ -1306,17 +1871,23 @@ function snapItem(it, back){
   });
   const backLine = dot(w.s, n) + side * (w.t / 2);
   S.items.forEach(o => {
-    if (o.id === it.id || o.st !== it.st || isUpper(o) !== isUpper(it)) return;
+    if (o.id === it.id || o.of === it.id || o.st !== it.st || isUpper(o) !== isUpper(it)) return;
     const of = itemFrame(o).f; if (dot(of, f) < 0.99) return;
     if (Math.abs(dot(o.at, n) - side * o.d / 2 - backLine) > 0.03) return;
     const ou = dot(sub(o.at, w.s), wd); cands.push(ou - o.w / 2, ou + o.w / 2);
   });
+  const CS0 = centerSpans(it, w, side, u); if (CS0.gap) cands.push(CS0.gap[0], CS0.gap[1]);
   let bestDu = null;
   cands.forEach(cu => { for (const du of [cu - (u - half), cu - (u + half)]) if (Math.abs(du) < tol && (bestDu === null || Math.abs(du) < Math.abs(bestDu))) bestDu = du; });
+  const CS = centerSpans(it, w, side, u);
+  const tolC = shiftFree ? 0 : Math.max(4 * IN, 10 * pxm());
+  for (const sp of [CS.gap, CS.wall]) if (sp){ const du = (sp[0] + sp[1]) / 2 - u; if (Math.abs(du) < tolC && (bestDu === null || Math.abs(du) <= Math.abs(bestDu) + 0.5 * IN)) { bestDu = du; break; } }   // centring wins a near-tie
   if (bestDu !== null) u += bestDu;
-  u = Math.max(half, Math.min(L - half, u));
+  const face = CS.wall || [0, L];                                    // stay inside the room: between the faces of the walls it meets
+  u = face[1] - face[0] >= 2 * half ? Math.max(face[0] + half, Math.min(face[1] - half, u)) : Math.max(half, Math.min(L - half, u));
   const q = add(w.s, mul(wd, u));
   it.at = add(q, mul(f, w.t / 2 + it.d / 2 + 0.003));
+  itemGuide = {wid: w.id, side, u, half, d: it.d, spans: centerSpans(it, w, side, u)};
   return {wall: w.id, side};
 }
 
@@ -1326,7 +1897,7 @@ function cabinetRun(w, at, dry){
   let side = Math.sign(dot(sub(at, w.s), n));
   const inRoom = sd => rooms.some(r => r.st === w.st && inPoly(add(at, mul(n, sd * 0.5)), r.poly));
   if (!side || !inRoom(side)) side = inRoom(1) ? 1 : -1;
-  const uc = dot(sub(at, w.s), wd);
+  const uc = dot(sub(at, w.s), wd), faceLine = dot(w.s, n) + side * w.t / 2;
   const blocks = (forUpper) => {
     const bl = [];
     S.walls.forEach(o => {
@@ -1336,6 +1907,10 @@ function cabinetRun(w, at, dry){
       if (projOnSeg(w.s, o.s, o.e).d < o.t / 2 + TOL) bl.push([-1, o.t / 2]);
       if (projOnSeg(w.e, o.s, o.e).d < o.t / 2 + TOL) bl.push([L - o.t / 2, L + 1]);
     });
+    // fridge, range, pantry, dishwasher... already on this wall: the run stops at them
+    S.items.forEach(it => { if (it.st !== w.st || isUpper(it) || (['base', 'sink', 'trash', 'filler'].includes(it.cat) && it.auto !== 'sp')) return;
+      if (dot(itemFrame(it).f, mul(n, side)) < 0.99 || Math.abs(dot(backPt(it), n) - faceLine) > 3 * IN) return;
+      const uu = dot(sub(it.at, w.s), wd); bl.push([uu - it.w / 2, uu + it.w / 2]); });
     S.openings.filter(o => o.host === w.id).forEach(o => {
       if (o.kind === 'door') bl.push([o.off - 3 * IN, o.off + o.w + 3 * IN]);
       else if (forUpper) bl.push([o.off - 2 * IN, o.off + o.w + 2 * IN]);
@@ -1383,17 +1958,175 @@ function cabinetRun(w, at, dry){
   ubl.forEach(([x0, x1]) => { segs = segs.flatMap(([s0, s1]) => x1 <= s0 || x0 >= s1 ? [[s0, s1]] : [[s0, x0], [x1, s1]].filter(([p, q]) => q - p >= 9 * IN)); });
   let nU = 0;
   segs.forEach(([s0, s1]) => fill(s0, s1).forEach(([x0, x1, inch]) => { items.push(inch < 9 ? place('filler', x0, x1, {d: 12 * IN, h: (tall ? 36 : 30) * IN, z: 54 * IN, name: 'Filler (upper)'}) : place('upper', x0, x1, {h: (tall ? 36 : 30) * IN})); nU++; }));
+  // a fridge at the end of the run gets a cabinet over it, flush with its front
+  S.items.filter(fr => isFridge(fr) && fr.st === w.st && dot(itemFrame(fr).f, mul(n, side)) > 0.99 && Math.abs(dot(backPt(fr), n) - faceLine) < 3 * IN).forEach(fr => {
+    const uu = dot(sub(fr.at, w.s), wd); if (uu + fr.w / 2 < b0 - 2 * IN || uu - fr.w / 2 > b1 + 2 * IN || S.items.some(o => fridgeUnder(o) === fr)) return;
+    const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+    Object.assign(it, overFridgeFit({...it, d: fr.d, bump: 0}, fr, S.items.concat(items))); items.push(it); nU++; });
   const nB = items.length - nU;
   const runOp = {do: 'batch', ops: items.map(it => ({do: 'add_item', item: it})), label: `Added cabinet run on ${w.name || 'wall'} (${ftin(b1 - b0)}: ${nB} base, ${nU} upper)`};
   if (dry) return runOp;
-  commit(runOp);
+  commitSynced(runOp);
   sel = null; hidePop();
 }
 
 /* plan symbols */
+// dimension line in front of the item: the space it sits in, the distance on each side, orange + "centered" when equal
+function drawGuide(g, G){
+  const w = S.walls.find(x => x.id === G.wid); if (!w) return;
+  const {d: wd, n} = wallFrame(w), f = mul(n, G.side), base = add(w.s, mul(f, w.t / 2)), fs = Math.max(0.12, 11 * pxm());
+  const P = (u, v) => toSvg(add(add(base, mul(wd, u)), mul(f, v)));
+  const line = (u0, u1, v, on) => { const [x1, y1] = P(u0, v), [x2, y2] = P(u1, v); el('line', {x1, y1, x2, y2, class: 'cguide' + (on ? ' on' : ''), 'stroke-width': 1.2 * pxm()}, g);
+    for (const u of [u0, u1]){ const [a1, b1] = P(u, v - 5 * pxm()), [a2, b2] = P(u, v + 5 * pxm()); el('line', {x1: a1, y1: b1, x2: a2, y2: b2, class: 'cguide' + (on ? ' on' : ''), 'stroke-width': 1.2 * pxm()}, g); } };
+  const txt = (u, v, t, on) => { const [x, y] = P(u, v); el('text', {x, y: y + fs * 0.35, class: 'cguide-t' + (on ? ' on' : ''), 'font-size': fs}, g).textContent = t; };
+  let v = G.d + 10 * pxm() + 4 * IN;
+  [[G.spans.gap, 'space'], [G.spans.wall, 'wall']].forEach(([sp, what]) => { if (!sp) return;
+    const l = G.u - G.half - sp[0], r = sp[1] - (G.u + G.half), on = Math.abs(l - r) < 0.5 * IN;
+    line(sp[0], G.u - G.half, v, on); line(G.u + G.half, sp[1], v, on);
+    txt((sp[0] + G.u - G.half) / 2, v + 9 * pxm(), ftinHalf(Math.max(0, l)), on); txt((G.u + G.half + sp[1]) / 2, v + 9 * pxm(), ftinHalf(Math.max(0, r)), on);
+    if (on) txt(G.u, v + 9 * pxm(), `centered on ${what}`, true);
+    v += 26 * pxm(); });
+}
+// the wall an item backs to, its side and where it is along the wall
+function wallOfItem(it){
+  const p = facePt(it); let best = null;
+  S.walls.filter(w => w.st === it.st).forEach(w => { const pr = projOnSeg(p, w.s, w.e); if (pr.t <= 0 || pr.t >= 1 || Math.abs(pr.d - w.t / 2) > 0.03) return;
+    if (!best || pr.d < best.d) best = {w, d: pr.d, side: Math.sign(dot(sub(p, pr.q), wallFrame(w).n)) || 1}; });
+  return best ? {w: best.w, side: best.side, u: dot(sub(it.at, best.w.s), wallFrame(best.w).d)} : null;
+}
+// standard cabinet widths that fill a space best: least left over (that becomes a filler), then fewest boxes, then widest
+function bestFill(spaceIn){
+  let best = null;
+  const tryIt = combo => { const sum = combo.reduce((a, b) => a + b, 0), r = Math.max(0, spaceIn - sum); if (spaceIn - sum < -1 / 16) return;   // within 1/16" counts as a fit
+    const score = [Math.round(r * 2) / 2, combo.length, -Math.min(...combo)];
+    if (!best || score[0] < best.score[0] - 1e-6 || (Math.abs(score[0] - best.score[0]) < 1e-6 && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = {combo: combo.slice().sort((a, b) => b - a), r, score}; };
+  for (const a of STD){ tryIt([a]); for (const b of STD){ if (b > a) continue; tryIt([a, b]); for (const c of STD){ if (c > b) continue; tryIt([a, b, c]); } } }
+  return best && best.combo.length ? best : null;
+}
+// the open space on each side of a base-level item along its wall, and what would fill it
+function sideFills(it){
+  const W = wallOfItem(it); if (!W) return [];
+  const CS = centerSpans(it, W.w, W.side, W.u), sp = CS.gap || CS.wall; if (!sp) return [];
+  const {d: wd} = wallFrame(W.w), a = itemFrame(it).a, pad = padOf(it), out = [];
+  [[-1, sp[0], W.u - it.w / 2 - pad], [1, W.u + it.w / 2 + pad, sp[1]]].forEach(([sgU, u0, u1]) => {
+    const space = (u1 - u0) / IN; if (space < 9 - 1e-6) return;
+    const fill = bestFill(space); if (!fill) return;
+    const right = dot(mul(wd, sgU), mul(a, -1)) > 0;               // as you face the wall
+    out.push({sgU, u0, u1, space, fill, side: right ? 'Right' : 'Left'});
+  });
+  return out;
+}
+// put the suggested base cabinets in, starting next to the item; what's left at the far end gets a filler automatically
+function fillSides(it, list){
+  const W = wallOfItem(it), {d: wd, n} = wallFrame(W.w), f = mul(n, W.side), ops2 = [];
+  list.forEach(sd => { let u = sd.sgU < 0 ? sd.u1 : sd.u0;
+    const up = isUpper(it) || it.cat === 'micro' || it.cat === 'hood', top = up ? topLine(it) : 0;
+    sd.fill.combo.forEach(inch => { const wdt = inch * IN, c = u + sd.sgU * wdt / 2;
+      const nb = up ? newItem('upper', {st: it.st, w: wdt, rot: rotOf(f), z: 54 * IN, h: Math.max(12 * IN, top - 54 * IN), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 6 * IN))})
+                    : newItem('base', {st: it.st, w: wdt, rot: rotOf(f), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 12 * IN))});
+      ops2.push({do: 'add_item', item: nb}); u += sd.sgU * wdt; }); });
+  const what = list.map(sd => `${sd.side.toLowerCase()}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`).join('; ');
+  commitSynced({do: 'batch', ops: ops2, label: `${isUpper(it) || it.cat === 'micro' || it.cat === 'hood' ? 'Upper' : 'Base'} cabinets beside ${it.name} (${what})`}); showPop(null);
+}
+/* the ends of a shower / tub: the wall it backs to, and what is beside each end — a nearby wall (fill the gap with
+   wall, or move that wall over) or nothing (add a wall at that end) */
+function itemEnds(it){
+  const W = wallOfItem(it); if (!W) return [];
+  const {d: wd, n} = wallFrame(W.w), f = mul(n, W.side), a = itemFrame(it).a, face0 = add(W.w.s, mul(f, W.w.t / 2)), out = [];
+  for (const sgU of [-1, 1]){
+    const edgeU = W.u + sgU * it.w / 2; let best = null;
+    S.walls.forEach(o => { if (o.id === W.w.id || o.st !== W.w.st || Math.abs(dot(wallFrame(o).d, wd)) > 0.05) return;
+      const vs = [o.s, o.e].map(q => dot(sub(q, face0), f)); if (Math.max(...vs) < 0.02 || Math.min(...vs) > it.d - 0.02) return;   // beside the item
+      const faceU = dot(sub(o.s, W.w.s), wd) - sgU * o.t / 2, g = (faceU - edgeU) * sgU;
+      if (g > -0.01 && g < 30 * IN && (!best || g < best.g)) best = {o, g: Math.max(0, g)}; });
+    out.push({sgU, edgeU, W, wd, f, wall: best && best.o, gap: best ? best.g : null, side: dot(mul(wd, sgU), mul(a, -1)) > 0 ? 'right' : 'left'});
+  }
+  return out;
+}
+function endWall(it, E, mode){
+  const {W, wd, f, sgU, edgeU} = E, st = W.w.st, back = u => add(W.w.s, mul(wd, u)), len2 = W.w.t / 2 + it.d;
+  const mk = (u, t, name) => { const s0 = back(u); return {id: uid('N-W'), st, s: s0, e: add(s0, mul(f, len2)), t, h: W.w.h, b: W.w.b || 0, ext: false, stud: t >= 5.4 * IN ? 6 : 4, oc: 16, name}; };
+  if (mode === 'fill'){
+    // an "L" of 2x4 interior framing: a wall tight against the shower's end, and a return across the front back to the next wall
+    const t = Math.min(4.5 * IN, E.gap), uA = edgeU + sgU * t / 2, A = {...mk(uA, t, `Wall at ${it.name.toLowerCase()}`), ext: false, extSet: true, stud: 4};
+    const wallsOut = [A], rest = E.gap - t;
+    if (rest > 0.5 * IN){ const front = A.e, faceU = edgeU + sgU * E.gap, ret = mul(f, -t / 2);   // return's centre line sits t/2 inside the shower's front line
+      const rs = add(front, ret), re = add(add(W.w.s, mul(wd, faceU + sgU * (E.wall.t / 2))), mul(f, W.w.t / 2 + it.d - t / 2));
+      wallsOut.push({id: uid('N-W'), st, s: rs, e: re, t, h: W.w.h, b: W.w.b || 0, ext: false, extSet: true, stud: 4, oc: 16, name: `Return at ${it.name.toLowerCase()}`}); }
+    commit({do: 'batch', ops: wallsOut.map(w => ({do: 'add_wall', wall: w})), label: `Framed in the ${ftinHalf(E.gap).replace(/^0'-/, '')} beside the ${it.name.toLowerCase()} (2x4 wall + return)`}); }
+  else if (mode === 'move'){ const g = groupStart([E.wall.id]), pv = groupPreview(g, mul(wd, -sgU * E.gap));
+    commit({do: 'set_walls', walls: pv.walls, openings: pv.offs, label: `Moved ${E.wall.name || 'wall'} ${ftinHalf(E.gap).replace(/^0'-/, '')} to the ${it.name.toLowerCase()}`}); }
+  else { const t = 4.5 * IN, w = mk(edgeU + sgU * t / 2, t, `Wall at ${it.name.toLowerCase()} end`);
+    commit({do: 'add_wall', wall: w, label: `Added a wall at the ${E.side} end of the ${it.name.toLowerCase()}`}); }
+  showPop(null);
+}
+/* angle a corner off a room: a 45° wall across a square corner, the legs measured along the walls from the corner.
+   Cut = the two corner walls are trimmed back to the angled wall (only when they just meet there and nothing is in the cut);
+   otherwise the triangle behind stays as a small closed space. */
+function roomCorners(r){
+  const P = r.poly, n = P.length, out = [], c = mul(P.reduce((a, p) => add(a, p), [0, 0]), 1 / n), sg = Math.sign(polyArea(P));
+  for (let i = 0; i < n; i++){ const C = P[i], A0 = P[(i - 1 + n) % n], B0 = P[(i + 1) % n], u = unit(sub(A0, C)), v = unit(sub(B0, C));
+    if (Math.abs(dot(u, v)) > 0.05) continue;
+    const cr = (C[0] - A0[0]) * (B0[1] - C[1]) - (C[1] - A0[1]) * (B0[0] - C[0]); if (Math.sign(cr) !== sg) continue;   // square, outward-pointing corners only
+    out.push({C, u, v, la: dist(A0, C), lb: dist(B0, C), name: (C[1] > c[1] ? 'N' : 'S') + (C[0] > c[0] ? 'E' : 'W')}); }
+  return out;
+}
+function cornerPlan(r, k, L){
+  const A = add(k.C, mul(k.u, L)), B = add(k.C, mul(k.v, L)), ws = S.walls.filter(w => w.st === r.st);
+  const legWall = (dir, pt) => ws.find(w => Math.abs(Math.abs(dot(wallFrame(w).d, dir)) - 1) < 1e-3 && projOnSeg(pt, w.s, w.e).d < 0.01 && projOnSeg(add(k.C, mul(dir, 0.02)), w.s, w.e).d < 0.01);
+  const w1 = legWall(k.u, A), w2 = legWall(k.v, B); let cut = null;
+  if (w1 && w2){
+    const endAt = w => ['s', 'e'].find(e => dist(w[e], k.C) < Math.max(w1.t, w2.t) + 0.02);
+    const e1 = endAt(w1), e2 = endAt(w2), others = ws.filter(o => o !== w1 && o !== w2 && projOnSeg(k.C, o.s, o.e).d < o.t / 2 + w1.t / 2 + 0.02);
+    if (e1 && e2 && !others.length){
+      const walls = {}, offs = {}; let ok = true;
+      [[w1, e1, A], [w2, e2, B]].forEach(([w, e, pt]) => { const L0 = dist(w.s, w.e), keep = e === 's' ? [pt, w.e] : [w.s, pt]; walls[w.id] = {s: keep[0].slice(), e: keep[1].slice()};
+        const shift = e === 's' ? dist(w.s, pt) : 0, newL = dist(keep[0], keep[1]);
+        S.openings.filter(o => o.host === w.id).forEach(o => { const off = o.off - shift; if (off < 0.02 || off + o.w > newL - 0.02) ok = false; else if (shift) offs[o.id] = off; }); });
+      if (ok) cut = {walls, offs, t: Math.min(w1.t, w2.t), ext: !!(w1.ext && w2.ext), stud: Math.max(studOf(w1), studOf(w2))};
+    }
+  }
+  return {A, B, w1, w2, cut};
+}
+let cornerMode = 'cut';
+function angleCorner(r, k, legIn){
+  const L = legIn * IN; if (L > Math.min(k.la, k.lb) - 0.15){ toast(`The ${k.name} corner's walls are only ${ftin(Math.min(k.la, k.lb))} long.`); return; }
+  const pl = cornerPlan(r, k, L), cut = cornerMode === 'cut' && pl.cut;
+  // a door or window within the angle's reach of the corner would be cut through
+  for (const w0 of [pl.w1, pl.w2].filter(Boolean)){ const {d} = wallFrame(w0), uc = dot(sub(k.C, w0.s), d), dir = Math.sign(dot(w0 === pl.w1 ? k.u : k.v, d));
+    const hit = S.openings.find(o => o.host === w0.id && o.op !== 'open' && (dir > 0 ? o.off < uc + L + 0.03 && o.off + o.w > uc : o.off + o.w > uc - L - 0.03 && o.off < uc));
+    if (hit){ toast(`${hit.name || 'A ' + hit.kind} on ${w0.name || 'that wall'} is within ${legIn}" of the ${k.name} corner — pick a smaller angle or slide it away first.`); return; } }
+  const w = {id: uid('N-W'), st: r.st, s: pl.A, e: pl.B, t: cut ? pl.cut.t : 4.5 * IN, h: (pl.w1 || pl.w2 || {h: 2.44}).h, b: 0, ext: cut ? pl.cut.ext : false, stud: cut ? pl.cut.stud : 4, oc: 16, name: 'Angled wall'};
+  const opsA = (cut ? [{do: 'set_walls', walls: pl.cut.walls, openings: pl.cut.offs}] : []).concat([{do: 'add_wall', wall: w}]);
+  if (cornerMode === 'cut' && !pl.cut) toast(`Couldn't trim the ${k.name} corner walls (something else meets there or a door is in the way) — the angled wall goes in with a closed space behind it.`);
+  commit({do: 'batch', ops: opsA, label: `Angled the ${k.name} corner of ${r.name} (${legIn}")` + (cut ? '' : ' — closed space behind')}); hidePop(); sel = null; drawPlan();
+}
+function cornerPicker(r, k){
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; pop.appendChild(t);
+  if (!k){ const ks = roomCorners(r); t.textContent = ks.length ? `${r.name}: which corner?` : `${r.name} has no square corner to angle.`;
+    ks.forEach(k2 => btn(`${k2.name} corner`, () => cornerPicker(r, k2))); return; }
+  t.textContent = `${r.name}, ${k.name} corner: how far along each wall?`;
+  const m = btn(cornerMode === 'cut' ? 'Cut the corner off ✓' : 'Keep the corner (closed space behind) ✓', () => { cornerMode = cornerMode === 'cut' ? 'keep' : 'cut'; cornerPicker(r, k); });
+  const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv);
+  [24, 30, 36, 48].forEach(i => btn(`${i}"`, () => angleCorner(r, k, i)));
+  const inp = document.createElement('input'); inp.placeholder = 'inches'; inp.style.width = '70px'; inp.setAttribute('aria-label', 'Corner size in inches'); pop.appendChild(inp);
+  btn('Go', () => { const v = parseFloat(inp.value); if (v >= 6 && v <= 120) angleCorner(r, k, v); else toast('Type inches, like 32'); });
+}
+function centerItem(it, which){
+  const W = wallOfItem(it); if (!W) return;
+  const sp = centerSpans(it, W.w, W.side, W.u)[which] || centerSpans(it, W.w, W.side, W.u).wall; if (!sp) return;
+  const c = (sp[0] + sp[1]) / 2, at = add(it.at, mul(wallFrame(W.w).d, c - W.u));
+  if (sp[1] - sp[0] < it.w - 0.005) toast(`Only ${ftinHalf(sp[1] - sp[0])} there for a ${ftinHalf(it.w)} wide ${it.name.toLowerCase()}.`);
+  commitSynced({do: 'set_item', item: it.id, at, label: `Centered ${it.name} ${which === 'gap' ? 'in the space' : 'on the wall'}`}); showPop(null);
+}
+function drawBumps(g){
+  S.items.filter(it => SHOW.has(it.st) && it.bump > 0.002).forEach(it => { const {a, f} = itemFrame(it), b = backPt(it), hw = it.w / 2;
+    el('polygon', {points: pts([add(b, mul(a, -hw)), add(b, mul(a, hw)), add(add(b, mul(a, hw)), mul(f, -it.bump)), add(add(b, mul(a, -hw)), mul(f, -it.bump))]), class: 'bumpout', 'stroke-width': pxm()}, g); });
+}
 function drawItems(g, upper){
   S.items.filter(it => SHOW.has(it.st) && isUpper(it) === upper).forEach(it => {
-    const P = itemPoly(it), bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
+    const round = isRoundish(it), fr0 = itemFrame(it), P = it.cat === 'shower' && it.style === 'neo' ? neoShape(it) : round ? Array.from({length: 40}, (_, k) => add(add(it.at, mul(fr0.a, Math.cos(k / 40 * 2 * Math.PI) * it.w / 2)), mul(fr0.f, Math.sin(k / 40 * 2 * Math.PI) * it.d / 2))) : isL(it) ? lShape(it) : itemPoly(it);
+    const bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
     const grp = el('g', {class: 'item' + (upper ? ' up' : '') + (bad ? ' bad' : '') + (on ? ' sel' : ''), 'data-item': it.id}, g);
     el('polygon', {points: pts(P), 'stroke-width': (on ? 2.2 : 1.2) * pxm(), 'stroke-dasharray': upper ? `${5 * pxm()} ${3 * pxm()}` : ''}, grp);
     const {a, f} = itemFrame(it), L = (u, v) => add(add(it.at, mul(a, u * it.w / 2)), mul(f, v * it.d / 2));
@@ -1401,18 +2134,39 @@ function drawItems(g, upper){
     const circ = (p, r) => el('circle', {cx: toSvg(p)[0], cy: toSvg(p)[1], r, class: 'sym', 'stroke-width': pxm()}, grp);
     const sw = pxm();
     switch (it.cat){
-      case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); } break;
+      case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); if (it.style === 'linen'){ const [x, y] = toSvg(L(0.35, -0.35)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'LINEN'; } } break;
+      case 'panel': line(L(-1, -1), L(1, 1)); line(L(-1, 1), L(1, -1)); break;
+      case 'micro': case 'hood': { line(L(-1, 0.6), L(1, 0.6)); if (it.cat === 'hood'){ line(L(-1, 1), L(-0.35, -1)); line(L(1, 1), L(0.35, -1)); } const [x, y] = toSvg(L(0, -0.2)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = it.cat === 'micro' ? 'MW' : 'HOOD'; break; }
+      case 'trash': { line(L(-1, 0.8), L(1, 0.8)); const [x, y] = toSvg(L(0, -0.1)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = 'TRASH';
+        el('polygon', {points: pts([L(-0.7, -0.75), L(-0.05, -0.75), L(-0.05, 0.55), L(-0.7, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp);
+        el('polygon', {points: pts([L(0.05, -0.75), L(0.7, -0.75), L(0.7, 0.55), L(0.05, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp); break; }
+      case 'corner': { const t = {lazy: 'LAZY SUSAN', diag: 'DIAGONAL', blind: 'BLIND CORNER'}[it.style || 'lazy'];
+        if (it.style !== 'blind'){ el('polygon', {points: pts(cornerShape(it)), class: 'sym', 'stroke-width': 1.6 * sw, opacity: 1}, grp); if (it.style !== 'diag') circ(cornerPt(it, 0.4, 0.4), Math.min(it.w, it.d) * 0.28); }
+        else { const h = cornerHand(it); line(L(-1, 0.8), L(1, 0.8)); const b0 = h > 0 ? 1 - 2 * (it.w - 24 * IN - 3 * IN) / it.w : -1, b1 = h > 0 ? 1 : -1 + 2 * (it.w - 24 * IN - 3 * IN) / it.w;
+          line(L(b0, -1), L(b1, 0.8)); line(L(b0, 0.8), L(b1, -1)); }
+        const [x, y] = toSvg(it.style === 'blind' ? it.at : cornerPt(it, 0.4, 0.4)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = t; break; }
       case 'sink': el('polygon', {points: pts([L(-0.75, -0.6), L(0.75, -0.6), L(0.75, 0.5), L(-0.75, 0.5)]), class: 'sym', 'stroke-width': sw}, grp); break;
       case 'range': [[-0.5, -0.45], [0.5, -0.45], [-0.5, 0.4], [0.5, 0.4]].forEach(([u, v]) => circ(L(u, v), Math.min(it.w, it.d) * 0.16)); break;
       case 'vanity': circ(L(0, -0.1), Math.min(it.w, it.d) * 0.28); break;
       case 'toilet': line(L(-1, -0.45), L(1, -0.45)); el('ellipse', {cx: toSvg(L(0, 0.3))[0], cy: toSvg(L(0, 0.3))[1], rx: it.w * 0.4, ry: it.d * 0.32, transform: `rotate(${-it.rot} ${toSvg(L(0, 0.3)).join(' ')})`, class: 'sym', 'stroke-width': sw}, grp); break;
-      case 'tub': el('polygon', {points: pts([L(-0.88, -0.75), L(0.88, -0.75), L(0.88, 0.8), L(-0.88, 0.8)]), class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.75, 0), 0.03); break;
-      case 'shower': line(L(-1, -1), L(1, 1)); line(L(1, -1), L(-1, 1)); break;
+      case 'tub': if (it.style === 'free'){ el('ellipse', {cx: toSvg(it.at)[0], cy: toSvg(it.at)[1], rx: it.w * 0.44, ry: it.d * 0.4, transform: `rotate(${-it.rot} ${toSvg(it.at).join(' ')})`, class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.7, 0), 0.03); break; }
+        el('polygon', {points: pts([L(-0.88, -0.75), L(0.88, -0.75), L(0.88, 0.8), L(-0.88, 0.8)]), class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.75, 0), 0.03); break;
+      case 'shower': if (it.style === 'neo'){ circ(cornerPt(it, 0.38, 0.38), 1.5 * IN); const [x, y] = toSvg(cornerPt(it, 0.38, 0.6)); el('text', {x, y, class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'NEO'; break; }
+        if (it.style === 'tile'){ circ(L(0.75, 0), 1.5 * IN); line(L(-1, -1), L(1, -1)); const [x, y] = toSvg(L(-0.2, 0.2)); el('text', {x, y, class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'CURBLESS'; break; }
+        line(L(-1, -1), L(1, 1)); line(L(1, -1), L(-1, 1)); break;
       case 'king': case 'queen': case 'full': case 'twin': {
         const k = it.cat === 'twin' ? [[0, 0.8]] : [[-0.5, 0.42], [0.5, 0.42]];
         k.forEach(([u, hw]) => el('polygon', {points: pts([L(u - hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.72), L(u - hw / 2 * 0.9, -0.72)]), class: 'sym', 'stroke-width': sw}, grp));
         line(L(-1, -0.45), L(1, -0.2)); break; }
-      case 'sofa': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); break;
+      case 'sofa': if (isL(it)){ const sb = -1 + 2 * 10 * IN / it.d; line(L(-1, sb), L(1, sb)); const n2 = Math.max(2, Math.round(it.w / (30 * IN))); for (let k = 1; k < n2; k++) line(L(-1 + 2 * k / n2, sb), L(-1 + 2 * k / n2, -1 + 2 * 38 * IN / it.d)); break; }
+        line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); { const n2 = it.style === 'love' ? 2 : 3; for (let k = 1; k < n2; k++) line(L(-0.85 + 1.7 * k / n2, -0.45), L(-0.85 + 1.7 * k / n2, 1)); } break;
+      case 'chair': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.7, -0.45), L(-0.7, 1)); line(L(0.7, -0.45), L(0.7, 1)); break;
+      case 'dresser': case 'night': { const rows = it.style === 'tall' ? 1 : it.cat === 'night' ? 1 : 2; for (let k = 1; k <= rows; k++) line(L(-1 + 2 * k / (rows + 1), 0.4), L(-1 + 2 * k / (rows + 1), 1)); line(L(-1, 0.4), L(1, 0.4)); break; }
+      case 'coffee': break;
+      case 'table': chairsOf(it).forEach(ch => { const c = add(add(it.at, mul(a, ch.u)), mul(f, ch.v)), r = 8 * IN;
+        const ca = [Math.cos(ch.t), Math.sin(ch.t)], cA = add(mul(a, ca[0]), mul(f, ca[1])), cB = perp(cA);
+        el('polygon', {points: pts([add(add(c, mul(cA, -r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, r)), add(add(c, mul(cA, -r)), mul(cB, r))]), class: 'sym', 'stroke-width': sw, 'stroke-dasharray': `${3 * sw} ${2 * sw}`}, grp); });
+        { const [x, y] = toSvg(it.at); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = `seats ${seats(it)}`; } break;
       case 'fridge': case 'dw': case 'washer': case 'dryer': {
         const t = {fridge: 'REF', dw: 'DW', washer: 'W', dryer: 'D'}[it.cat], [x, y] = toSvg(it.at);
         el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 10 * pxm()}, grp).textContent = t; break; }
@@ -1429,7 +2183,7 @@ function startPlacing(cat){
   document.querySelectorAll('.cat button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cat === cat));
   toast(CAT[cat].wall ? `Move to a wall and click to place the ${CAT[cat].label.toLowerCase()}. Esc to cancel.` : `Click to place the ${CAT[cat].label.toLowerCase()}. Esc to cancel.`);
 }
-function stopPlacing(){ placing = null; document.querySelectorAll('.cat button').forEach(b => b.setAttribute('aria-pressed', 'false')); drawPlan(); }
+function stopPlacing(){ placing = null; itemGuide = null; document.querySelectorAll('.cat button').forEach(b => b.setAttribute('aria-pressed', 'false')); drawPlan(); }
 function startItemDrag(ev, id){
   if (placing || tool !== 'select' || ev.button > 0) return;
   ev.stopPropagation(); svg.setPointerCapture(ev.pointerId);
@@ -1440,30 +2194,88 @@ function itemDragMove(ev, p){
   if (!dragMoved && Math.hypot(ev.clientX - drag.ev0.clientX, ev.clientY - drag.ev0.clientY) < 4) return;
   dragMoved = true;
   const it = S.items.find(x => x.id === drag.id); Object.assign(it, clone(drag.orig));
-  snapItem(it, add(drag.back0, sub(p, drag.p0)));
+  shiftFree = ev.shiftKey; snapItem(it, add(drag.back0, sub(p, drag.p0)));
   issues = computeChecks(); drawPlan(); build3D();
 }
 function itemDragEnd(d, ev){
   const it = S.items.find(x => x.id === d.id);
   if (!dragMoved){ select({kind: 'item', id: d.id}, ev); return; }
   const v = {at: it.at, rot: it.rot, st: it.st}; rebuild();
-  commit({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
+  commitSynced({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
   sel = {kind: 'item', id: d.id}; drawPlan();
 }
 function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  const frU = fridgeUnder(it);
+  t.textContent = it.cat === 'table' ? `${it.name} · seats about ${seats(it)}` : FURN[it.cat] ? `${it.name} · ${Math.round(it.w / IN)}" x ${Math.round(it.d / IN)}"` + (isL(it) ? ` (return ${Math.round(it.retW / IN)}")` : '') : `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+  const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
+  if (it.cat === 'corner'){ brk();
+    for (const [k, c2] of Object.entries(CORNER)){ if (k === 'blind') continue; const b = btn(c2.label, () => setCorner(it, k)); if (it.style === k) b.setAttribute('aria-pressed', 'true'); }
+    [36, 39, 42, 45, 48].forEach(wi => { const b = btn(`Blind ${wi}"`, () => setCorner(it, 'blind', wi)); if (it.style === 'blind' && Math.abs(it.w - wi * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    if (it.style === 'blind') btn('Blind end ⇄', () => { commit({do: 'set_item', item: it.id, flip: !it.flip, label: 'Switched the blind end'}); showPop(null); });
+    brk(); }
+  if (isFridge(it)){ brk();
+    [['Standard depth', FRIDGE_D.std], ['Counter depth', FRIDGE_D.counter]].forEach(([lb, inch]) => { const b = btn(`${lb} ${inch}"`, () => setFridgeDepth(it, inch)); if (Math.abs(it.d - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    if (!S.items.some(o => fridgeUnder(o) === it)) btn('Cabinet above', () => cabinetOverFridge(it));
+    const ch = flushChain(it);
+    for (const [lb, up] of [['uppers', true], ['base cabinets', false]]){ const row = ch.filter(c => c.upper === up).map(c => c.it); if (!row.length) continue;
+      const allOn = row.every(o => o.flush); btn(allOn ? `Put ${lb} back on the wall` : `Bring ${lb} beside it flush`, () => setFlush(row, !allOn)); }
+    brk(); }
+  const cf = CASEWORK.has(it.cat) ? chainOf(it) : null;
+  if (cf){ brk(); const row = flushChain(cf.fr).filter(c => c.upper === cf.upper && c.sg === cf.sg);
+    if (it.flush) btn('Back on the wall', () => setFlush(row.filter(c => c.k >= cf.k).map(c => c.it), false));
+    else btn('Flush with fridge', () => setFlush(row.filter(c => c.k <= cf.k).map(c => c.it), true));
+    brk(); }
+  if (it.cat === 'shower' || it.cat === 'tub'){ const ends = itemEnds(it);
+    if (ends.length){ brk(); ends.forEach(E => {
+      if (E.wall && E.gap > 0.5 * IN){ const g = ftinHalf(E.gap).replace(/^0'-/, '');
+        btn(`Frame in ${g} ${E.side} (2x4 + return)`, () => endWall(it, E, 'fill'));
+        if (isNewWall(E.wall)) btn(`Move ${E.side} wall ${g} to it`, () => endWall(it, E, 'move')); }
+      else if (!E.wall) btn(`Add wall at ${E.side} end`, () => endWall(it, E, 'add')); }); brk(); } }
+  if (FURN[it.cat]){ brk(); const st = furnStyle(it);
+    Object.entries(FURN[it.cat]).forEach(([k, F]) => { const b = btn(F.label, () => { const cur = F.sizes.find(z => Math.abs(z[0] * IN - it.w) < 0.01) || F.sizes[Math.min(1, F.sizes.length - 1)]; setFurn(it, k, cur); }); if (st === k) b.setAttribute('aria-pressed', 'true'); });
+    brk(); FURN[it.cat][st].sizes.forEach(z => { const b = btn(z.length > 2 ? `${z[0]}x${z[1]}` : (st === 'round' || st === 'square') ? `${z[0]}"` : `${z[0]}x${z[1]}`, () => setFurn(it, st, z)); if (Math.abs(it.w - z[0] * IN) < 0.005 && Math.abs(it.d - z[1] * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    btn('Size…', () => furnSizeInput(it));
+    if (isL(it)) btn('Chaise / return other side ⇄', () => { commit({do: 'set_item', item: it.id, flip: !it.flip, label: `${it.name}: return on the other side`}); showPop(null); });
+    brk(); }
+  if (it.cat === 'table'){ brk(); const sh = tableShape(it);
+    Object.entries(TABLE).forEach(([k, T]) => { const b = btn(T.label, () => { const cur = TABLE[k].sizes.find(z => Math.abs(z[0] * IN - Math.max(it.w, it.d)) < 0.01) || TABLE[k].sizes[Math.min(2, TABLE[k].sizes.length - 1)]; setTable(it, k, cur[0], cur[1]); }); if (sh === k) b.setAttribute('aria-pressed', 'true'); });
+    brk(); TABLE[sh].sizes.forEach(([a, b2]) => { const b = btn(sh === 'rect' ? `${a}x${b2}` : `${a}"`, () => setTable(it, sh, a, b2)); if (Math.abs(it.w - a * IN) < 0.005 && Math.abs(it.d - b2 * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    btn('Size…', () => tableSizeInput(it)); brk(); }
+  if (it.cat === 'tall'){ brk();
+    [['Pantry depth 24"', 24], ['Vanity depth 21" (linen)', 21]].forEach(([lb, di]) => { const b = btn(lb, () => setTallDepth(it, di)); if (Math.abs(it.d - di * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    brk();
+    [84, 90, 96].forEach(inch => { const b = btn(`${inch}" tall`, () => { commitSynced({do: 'set_item', item: it.id, h: inch * IN, z: 0, label: `${it.name} → ${inch}" tall`}); showPop(null); }); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    const tl = topLine(it); btn(`Up to the uppers (${ftinHalf(tl).replace(/^0'-/, '')})`, () => { commitSynced({do: 'set_item', item: it.id, h: tl, z: 0, label: `${it.name} → up to the uppers`}); showPop(null); });
+    brk(); }
+  if (it.cat === 'upper'){ brk();
+    (frU ? OVER_FRIDGE_H : UPPER_H).forEach(inch => { const b = btn(`${inch}" tall`, () => setUpperHeight(it, inch)); if ((!frU || it.pick) && Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    if (frU){ const b = btn('Up to the other uppers', () => setUpperHeight(it, 0)); if (!it.pick) b.setAttribute('aria-pressed', 'true'); brk();
+      [24, 12].forEach(di => { const b2 = btn(`${di}" deep box`, () => { commitSynced({do: 'set_item', item: it.id, boxD: di, label: `${it.name} → ${di}" deep on a bump-out`}); showPop(null); }); if (Math.abs(it.d - di * IN) < 0.005) b2.setAttribute('aria-pressed', 'true'); }); }
+    brk(); }
+  if (it.cat === 'range' && !S.items.some(o => (o.cat === 'micro' || o.cat === 'hood') && Math.abs(dot(sub(o.at, it.at), itemFrame(it).a)) < it.w / 2 && dot(itemFrame(o).f, itemFrame(it).f) > 0.99)){
+    brk(); btn('Microwave above', () => aboveRange(it, 'micro')); btn('Hood above', () => aboveRange(it, 'hood')); brk(); }
+  if (c.wall && !it.auto && ['range', 'dw', 'fridge', 'sink', 'base', 'trash', 'tall', 'corner', 'micro', 'hood', 'upper'].includes(it.cat) && !(isUpper(it) && fridgeUnder(it))){
+    const fills = sideFills(it);
+    if (fills.length){ brk();
+      fills.forEach(sd => btn(`${sd.side} ${ftinHalf(sd.space * IN)}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`, () => fillSides(it, [sd])));
+      if (fills.length > 1) btn('Fill both sides', () => fillSides(it, fills));
+      brk(); } }
+  const Wi = c.wall && it.cat !== 'filler' ? wallOfItem(it) : null;
+  if (Wi){ const CS = centerSpans(it, Wi.w, Wi.side, Wi.u), off = sp => sp && Math.abs((sp[0] + sp[1]) / 2 - Wi.u) > 0.25 * IN;
+    if (CS.gap) { const b = btn('Center in space', () => centerItem(it, 'gap')); if (!off(CS.gap)) b.setAttribute('aria-pressed', 'true'); }
+    if (CS.wall){ const b = btn('Center on wall', () => centerItem(it, 'wall')); if (!off(CS.wall)) b.setAttribute('aria-pressed', 'true'); } }
   btn('Rename', () => renameInput('item', it.id, it.name));
   btn('Rotate', () => { commit({do: 'set_item', item: it.id, rot: (it.rot + 90) % 360, label: `Rotated ${it.name}`}); showPop(null); });
   btn('Copy', () => { const {a} = itemFrame(it), cp = clone(it); cp.id = uid('N-I'); cp.at = add(it.at, mul(a, it.w)); commit({do: 'add_item', item: cp, label: `Copied ${it.name}`}); sel = {kind: 'item', id: cp.id}; drawPlan(); showPop(null); });
-  btn('Remove', () => { commit({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); }, 'danger');
+  btn('Remove', () => { commitSynced({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); }, 'danger');
   return true;
 }
 function resizeItem(it, wNew){
   const {a} = itemFrame(it), at = add(it.at, mul(a, (wNew - it.w) / 2));   // keep the left end where it is
-  commit({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
+  commitSynced({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
 }
 
 /* ---------------- live checks ---------------- */
@@ -1479,14 +2291,14 @@ function sat(A, B){
 }
 const zOverlap = (A, B) => !(A.z + A.h <= B.z + 0.01 || B.z + B.h <= A.z + 0.01);
 function doorSwings(st){
-  return S.openings.filter(o => o.kind === 'door' && o.w < 1.25).map(o => {
+  return S.openings.filter(o => o.kind === 'door' && (isSwingDoor(o) || ['double', 'bifold'].includes(o.op))).map(o => {
     const w = S.walls.find(x => x.id === o.host); if (!w || w.st !== st) return null;
-    const {d, n} = wallFrame(w), side = swingSide(o, w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w));
-    return {o, poly: [add(a, mul(n, side * w.t / 2)), add(b, mul(n, side * w.t / 2)), add(b, mul(n, side * (w.t / 2 + o.w))), add(a, mul(n, side * (w.t / 2 + o.w)))]};
+    const {d, n} = wallFrame(w), side = swingSide(o, w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), r = o.op === 'double' ? o.w / 2 : o.op === 'bifold' ? o.w / 4 : o.w;
+    return {o, poly: [add(a, mul(n, side * w.t / 2)), add(b, mul(n, side * w.t / 2)), add(b, mul(n, side * (w.t / 2 + r))), add(a, mul(n, side * (w.t / 2 + r)))]};
   }).filter(Boolean);
 }
 function doorways(st){
-  return S.openings.filter(o => (o.kind === 'door' || o.kind === 'void') && o.op !== 'open' && o.sill < 0.3).map(o => {
+  return S.openings.filter(o => (o.kind === 'door' || o.kind === 'void') && o.op !== 'open' && !['bifold', 'bypass'].includes(o.op) && o.sill < 0.3).map(o => {
     const w = S.walls.find(x => x.id === o.host); if (!w || w.st !== st) return null;
     const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), k = w.t / 2 + 24 * IN;
     return {o, poly: [add(a, mul(n, k)), add(b, mul(n, k)), add(b, mul(n, -k)), add(a, mul(n, -k))]};
@@ -1603,12 +2415,23 @@ function drawLotPanel(){
 }
 function toggleLot(){ showLot = !showLot; $('#tLot').setAttribute('aria-pressed', showLot); try { localStorage.setItem('rebuilt-lot', showLot ? '1' : '0'); } catch (e) {} if (showLot) fitLot(); else fit(); drawPlan(); }
 
+function slideChecks(out){
+  S.openings.filter(o => o.op === 'pocket' || o.op === 'barn').forEach(o => {
+    const w = S.walls.find(x => x.id === o.host); if (!w || !SHOW.has(w.st)) return;
+    const {L, d} = wallFrame(w), [a, b] = pocketSpan(o), what = o.op === 'pocket' ? 'pocket' : 'track';
+    let why = a < -0.01 || b > L + 0.01 ? 'the wall ends' : '';
+    if (!why){ const hit = S.openings.find(q => q.host === w.id && q.id !== o.id && q.off < b && q.off + q.w > a); if (hit) why = `${hit.name || hit.kind} is in the way`; }
+    if (!why && o.op === 'pocket'){ const tee = S.walls.find(q => q.id !== w.id && q.st === w.st && [q.s, q.e].some(pt => { const pr = projOnSeg(pt, w.s, w.e); return pr.d < w.t / 2 + TOL && pr.t * L > a + 0.02 && pr.t * L < b - 0.02; })); if (tee) why = `${tee.name || 'a wall'} meets it there`; }
+    if (why) out.push({type: 'pocket', o: o.id, ids: [], msg: `${o.name || 'Door'} needs ${ftin(o.w)} of plain wall for its ${what} — ${why}. Flip it to the other side or move it.`});
+  });
+}
 function computeChecks(){
   const out = [];
+  slideChecks(out);
   const its = S.items.filter(it => SHOW.has(it.st));
   for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++){
     const A = its[i], B = its[j]; if (A.st !== B.st || !zOverlap(A, B)) continue;
-    if (sat(itemPoly(A), itemPoly(B))) out.push({type: 'overlap', a: A.id, b: B.id, ids: [A.id, B.id], msg: `${A.name} overlaps ${B.name}`});
+    if (partsOf(A).some(pa => partsOf(B).some(pb => sat(pa, pb)))) out.push({type: 'overlap', a: A.id, b: B.id, ids: [A.id, B.id], msg: `${A.name} overlaps ${B.name}`});
   }
   its.forEach(it => {
     S.walls.filter(w => w.st === it.st).forEach(w => { if (sat(itemPoly(it, -0.002), wallPoly(w))) out.push({type: 'wall', it: it.id, ids: [it.id], msg: `${it.name} runs into ${w.name || 'a wall'}`}); });
@@ -1702,6 +2525,9 @@ function findSpot(it, extraOk){
   it.at = base; return null;
 }
 function fixOps(x){
+  if (x.type === 'pocket'){ const o = S.openings.find(q => q.id === x.o); if (!o) return null;
+    const T = clone(S), S0 = S; applyOp(T, {do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e'}); S = T; const left = []; try { slideChecks(left); } finally { S = S0; }
+    return left.some(y => y.o === o.id) ? null : {ops: [{do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e'}], what: `moved the ${o.op === 'pocket' ? 'pocket' : 'track'} of ${o.name || 'the door'} to the other side`}; }
   const get = id => S.items.find(i => i.id === id);
   if (x.type === 'overlap' || x.type === 'wall' || x.type === 'swing'){
     // move the item that was added last (islands and furniture before cabinets in a run)
@@ -1845,17 +2671,42 @@ function itemBox(it, u0, u1, v0, v1, z0, z1, mat, grp){
 function buildItems3D(grp){
   S.items.filter(it => SHOW.has(it.st)).forEach(it => {
     const H = it.h, bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
-    const body = on ? IM.pick : bad ? IM.bad : IM.cab;
+    const body = on ? IM.pick : bad ? IM.bad : IM.cab, vb = it.bump > 0.002 ? -1 - 2 * it.bump / it.d : -1;
+    if (vb < -1){ const top = ['base', 'sink', 'trash'].includes(it.cat) ? H - 0.032 : H;
+      if (showFraming) bumpFraming3D(it, top, grp); else itemBox(it, -1, 1, vb, -1, 0, top, M.wall, grp);
+      if (['base', 'sink', 'trash'].includes(it.cat)) itemBox(it, -1, 1, vb, -1, H - 0.032, H, IM.top, grp); }
     switch (it.cat){
-      case 'base': case 'sink': case 'vanity': case 'island':
+      case 'corner': if (it.style !== 'blind'){ const P = cornerShape(it); polyPrism(P, EL(it.st) + it.z, EL(it.st) + it.z + H - 0.032, body, grp); polyPrism(cornerShape(it, 1 * IN), EL(it.st) + it.z + H - 0.032, EL(it.st) + it.z + H, IM.top, grp); break; }
+        itemBox(it, -1, 1, -1, 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break;
+      case 'base': case 'sink': case 'trash': case 'vanity': case 'island':
         itemBox(it, -1, 1, -1, it.cat === 'island' ? 1 : 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break;
-      case 'upper': case 'tall': case 'filler': itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
+      case 'filler': if (!isUpper(it)){ itemBox(it, -1, 1, -1, 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
+      case 'upper': case 'tall': itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
       case 'range': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
-      case 'fridge': case 'dw': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
-      case 'toilet': case 'tub': case 'shower': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
+      case 'fridge': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
+      case 'dw': itemBox(it, -1, 1, -1, 0.95, 0, H, on ? IM.pick : IM.steel, grp); itemBox(it, -1, 1, -1, 1.04, H, H + 1.5 * IN, IM.top, grp); break;     // countertop over the dishwasher
+      case 'panel': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.cab, grp); break;
+      case 'micro': itemBox(it, -1, 1, -1, -1 + 2 * 12 * IN / it.d, 17 * IN, H, on ? IM.pick : bad ? IM.bad : IM.cab, grp); itemBox(it, -1, 1, -1, 1, 0, 17 * IN, IM.steel, grp); break;
+      case 'hood': { const cw = Math.min(1, 12 * IN / it.w), cd = -1 + 2 * 10 * IN / it.d; itemBox(it, -1, 1, -1, 1, 0, 3 * IN, on ? IM.pick : IM.steel, grp); itemBox(it, -0.8, 0.8, -1, 0.6, 3 * IN, 9 * IN, IM.steel, grp); itemBox(it, -cw, cw, -1, cd, 9 * IN, H, IM.steel, grp); break; }
+      case 'shower': if (it.style === 'neo'){ polyPrism(neoShape(it), EL(it.st) + it.z, EL(it.st) + it.z + H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
+      case 'toilet': case 'tub': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
       case 'king': case 'queen': case 'full': case 'twin':
         itemBox(it, -1, 1, -1, 1, 0, 0.3, on ? IM.pick : bad ? IM.bad : IM.wood, grp); itemBox(it, -0.97, 0.97, -0.97, 0.97, 0.3, 0.6, IM.bed, grp); itemBox(it, -1, 1, -1, -0.94, 0, 1.2, on ? IM.pick : IM.wood, grp); break;
-      case 'sofa': itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
+      case 'sofa': if (isL(it)){ const mat = on ? IM.pick : bad ? IM.bad : IM.fabric, z0 = EL(it.st) + it.z; polyPrism(lShape(it), z0, z0 + 0.45, mat, grp); itemBox(it, -1, 1, -1, -1 + 2 * 10 * IN / it.d, 0.45, H, IM.fabric, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
+      case 'chair': itemBox(it, -1, 1, -1, 1, 0, 0.42, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.5, 0.42, H, IM.fabric, grp); itemBox(it, -1, -0.7, -0.5, 1, 0.42, 0.62, IM.fabric, grp); itemBox(it, 0.7, 1, -0.5, 1, 0.42, 0.62, IM.fabric, grp); break;
+      case 'coffee': case 'table': { const mat = on ? IM.pick : bad ? IM.bad : IM.wood, z0 = EL(it.st) + it.z;
+        if (isRoundish(it) && it.style === 'oval'){ const sh2 = new THREE.Shape(); sh2.absellipse(0, 0, it.w / 2, it.d / 2, 0, 2 * Math.PI); const m2 = new THREE.Mesh(new THREE.ExtrudeGeometry(sh2, {depth: 1.5 * IN, bevelEnabled: false}), mat);
+          m2.rotation.x = -Math.PI / 2; m2.rotation.z = it.rot * Math.PI / 180; m2.position.copy(P3(it.at[0], it.at[1], z0 + H - 1.5 * IN)); grp.add(m2);
+          for (const su of [-1, 1]) itemBox(it, su * 0.55 - 0.06, su * 0.55 + 0.06, -0.3, 0.3, 0, H - 1.5 * IN, IM.wood, grp); break; }
+        if (isRoundish(it)){ const top = new THREE.Mesh(new THREE.CylinderGeometry(it.w / 2, it.w / 2, 1.5 * IN, 40), mat); top.position.copy(P3(it.at[0], it.at[1], z0 + H - 0.75 * IN)); top.castShadow = true; top.userData.item = it.id; grp.add(top);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(2 * IN, 2 * IN, H - 1.5 * IN, 16), IM.wood); leg.position.copy(P3(it.at[0], it.at[1], z0 + (H - 1.5 * IN) / 2)); leg.userData.item = it.id; grp.add(leg);
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(10 * IN, it.w / 3), Math.min(10 * IN, it.w / 3), 1.5 * IN, 24), IM.wood); base.position.copy(P3(it.at[0], it.at[1], z0 + 0.75 * IN)); grp.add(base); }
+        else { itemBox(it, -1, 1, -1, 1, H - 1.5 * IN, H, mat, grp); const lu = 1 - 4 * IN / it.w, lv = 1 - 4 * IN / it.d, lw = 2.5 * IN / it.w, lh = 2.5 * IN / it.d;
+          for (const su of [-1, 1]) for (const sv of [-1, 1]) itemBox(it, su * lu - lw, su * lu + lw, sv * lv - lh, sv * lv + lh, 0, H - 1.5 * IN, IM.wood, grp); }
+        break; }
       default: itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.wood, grp);
     }
   });
@@ -1882,6 +2733,7 @@ const FRAMING = {
   rafter:  {label: 'Rafters + ceiling joists, 16" o.c.', sp: 16},
 };
 let showFraming = false;
+function toggleFraming(){ showFraming = !showFraming; drawPlan(); build3D(); drawRoofPanel(); }
 // a gable roof in its own frame: u along the eaves (ridge direction), v across the span from the first eave
 // the roof follows its building: if the outside walls moved, its outline stretches with them
 function liveFp(r){
@@ -1985,7 +2837,7 @@ function bearingChecks(out){
 /* 3D members: thin boxes between two plan+height points */
 const FM = {
   wood: new THREE.MeshStandardMaterial({color: '#C9A06A', roughness: .8}), beam: new THREE.MeshStandardMaterial({color: '#B4432F', roughness: .6}),
-  plate: new THREE.MeshStandardMaterial({color: '#A57E4E', roughness: .8}),
+  plate: new THREE.MeshStandardMaterial({color: '#A57E4E', roughness: .8}), header: new THREE.MeshStandardMaterial({color: '#8C6A3F', roughness: .8}),
 };
 function member(grp, p0, z0, p1, z1, w, h, mat){
   const A = P3(p0[0], p0[1], z0), B = P3(p1[0], p1[1], z1), L = A.distanceTo(B); if (L < 0.01) return;
@@ -1994,6 +2846,7 @@ function member(grp, p0, z0, p1, z1, w, h, mat){
 }
 function buildFraming3D(grp){
   if (!showFraming) return;
+  buildWallFraming3D(grp);
   (S.roofs || []).forEach(r => {
     const {F, sp, n} = roofStats(r), t = 1.5 * IN, dd = 3.5 * IN, zP = F.z, zR = zP + F.rise, oh = r.oh;
     for (let k = 0; k < n; k++){
@@ -2017,6 +2870,7 @@ function drawFramingPlan(g){
     el('polygon', {points: pts(wallPoly({...w, t: w.t + 0.12})), class: 'bearing' + (info.why === 'maybe' ? ' maybe' : ''), 'stroke-width': 1.5 * pxm(), 'stroke-dasharray': `${4 * pxm()} ${3 * pxm()}`}, g); });
   (S.beams || []).forEach(b => el('line', {x1: toSvg(b.s)[0], y1: toSvg(b.s)[1], x2: toSvg(b.e)[0], y2: toSvg(b.e)[1], class: 'beam', 'stroke-width': 5 * pxm(), 'stroke-dasharray': `${10 * pxm()} ${4 * pxm()}`}, g));
   if (!showFraming) return;
+  drawStudsPlan(g);
   (S.roofs || []).forEach(r => { const {F, sp, n} = roofStats(r);
     for (let k = 0; k < n; k++){ const s = Math.min(k * sp, F.L), a = add(F.o, mul(F.u, s)), b = add(a, mul(F.v, F.W));
       el('line', {x1: toSvg(a)[0], y1: toSvg(a)[1], x2: toSvg(b)[0], y2: toSvg(b)[1], class: 'joist', 'stroke-width': pxm()}, g); } });
@@ -2112,7 +2966,8 @@ function drawRoofPanel(){
     host.appendChild(box);
   });
   const t = document.createElement('button'); t.id = 'tFrame'; t.setAttribute('aria-pressed', showFraming); t.textContent = showFraming ? 'Hide framing' : 'Show framing';
-  t.onclick = () => { showFraming = !showFraming; drawPlan(); build3D(); drawRoofPanel(); }; host.appendChild(t);
+  t.onclick = toggleFraming; host.appendChild(t);
+  $('#tFrameTop').setAttribute('aria-pressed', showFraming);
 }
 function copyOrder(r){
   const {F, commons} = roofStats(r), B = bearingWalls(), bw = [...B.entries()].filter(([, i]) => i.roof === r && i.why === 'eave').map(([id]) => (PLAN.walls.find(w => w.id === id) || {}).name || id);
@@ -2225,7 +3080,7 @@ function placeScore(it, r, sd, x0){
     const front = clone(it); front.at = add(it.at, mul(sd.inward, it.d / 2 + 0.38)); front.d = 0.76; front.z = 0; front.h = 1; if (!itemClear(front, r.poly)) s -= 10;
   } else s -= Math.abs(x0 + it.w / 2 - sd.len / 2) * 0.5;
   // pairs that belong together: washer + dryer, appliances in a run
-  const pals = {washer: ['dryer'], dryer: ['washer'], dw: ['sink', 'base'], range: ['base'], fridge: ['base', 'tall']}[it.cat];
+  const pals = {washer: ['dryer'], dryer: ['washer'], dw: ['sink', 'base', 'trash'], range: ['base', 'trash'], fridge: ['base', 'tall']}[it.cat];
   if (pals) S.items.forEach(o => { if (o.id === it.id || !pals.includes(o.cat) || dot(itemFrame(o).f, sd.inward) < 0.99) return;
     const ox = posOn(sd, o.at); if (Math.abs(ox - o.w / 2 - (x0 + it.w)) < 0.03 || Math.abs(ox + o.w / 2 - x0) < 0.03) s += 15; });
   return s + sd.len * 0.2;
@@ -2517,10 +3372,10 @@ function placeOpeningAt(p, ev){
   if (tool === 'window' && !best.w.ext){ toast('Windows go in outside walls.'); return; }
   const kind = tool; setTool('select'); addOpening(best.w, kind, best.q);
 }
-function setTool(t){ tool = t; draft = null; snapMark = null; $('#tSel').setAttribute('aria-pressed', t === 'select'); $('#tBox').setAttribute('aria-pressed', t === 'box'); $('#tWall').setAttribute('aria-pressed', t === 'wall'); $('#tRoom').setAttribute('aria-pressed', t === 'room'); $('#tDoor').setAttribute('aria-pressed', t === 'door'); $('#tWin').setAttribute('aria-pressed', t === 'window'); roomDraft = null; svg.style.cursor = t === 'select' ? '' : 'crosshair'; if (t === 'wall' || t === 'room' || t === 'door' || t === 'window'){ sel = null; hidePop(); } if (t === 'door' || t === 'window') toast(`Click the wall where the ${t} goes.`); drawPlan(); highlight3D(); }
+function setTool(t){ tool = t; draft = null; chain = null; snapMark = null; $('#wallOpts').hidden = t !== 'wall'; $('#tSel').setAttribute('aria-pressed', t === 'select'); $('#tBox').setAttribute('aria-pressed', t === 'box'); $('#tWall').setAttribute('aria-pressed', t === 'wall'); $('#tRoom').setAttribute('aria-pressed', t === 'room'); $('#tDoor').setAttribute('aria-pressed', t === 'door'); $('#tWin').setAttribute('aria-pressed', t === 'window'); roomDraft = null; svg.style.cursor = t === 'select' ? '' : 'crosshair'; if (t === 'wall' || t === 'room' || t === 'door' || t === 'window'){ sel = null; hidePop(); } if (t === 'door' || t === 'window') toast(`Click the wall where the ${t} goes.`); drawPlan(); highlight3D(); }
 $('#tSel').onclick = () => setTool('select'); $('#tBox').onclick = () => setTool('box'); $('#tRoom').onclick = () => setTool('room');
 $('#tRoof').onclick = () => { showRoof = !showRoof; $('#tRoof').setAttribute('aria-pressed', showRoof); try { localStorage.setItem('rebuilt-roof', showRoof ? '1' : '0'); } catch (e) {} build3D(); };
-$('#tRoof').setAttribute('aria-pressed', showRoof); $('#tLot').onclick = toggleLot; $('#tLot').setAttribute('aria-pressed', showLot); $('#tDoor').onclick = () => setTool('door'); $('#tWin').onclick = () => setTool('window');
+$('#tRoof').setAttribute('aria-pressed', showRoof); $('#tFrameTop').onclick = toggleFraming; $('#tLot').onclick = toggleLot; $('#tLot').setAttribute('aria-pressed', showLot); $('#tDoor').onclick = () => setTool('door'); $('#tWin').onclick = () => setTool('window');
 function setStretch(v){ stretch = v; $('#tStretch').setAttribute('aria-pressed', !v); try { localStorage.setItem('rebuilt-solo', v ? '0' : '1'); } catch (e) {} }
 $('#tStretch').onclick = () => { setStretch(!stretch); toast(stretch ? 'Walls stay connected when you move one.' : 'Moving one wall only — attached walls stay put.'); };
 setStretch(stretch); $('#tWall').onclick = () => setTool('wall');
@@ -2532,14 +3387,45 @@ document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? $('#redo').click() : $('#undo').click(); }
-  else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
+  else if (e.key.startsWith('Arrow') && sel && !placing){ e.preventDefault();
+    const st = e.shiftKey ? 12 * IN : e.altKey ? 0.25 * IN : 1 * IN, v = {ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st]}[e.key];
+    if (v) nudge(v[0], v[1]); }
+  else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; chain = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
-    if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && !w.ext)); }
-    else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commit({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
+    if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && (!w.ext || isNewWall(w)))); }
+    else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commitSynced({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
     else if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id); commit({do: 'remove_opening', opening: o.id, label: `Removed ${o.name || o.kind}`}); sel = null; hidePop(); }
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');
 });
+let lastNudge = null;
+function nudgeOp(v){
+  if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (!it) return null;
+    const W = CAT[it.cat] && CAT[it.cat].wall ? wallOfItem(it) : null, dv = W ? mul(wallFrame(W.w).d, dot(v, wallFrame(W.w).d)) : v;   // against a wall: slides along it
+    if (len(dv) < 0.001) return {skip: 'It slides along its wall: use the other arrows.'};
+    return {op: {do: 'set_item', item: it.id, at: add(it.at, dv), label: `Nudged ${it.name} ${ftinHalf(len(dv)).replace(/^0'-/, '')}`}, synced: true}; }
+  if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id), w = o && S.walls.find(x => x.id === o.host); if (!w) return null;
+    const {d, L} = wallFrame(w), du = dot(v, d); if (Math.abs(du) < 0.001) return {skip: 'Doors and windows slide along their wall.'};
+    const off = Math.max(0.05, Math.min(L - o.w - 0.05, o.off + du));
+    return {op: {do: 'set_opening', opening: o.id, off, label: `Nudged ${o.name || o.kind} ${ftinHalf(Math.abs(du)).replace(/^0'-/, '')}`}}; }
+  if (sel.kind === 'wall' || sel.kind === 'walls'){ const ids = selWalls(); if (!ids.length) return null;
+    const g = groupStart(ids), vv = g.n0 ? mul(g.n0, dot(v, g.n0)) : v; if (len(vv) < 0.001) return {skip: 'A wall moves sideways: use the other arrows.'};
+    const pv = groupPreview(g, vv), w0 = S.walls.find(x => x.id === ids[0]);
+    return {op: {do: 'set_walls', walls: pv.walls, openings: pv.offs, label: `Nudged ${ids.length > 1 ? ids.length + ' walls' : (w0.name || 'wall')} ${ftinHalf(len(vv)).replace(/^0'-/, '')}`}}; }
+  return null;
+}
+function nudge(dx, dy){
+  if (!sel) return;
+  const key = sel.kind + ':' + JSON.stringify(sel.kind === 'walls' ? sel.ids : sel.id);
+  let tot = [dx, dy], prev = null;
+  if (lastNudge && lastNudge.key === key && cursor === ops.length && cursor === lastNudge.cursor && ops.length){ prev = ops.pop(); cursor--; rebuild(); tot = add(lastNudge.total, tot); }
+  const r = nudgeOp(tot);
+  if (!r || r.skip){ if (prev){ ops.push(prev); cursor++; rebuild(); afterChange(false); } if (r && r.skip) toast(r.skip); return; }
+  hidePop(); (r.synced ? commitSynced : commit)(r.op);
+  lastNudge = {key, total: tot, cursor};
+  const t = len(tot); showDims({clientX: innerWidth / 2, clientY: 70}, `moved ${ftinHalf(t).replace(/^0'-/, '')} ${Math.abs(tot[0]) > Math.abs(tot[1]) ? (tot[0] > 0 ? 'right' : 'left') : (tot[1] > 0 ? 'up' : 'down')}`);
+  clearTimeout(nudge.t); nudge.t = setTimeout(() => { dims.hidden = true; }, 1200);
+}
 let tt; function toast(t){ const el2 = $('#toast'); el2.textContent = t; el2.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el2.classList.remove('on'), 2600); }
 addEventListener('resize', () => { resize3(); drawPlan(); });
 
