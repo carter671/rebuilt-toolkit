@@ -54,6 +54,31 @@ def _wall_len(w):
     return math.dist(w["start"], w["end"])
 
 
+LITE = {"none": "solid", "quarter": "1/4 lite", "half": "1/2 lite", "tq": "3/4 lite", "full": "full glass"}
+
+
+def _door_text(op, lite, ext):
+    """The editor's door type as the opening's filling.operation (the takeoff reads these words)."""
+    op = op or "swing"
+    if op == "slider":
+        return "sliding glass patio door" if ext else "bypass slider"
+    if op == "double":
+        return "french pair, full glass, exterior" if ext else "french pair"
+    if op == "swing":
+        return f"exterior swing, {LITE.get(lite or 'none', 'solid')}" if ext else "swing"
+    return {"pocket": "pocket door (pocket frame kit, header over door + pocket, no plumbing / wiring in the pocket)",
+            "bifold": "bifold", "bypass": "bypass slider", "barn": "barn door on a surface track",
+            "cased": "cased opening, no door", "overhead": "overhead"}.get(op, op)
+
+
+def _door_key(op, lite, ext):
+    op = op or "swing"
+    if ext:
+        return {"slider": "door_slider", "double": "door_ext_french"}.get(op, "door_ext_glass" if lite == "full" else "door_ext")
+    return {"pocket": "door_pocket", "bifold": "door_bifold", "bypass": "door_bypass", "slider": "door_bypass", "barn": "door_barn",
+            "double": "door_int_french", "cased": "cased_opening"}.get(op, "door_int")
+
+
 def _wall_spec(w, ext, stud=None, oc=None):
     """Record a wall's framing (2x4 / 2x6, stud spacing) the editor chose, in the wall's info.material, e.g. '2x6 studs @ 16" o.c.'."""
     info = w.setdefault("info", {})
@@ -73,6 +98,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         flat.extend(op.get("ops", []) if op.get("do") == "batch" else [op])
     ops = flat
     layout, names, touched = [], [], set()
+    door_lines = {}                                          # opening added in the design -> its layout entry
     base_spaces = {k: copy.deepcopy(e) for k, e in E.items() if e["type"] == "space"}
 
     def hosted(eid):
@@ -171,13 +197,15 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
             E[v["id"]] = {"type": "opening", "id": v["id"], "name": v.get("name", f"New {kind}"), "host": v["host"],
                           "kind": kind, "phase": "new", "offset": _v(v["off"], "design"), "width": _v(v["w"], "design"),
                           "height": _v(v["h"], "design"), "sill": _v(v.get("sill", 0.0), "design"),
-                          "filling": {"type": "none"} if kind == "void" else {"type": kind, "operation": v.get("op") or ("swing" if kind == "door" else "double-hung")}}
+                          "filling": {"type": "none"} if kind == "void" else
+                          {"type": kind, "operation": _door_text(v.get("op"), v.get("lite"), bool(w.get("exterior"))) if kind == "door" else (v.get("op") or "double-hung")}}
             overhead = (v.get("op") or "") == "overhead"
             if (v.get("op") or "") == "open":
                 E[v["id"]]["info"] = {"category": "opening", "subtype": "removed section"}
                 touched.add(w["storey"])
                 continue
-            key = "window_std" if kind == "window" else "door_garage" if overhead else "cased_opening" if kind == "void" else ("door_ext" if w.get("exterior") else "door_int")
+            key = "window_std" if kind == "window" else "door_garage" if overhead else "cased_opening" if kind == "void" else _door_key(v.get("op"), v.get("lite"), bool(w.get("exterior")))
+            door_lines[v["id"]] = len(layout)
             lines = [{"key": "opening_new", "qty": 1, "note": ""}, {"key": key, "qty": 1, "note": "trim it out" if kind == "void" else "unit"}]
             if v["w"] > 6 * 0.3048:
                 lines.append({"key": "beam", "qty": 1, "note": f"{v['w'] * FT:.0f} ft header (LVL, engineer to size)"})
@@ -199,6 +227,22 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                         o[f] = _v(op[k], "design")
                 touched.add(E[o["host"]]["storey"])
                 continue
+            if (op.get("op") is not None or op.get("lite") is not None) and o.get("kind") == "door":      # door type changed
+                ext = bool(E[o["host"]].get("exterior"))
+                o.setdefault("_door", {})
+                o["_door"].update({k: op[k] for k in ("op", "lite") if op.get(k) is not None})
+                dop, dlite = o["_door"].get("op"), o["_door"].get("lite")
+                o["filling"] = {**(o.get("filling") or {"type": "door"}), "type": "door", "operation": _door_text(dop, dlite, ext)}
+                if op.get("name"):
+                    o["name"] = op["name"]
+                key = _door_key(dop, dlite, ext)
+                if op["opening"] in door_lines:          # added in this design: its line follows the type
+                    for ln in layout[door_lines[op["opening"]]]["options"]["do"]["lines"]:
+                        if ln["key"].startswith("door_") or ln["key"] == "cased_opening":
+                            ln["key"] = key
+                else:
+                    line(i, f"Change door: {o.get('name', op['opening'])}", "", [{"key": key, "qty": 1, "note": _door_text(dop, dlite, ext)}])
+                    o["phase"] = "new"
             if op.get("swing") is not None or op.get("hinge") is not None:
                 fl = o.get("filling") or {"type": "door"}
                 fl["operation"] = f"swing door, hinged at the {'end' if op.get('hinge') == 'e' else 'start'} jamb, swings to the {'+' if (op.get('swing') or 1) > 0 else '-'} side of the wall"
@@ -361,6 +405,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                   {"key": "frame_int", "qty": round(L * w["height"]["value"] * FT, 1), "note": f"{L:.1f} lf rebuilt in the new spot, sf of wall"}])
     for w in E.values():
         w.pop("_moved", None) if w["type"] == "wall" else None
+        w.pop("_door", None) if w["type"] == "opening" else None
         if w["type"] == "wall" and w.get("phase") == "new" and w["id"] not in moved:
             L = _wall_len(w) * FT
             A = round(L * w["height"]["value"] * FT, 1)

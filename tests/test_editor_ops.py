@@ -76,3 +76,18 @@ def test_pantry_at_vanity_depth_is_a_linen_cabinet(raw):
     assert dg["elements"]["N-I-L1"]["info"]["category"] == "linen cabinet"
     lines = {x["key"]: x for x in next(x for x in layout if x["id"] == "layout:items")["options"]["do"]["lines"]}
     assert lines["cab_tall"]["qty"] == 1.5
+
+
+def test_door_types_flow_to_the_takeoff_lines(raw):
+    pocket = {"id": "N-O-P1", "host": "W-G-I1", "kind": "door", "off": 2.0, "w": 0.762, "h": 2.032, "sill": 0, "name": "Pocket door", "op": "pocket", "hinge": "e"}
+    slider = {"id": "N-O-S1", "host": "W-G-E", "kind": "door", "off": 4.6, "w": 1.8288, "h": 2.032, "sill": 0, "name": "Patio slider", "op": "slider", "lite": "full"}
+    plain = {"id": "N-O-D1", "host": "W-G-I1", "kind": "door", "off": 4.5, "w": 0.762, "h": 2.032, "sill": 0, "name": "New door", "op": "swing"}
+    doc = {"cursor": 4, "ops": [{"do": "add_opening", "opening": pocket}, {"do": "add_opening", "opening": slider}, {"do": "add_opening", "opening": plain},
+                                {"do": "set_opening", "opening": "N-O-D1", "op": "bifold"}]}
+    dg, layout = apply_editor(copy.deepcopy(raw), doc)
+    E = dg["elements"]
+    assert "pocket" in E["N-O-P1"]["filling"]["operation"] and "sliding glass" in E["N-O-S1"]["filling"]["operation"]
+    assert E["N-O-D1"]["filling"]["operation"] == "bifold" and "_door" not in E["N-O-D1"]
+    keys = [ln["key"] for x in layout for ln in x["options"]["do"]["lines"]]
+    assert "door_pocket" in keys and "door_slider" in keys and "door_bifold" in keys and "door_int" not in keys
+    assert compile_genome(parse(dg)[0]).ok

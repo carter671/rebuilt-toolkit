@@ -351,7 +351,7 @@ function applyOp(st, op){
     case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null){ w.ext = !!op.ext; if (/^(New wall|Wall|Outside wall|New outside wall|Addition wall)$/.test(w.name || '')) w.name = w.ext ? 'Outside wall' : 'Wall'; } if (op.extSet) w.extSet = true; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
     case 'add_opening': st.openings.push(clone(op.opening)); break;
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
-    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
+    case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge', 'op', 'name', 'lite']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
     case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
@@ -556,6 +556,18 @@ function drawPlan(){
     const isSel = sel && sel.kind === 'opening' && sel.id === o.id, cls = 'op-line' + (isSel ? ' sel' : ''), sw = (isSel ? 2.2 : 1.2) * pxm();
     if (o.kind === 'window'){
       for (const k of [-w.t / 2, 0, w.t / 2]) el('line', {x1: toSvg(add(a, mul(n, k)))[0], y1: toSvg(add(a, mul(n, k)))[1], x2: toSvg(add(b, mul(n, k)))[0], y2: toSvg(add(b, mul(n, k)))[1], class: cls, 'stroke-width': sw}, g);
+    } else if (doorType(o) && doorType(o) !== 'swing'){
+      const ty = doorType(o), side = swingSide(o, w), P = (u, v) => toSvg(add(add(w.s, mul(d, u)), mul(n, v))), ln = (u0, v0, u1, v1, extra) => { const [x1, y1] = P(u0, v0), [x2, y2] = P(u1, v1); el('line', Object.assign({x1, y1, x2, y2, class: cls, 'stroke-width': sw}, extra || {}), g); };
+      const A = o.off, B = o.off + o.w, dash = {'stroke-dasharray': `${4 * pxm()} ${3 * pxm()}`};
+      if (ty === 'cased') for (const k of [-w.t / 2, w.t / 2]) ln(A, k, B, k, dash);
+      else if (ty === 'double'){ for (const [hp, dir] of [[A, 1], [B, -1]]){ const r = o.w / 2; ln(hp, side * w.t / 2, hp, side * (w.t / 2 + r)); const arc = []; for (let k = 0; k <= 10; k++){ const th = k / 10 * Math.PI / 2; arc.push(P(hp + dir * r * Math.sin(th), side * (w.t / 2 + r * Math.cos(th))).join(',')); } el('polyline', {points: arc.join(' '), class: cls, fill: 'none', 'stroke-width': sw, ...dash}, g); } }
+      else if (ty === 'bifold'){ const q = o.w / 4, v0 = side * w.t / 2, v1 = side * (w.t / 2 + q * 0.9); ln(A, v0, A + q, v1); ln(A + q, v1, A + 2 * q, v0); ln(B, v0, B - q, v1); ln(B - q, v1, B - 2 * q, v0); }
+      else if (ty === 'slider'){ const ov = 2 * IN; ln(A, w.t / 6, A + o.w / 2 + ov, w.t / 6, {'stroke-width': 2 * sw}); ln(B - o.w / 2 - ov, -w.t / 6, B, -w.t / 6, {'stroke-width': 2 * sw}); ln(A, 0, B, 0, {'stroke-width': 0.6 * sw}); }
+      else if (ty === 'bypass'){ const ov = 1.5 * IN; ln(A, w.t / 6, A + o.w / 2 + ov, w.t / 6, {'stroke-width': 2 * sw}); ln(B - o.w / 2 - ov, -w.t / 6, B, -w.t / 6, {'stroke-width': 2 * sw}); }
+      else if (ty === 'pocket'){ const [pa, pb] = pocketSpan(o); ln(pa, w.t / 4, pb, w.t / 4, dash); ln(pa, -w.t / 4, pb, -w.t / 4, dash); ln(pa, -w.t / 4, pa, w.t / 4, dash); ln(slideDir(o) < 0 ? A : B, 0, slideDir(o) < 0 ? A + o.w * 0.35 : B - o.w * 0.35, 0, {'stroke-width': 2.4 * sw});
+        ln(slideDir(o) < 0 ? A : B, 0, slideDir(o) < 0 ? A - o.w * 0.65 : B + o.w * 0.65, 0, {'stroke-width': 2.4 * sw, ...dash}); }
+      else if (ty === 'barn'){ const v = side * (w.t / 2 + 1.5 * IN), sd = slideDir(o), u0 = sd < 0 ? A - o.w + 1 * IN : A - 1 * IN, u1 = sd < 0 ? B + 1 * IN : B + o.w - 1 * IN;
+        ln(u0, v, u1, v, {'stroke-width': 0.8 * sw}); ln(A - 1 * IN, v + side * 1 * IN, B + 1 * IN, v + side * 1 * IN, {'stroke-width': 2.4 * sw}); }
     } else if (isSwingDoor(o)){
       // swing door: leaf from the hinge jamb + quarter arc, on the side it swings to
       const side = swingSide(o, w), hp = o.hinge === 'e' ? b : a, op2 = o.hinge === 'e' ? a : b, tip = add(hp, mul(n, side * o.w));
@@ -632,14 +644,25 @@ function showPop(ev){
     const hint = document.createElement('div'); hint.className = 't'; hint.textContent = 'Drag any of them to move them together.'; pop.appendChild(hint);
   } else if (sel.kind === 'opening'){
     const o = S.openings.find(x => x.id === sel.id); if (!o){ hidePop(); return; }
-    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide`;
+    t.textContent = `${o.name || o.kind} · ${ftin(o.w)} wide` + (doorType(o) && hostExt(o) ? ` · exterior, ${EXT_TYPES[extKey(o)].toLowerCase()}` : doorType(o) && doorType(o) !== 'swing' ? ` · ${DOOR_TYPES[doorType(o)].toLowerCase()}` : '');
     if (isSwingDoor(o)){ const w = S.walls.find(x => x.id === o.host), {d, n} = wallFrame(w), mid = add(w.s, mul(d, o.off + o.w / 2)), side = swingSide(o, w);
       const into = roomName(add(mid, mul(n, side * (w.t / 2 + 0.4))), w.st), other = roomName(add(mid, mul(n, -side * (w.t / 2 + 0.4))), w.st);
       t.textContent += ` · swings ${into === 'outside' ? 'outside' : 'into ' + into} · hinge ${o.hinge === 'e' ? 'right' : 'left'}`;
       btn(other === 'outside' ? 'Swing outside' : `Swing into ${other.length > 18 ? 'the other room' : other}`, () => { commit({do: 'set_opening', opening: o.id, swing: -side, label: `${o.name || 'Door'} now swings ${other === 'outside' ? 'outside' : 'into ' + other}`}); showPop(null); });
       btn('Flip hinge', () => { commit({do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e', label: `Flipped the hinge on ${o.name || 'the door'}`}); showPop(null); });
     }
-    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : [18, 24, 28, 30, 32, 36, 48, 72];
+    const dt = doorType(o);
+    if (dt && hostExt(o)){ const brk2 = () => { const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv); }; brk2();
+      const ek = extKey(o); Object.entries(EXT_TYPES).forEach(([k, lb]) => { if ((k === 'french' || k === 'slider') && o.w < 59 * IN) return; const b = btn(lb, () => setExtType(o, k)); if (ek === k) b.setAttribute('aria-pressed', 'true'); });
+      if (o.w < 59 * IN) { const nb = document.createElement('span'); nb.className = 'save'; nb.textContent = 'French / slider: 60"+'; pop.appendChild(nb); }
+      brk2(); }
+    else if (dt){ const brk2 = () => { const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv); }; brk2();
+      Object.entries(DOOR_TYPES).forEach(([k, lb]) => { const b = btn(lb, () => setDoorType(o, k)); if (dt === k) b.setAttribute('aria-pressed', 'true'); });
+      brk2();
+      if (dt === 'pocket' || dt === 'barn') btn(dt === 'pocket' ? 'Pocket other side ⇄' : 'Slide other way ⇄', () => { commit({do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e', label: `${o.name || 'Door'} slides the other way`}); showPop(null); });
+      if (dt === 'bifold' || dt === 'double' || dt === 'barn'){ const w = S.walls.find(x => x.id === o.host), side = swingSide(o, w);
+        btn(dt === 'barn' ? 'Track on other face' : 'Opens into other room', () => { commit({do: 'set_opening', opening: o.id, swing: -side, label: `${o.name || 'Door'} flipped to the other side`}); showPop(null); }); } }
+    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : dt && hostExt(o) ? (extKey(o) === 'french' || extKey(o) === 'slider' ? [60, 72, 96] : [30, 32, 36, 60, 72, 96]) : dt ? DOOR_SIZES[dt].concat(dt === 'swing' ? [48, 72] : []) : [18, 24, 28, 30, 32, 36, 48, 72];
     sizes.forEach(inch => { const b = btn(inch >= 96 ? `${inch / 12}'` : `${inch}"`, () => resizeOpening(o, inch * IN)); if (Math.abs(o.w - inch * IN) < 0.01) b.setAttribute('aria-pressed', 'true'); });
     btn('Width…', () => widthInput(o));
     btn('Rename', () => renameInput('opening', o.id, o.name || ''));
@@ -676,11 +699,38 @@ function showPop(ev){
 }
 // which side a door swings to (+1 / -1 along the wall's normal) and which jamb it hangs on
 const swingSide = (o, w) => o.swing != null ? o.swing : (w.ext ? -1 : 1);
-const isSwingDoor = o => o.kind === 'door' && o.op !== 'overhead' && o.w < 1.25;
+const isSwingDoor = o => o.kind === 'door' && (!o.op || o.op === 'swing') && o.w < 1.25;
+/* door types: o.op. Pocket / barn slide to the o.hinge side ('s' = toward the wall's start, 'e' = toward its end);
+   bifold / double swing to swingSide(); bypass and cased take no floor */
+const DOOR_TYPES_ALL = {slider: 'Slider'};
+const DOOR_TYPES = {swing: 'Swing', double: 'Double (French)', pocket: 'Pocket', bifold: 'Bifold', bypass: 'Bypass slider', barn: 'Barn door', cased: 'Cased opening'};
+const DOOR_SIZES = {swing: [18, 24, 28, 30, 32, 36], double: [48, 60, 72], pocket: [24, 28, 30, 32, 36], bifold: [24, 30, 36, 48, 60, 72], bypass: [48, 60, 72, 96], barn: [30, 32, 36, 42, 48], cased: [30, 36, 48, 60, 72, 96]};
+const doorType = o => o.kind === 'door' && o.op !== 'overhead' && !/garage/i.test(o.name || '') ? (DOOR_TYPES[o.op] || DOOR_TYPES_ALL[o.op] ? o.op : 'swing') : null;
+const slideDir = o => o.hinge === 'e' ? 1 : -1;      // pocket / barn: which way along the wall it slides open
+function setDoorType(o, ty){
+  const w = S.walls.find(x => x.id === o.host), {L} = wallFrame(w), sizes = DOOR_SIZES[ty];
+  let wd = o.w; if (!sizes.some(i => Math.abs(i * IN - wd) < 0.01)) wd = (sizes.slice().reverse().find(i => i * IN <= o.w + 0.01) || sizes[0]) * IN;   // nearest standard size for that type
+  if (ty === 'double' && wd < 48 * IN) wd = 48 * IN; if (ty === 'bypass' && wd < 48 * IN) wd = 48 * IN;
+  let off = Math.max(0.05, Math.min(L - wd - 0.05, o.off + (o.w - wd) / 2));
+  const nm = /^(New door|Door|.*door|Cased opening|Opening)$/i.test(o.name || '') ? (ty === 'cased' ? 'Cased opening' : DOOR_TYPES[ty].replace(/ \(French\)/, ' door').replace(/^Swing$/, 'Door').replace(/^(Pocket|Bifold|Bypass slider)$/, '$1 door').replace('Bypass slider door', 'Bypass sliders')) : o.name;
+  commit({do: 'set_opening', opening: o.id, op: ty, w: wd, off, name: nm, label: `${o.name || 'Door'} → ${DOOR_TYPES[ty].toLowerCase()}`}); showPop(null);
+}
+/* exterior doors (a door in an outside wall): hinged with a glass lite, or a French pair / patio slider once the opening is 60"+ */
+const EXT_TYPES = {none: 'Solid', quarter: '¼ lite', half: '½ lite', tq: '¾ lite', full: 'Full lite', french: 'French pair', slider: 'Slider'};
+const extKey = o => o.op === 'slider' ? 'slider' : o.op === 'double' ? 'french' : (o.lite && EXT_TYPES[o.lite] ? o.lite : 'none');
+const hostExt = o => { const w = S.walls.find(x => x.id === o.host); return !!(w && w.ext); };
+function setExtType(o, k){
+  const w = S.walls.find(x => x.id === o.host), {L} = wallFrame(w), wide = k === 'french' || k === 'slider';
+  let wd = wide ? Math.max(o.w, 60 * IN) : (o.w > 42 * IN ? 36 * IN : o.w), off = Math.max(0.05, Math.min(L - wd - 0.05, o.off + (o.w - wd) / 2));
+  const nm = /^(New door|Door|Exterior door|.*lite door|French doors|Patio slider)$/i.test(o.name || '') ? (k === 'french' ? 'French doors' : k === 'slider' ? 'Patio slider' : k === 'none' ? 'Exterior door' : `${EXT_TYPES[k]} door`) : o.name;
+  commit({do: 'set_opening', opening: o.id, op: k === 'slider' ? 'slider' : k === 'french' ? 'double' : 'swing', lite: k === 'french' ? 'full' : k === 'slider' ? 'full' : k, w: wd, off, name: nm, label: `${o.name || 'Door'} → ${EXT_TYPES[k].toLowerCase()}`}); showPop(null);
+}
+// where a pocket door's pocket goes (along the wall, metres from the start); null if it doesn't fit
+function pocketSpan(o){ const a = slideDir(o) < 0 ? o.off - o.w : o.off + o.w, b = a + o.w; return [a, b]; }
 function roomName(p, st){ const r = rooms.filter(x => x.st === st && inPoly(p, x.poly)).sort((a, b) => a.area - b.area)[0]; return r ? r.name : 'outside'; }
 function addOpening(w, kind, at){
   const garage = kind === 'garage'; if (garage) kind = 'door';
-  let {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? 32 * IN : 36 * IN;
+  let {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? (w.ext ? 36 * IN : 32 * IN) : 36 * IN;
   let off = snapIn(dot(sub(at, w.s), d) - wd / 2); off = Math.max(0.1, Math.min(L - wd - 0.1, off));
   // stay inside the solid stretch you clicked (not over a removed section or another opening)
   const u = dot(sub(at, w.s), d), solid = []; let a0 = 0.1;
@@ -693,7 +743,7 @@ function addOpening(w, kind, at){
   else if (!garage){ toast(`There isn't ${ftin(wd)} of solid wall left on ${w.name || 'that wall'} for a ${kind}.`); return; }
   if (L < wd + 0.2){ toast('That wall is too short for a ' + (garage ? 'garage door' : kind) + '.'); return; }
   const o = garage ? {id: uid('N-O'), host: w.id, kind: 'door', off, w: wd, h: 7 * FT, sill: 0, name: 'Garage door', op: 'overhead'}
-    : {id: uid('N-O'), host: w.id, kind, off, w: wd, h: kind === 'door' ? 80 * IN : 48 * IN, sill: kind === 'door' ? 0 : 36 * IN, name: kind === 'door' ? 'New door' : 'New window', op: kind === 'door' ? 'swing' : 'double-hung'};
+    : {id: uid('N-O'), host: w.id, kind, off, w: wd, h: kind === 'door' ? 80 * IN : 48 * IN, sill: kind === 'door' ? 0 : 36 * IN, name: kind === 'door' ? (w.ext ? 'Exterior door' : 'New door') : 'New window', op: kind === 'door' ? 'swing' : 'double-hung', ...(kind === 'door' && w.ext ? {lite: 'none'} : {})};
   if (garage && w.h < o.h + 8 * IN) o.h = Math.max(6.5 * FT, w.h - 10 * IN);     // leave room for the header
   commit({do: 'add_opening', opening: o, label: `Added ${ftin(o.w)} ${garage ? 'garage door' : kind} in ${w.name || 'wall'}`});
   sel = {kind: 'opening', id: o.id}; drawPlan(); showPop(null);
@@ -1120,7 +1170,8 @@ function frameLayout(w){
   const runs = Math.abs(d[0]) >= Math.abs(d[1]);                     // at a corner the east-west wall runs through, the other one butts into it
   const endU = list => { const j = list.find(q => !q.tee); if (j){ const k = STUD_D[studOf(j.w2)] / 2; return runs ? k : -k; } const tj = list.find(q => q.tee); return tj ? -STUD_D[studOf(tj.w2)] / 2 : 0; };
   const u0 = -endU(J.s), u1 = L + endU(J.e), elev = EL(w.st), z0 = elev + w.b, z1 = z0 + w.h;
-  const ops2 = S.openings.filter(o => o.host === w.id && o.op !== 'open').map(o => ({o, a: Math.max(u0 + 2 * t, o.off), b: Math.min(u1 - 2 * t, o.off + o.w), z0: elev + o.sill, z1: elev + o.sill + o.h}));
+  const ops2 = S.openings.filter(o => o.host === w.id && o.op !== 'open').map(o => { let a0 = o.off, b0 = o.off + o.w; if (o.op === 'pocket'){ const [pa, pb] = pocketSpan(o); a0 = Math.min(a0, pa); b0 = Math.max(b0, pb); }
+    return {o, a: Math.max(u0 + 2 * t, a0), b: Math.min(u1 - 2 * t, b0), z0: elev + o.sill, z1: elev + o.sill + o.h}; });
   const hd = wd => wd <= 4 * FT ? 7.25 * IN : wd <= 6 * FT ? 9.25 * IN : 11.25 * IN;   // header depth, first pass
   const busy = c => ops2.some(q => c > q.a - 2.2 * t && c < q.b + 2.2 * t);
   const studs = [u0 + t / 2, u0 + 1.5 * t, u1 - t / 2, u1 - 1.5 * t];   // two studs at each end (corner / tee)
@@ -1929,8 +1980,14 @@ function itemEnds(it){
 function endWall(it, E, mode){
   const {W, wd, f, sgU, edgeU} = E, st = W.w.st, back = u => add(W.w.s, mul(wd, u)), len2 = W.w.t / 2 + it.d;
   const mk = (u, t, name) => { const s0 = back(u); return {id: uid('N-W'), st, s: s0, e: add(s0, mul(f, len2)), t, h: W.w.h, b: W.w.b || 0, ext: false, stud: t >= 5.4 * IN ? 6 : 4, oc: 16, name}; };
-  if (mode === 'fill'){ const w = mk(edgeU + sgU * E.gap / 2, E.gap, `Wall beside ${it.name.toLowerCase()}`);
-    commit({do: 'add_wall', wall: w, label: `Filled the ${ftinHalf(E.gap).replace(/^0'-/, '')} beside the ${it.name.toLowerCase()} with wall`}); }
+  if (mode === 'fill'){
+    // an "L" of 2x4 interior framing: a wall tight against the shower's end, and a return across the front back to the next wall
+    const t = Math.min(4.5 * IN, E.gap), uA = edgeU + sgU * t / 2, A = {...mk(uA, t, `Wall at ${it.name.toLowerCase()}`), ext: false, extSet: true, stud: 4};
+    const wallsOut = [A], rest = E.gap - t;
+    if (rest > 0.5 * IN){ const front = A.e, faceU = edgeU + sgU * E.gap, ret = mul(f, -t / 2);   // return's centre line sits t/2 inside the shower's front line
+      const rs = add(front, ret), re = add(add(W.w.s, mul(wd, faceU + sgU * (E.wall.t / 2))), mul(f, W.w.t / 2 + it.d - t / 2));
+      wallsOut.push({id: uid('N-W'), st, s: rs, e: re, t, h: W.w.h, b: W.w.b || 0, ext: false, extSet: true, stud: 4, oc: 16, name: `Return at ${it.name.toLowerCase()}`}); }
+    commit({do: 'batch', ops: wallsOut.map(w => ({do: 'add_wall', wall: w})), label: `Framed in the ${ftinHalf(E.gap).replace(/^0'-/, '')} beside the ${it.name.toLowerCase()} (2x4 wall + return)`}); }
   else if (mode === 'move'){ const g = groupStart([E.wall.id]), pv = groupPreview(g, mul(wd, -sgU * E.gap));
     commit({do: 'set_walls', walls: pv.walls, openings: pv.offs, label: `Moved ${E.wall.name || 'wall'} ${ftinHalf(E.gap).replace(/^0'-/, '')} to the ${it.name.toLowerCase()}`}); }
   else { const t = 4.5 * IN, w = mk(edgeU + sgU * t / 2, t, `Wall at ${it.name.toLowerCase()} end`);
@@ -2048,7 +2105,7 @@ function itemPop(t){
   if (it.cat === 'shower' || it.cat === 'tub'){ const ends = itemEnds(it);
     if (ends.length){ brk(); ends.forEach(E => {
       if (E.wall && E.gap > 0.5 * IN){ const g = ftinHalf(E.gap).replace(/^0'-/, '');
-        btn(`Fill ${g} ${E.side} with wall`, () => endWall(it, E, 'fill'));
+        btn(`Frame in ${g} ${E.side} (2x4 + return)`, () => endWall(it, E, 'fill'));
         if (isNewWall(E.wall)) btn(`Move ${E.side} wall ${g} to it`, () => endWall(it, E, 'move')); }
       else if (!E.wall) btn(`Add wall at ${E.side} end`, () => endWall(it, E, 'add')); }); brk(); } }
   if (it.cat === 'table'){ brk(); const sh = tableShape(it);
@@ -2100,14 +2157,14 @@ function sat(A, B){
 }
 const zOverlap = (A, B) => !(A.z + A.h <= B.z + 0.01 || B.z + B.h <= A.z + 0.01);
 function doorSwings(st){
-  return S.openings.filter(o => o.kind === 'door' && o.w < 1.25).map(o => {
+  return S.openings.filter(o => o.kind === 'door' && (isSwingDoor(o) || ['double', 'bifold'].includes(o.op))).map(o => {
     const w = S.walls.find(x => x.id === o.host); if (!w || w.st !== st) return null;
-    const {d, n} = wallFrame(w), side = swingSide(o, w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w));
-    return {o, poly: [add(a, mul(n, side * w.t / 2)), add(b, mul(n, side * w.t / 2)), add(b, mul(n, side * (w.t / 2 + o.w))), add(a, mul(n, side * (w.t / 2 + o.w)))]};
+    const {d, n} = wallFrame(w), side = swingSide(o, w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), r = o.op === 'double' ? o.w / 2 : o.op === 'bifold' ? o.w / 4 : o.w;
+    return {o, poly: [add(a, mul(n, side * w.t / 2)), add(b, mul(n, side * w.t / 2)), add(b, mul(n, side * (w.t / 2 + r))), add(a, mul(n, side * (w.t / 2 + r)))]};
   }).filter(Boolean);
 }
 function doorways(st){
-  return S.openings.filter(o => (o.kind === 'door' || o.kind === 'void') && o.op !== 'open' && o.sill < 0.3).map(o => {
+  return S.openings.filter(o => (o.kind === 'door' || o.kind === 'void') && o.op !== 'open' && !['bifold', 'bypass'].includes(o.op) && o.sill < 0.3).map(o => {
     const w = S.walls.find(x => x.id === o.host); if (!w || w.st !== st) return null;
     const {d, n} = wallFrame(w), a = add(w.s, mul(d, o.off)), b = add(w.s, mul(d, o.off + o.w)), k = w.t / 2 + 24 * IN;
     return {o, poly: [add(a, mul(n, k)), add(b, mul(n, k)), add(b, mul(n, -k)), add(a, mul(n, -k))]};
@@ -2224,8 +2281,19 @@ function drawLotPanel(){
 }
 function toggleLot(){ showLot = !showLot; $('#tLot').setAttribute('aria-pressed', showLot); try { localStorage.setItem('rebuilt-lot', showLot ? '1' : '0'); } catch (e) {} if (showLot) fitLot(); else fit(); drawPlan(); }
 
+function slideChecks(out){
+  S.openings.filter(o => o.op === 'pocket' || o.op === 'barn').forEach(o => {
+    const w = S.walls.find(x => x.id === o.host); if (!w || !SHOW.has(w.st)) return;
+    const {L, d} = wallFrame(w), [a, b] = pocketSpan(o), what = o.op === 'pocket' ? 'pocket' : 'track';
+    let why = a < -0.01 || b > L + 0.01 ? 'the wall ends' : '';
+    if (!why){ const hit = S.openings.find(q => q.host === w.id && q.id !== o.id && q.off < b && q.off + q.w > a); if (hit) why = `${hit.name || hit.kind} is in the way`; }
+    if (!why && o.op === 'pocket'){ const tee = S.walls.find(q => q.id !== w.id && q.st === w.st && [q.s, q.e].some(pt => { const pr = projOnSeg(pt, w.s, w.e); return pr.d < w.t / 2 + TOL && pr.t * L > a + 0.02 && pr.t * L < b - 0.02; })); if (tee) why = `${tee.name || 'a wall'} meets it there`; }
+    if (why) out.push({type: 'pocket', o: o.id, ids: [], msg: `${o.name || 'Door'} needs ${ftin(o.w)} of plain wall for its ${what} — ${why}. Flip it to the other side or move it.`});
+  });
+}
 function computeChecks(){
   const out = [];
+  slideChecks(out);
   const its = S.items.filter(it => SHOW.has(it.st));
   for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++){
     const A = its[i], B = its[j]; if (A.st !== B.st || !zOverlap(A, B)) continue;
@@ -2323,6 +2391,9 @@ function findSpot(it, extraOk){
   it.at = base; return null;
 }
 function fixOps(x){
+  if (x.type === 'pocket'){ const o = S.openings.find(q => q.id === x.o); if (!o) return null;
+    const T = clone(S), S0 = S; applyOp(T, {do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e'}); S = T; const left = []; try { slideChecks(left); } finally { S = S0; }
+    return left.some(y => y.o === o.id) ? null : {ops: [{do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e'}], what: `moved the ${o.op === 'pocket' ? 'pocket' : 'track'} of ${o.name || 'the door'} to the other side`}; }
   const get = id => S.items.find(i => i.id === id);
   if (x.type === 'overlap' || x.type === 'wall' || x.type === 'swing'){
     // move the item that was added last (islands and furniture before cabinets in a run)

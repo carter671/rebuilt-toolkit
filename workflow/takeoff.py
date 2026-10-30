@@ -182,10 +182,14 @@ for o in Q['openings']:
         moved = host.get('phase') == 'new' and go['host'] in E0
         act = 'New' if new else ('Keep' if len(rms) > 1 else ('Reinstall' if moved else 'Keep'))
     elif k == 'door' and outside:
-        ty = 'Exterior door'
-        act = 'New' if new or (host.get('phase') == 'new' and go['host'] in E0) else 'Keep'
+        dop = ((go.get('filling') or {}).get('operation') or '').lower()
+        ty = 'Patio slider' if 'sliding glass' in dop else 'Exterior French' if 'french' in dop else 'Exterior glass door' if 'full glass' in dop else 'Exterior door'
+        act = 'New' if new or (host.get('phase') == 'new' and go['host'] in E0) or go.get('phase') == 'new' else 'Keep'
     elif k == 'door':
-        ty, act = 'Interior door', 'New' if new else 'Keep'
+        dop = ((go.get('filling') or {}).get('operation') or '').lower()
+        ty = ('Pocket door' if 'pocket' in dop else 'Bifold' if 'bifold' in dop else 'Bypass' if 'bypass' in dop else 'Barn door' if 'barn' in dop
+              else 'French pair' if 'french' in dop else 'Cased opening' if 'cased' in dop else 'Interior door')
+        act = 'New' if new or go.get('phase') == 'new' else 'Keep'
     else:
         closet = 'closet' in low and 'doorway' not in low
         ty = 'Closet opening' if closet else 'Doorway'
