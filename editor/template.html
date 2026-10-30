@@ -639,7 +639,7 @@ function showPop(ev){
       btn(other === 'outside' ? 'Swing outside' : `Swing into ${other.length > 18 ? 'the other room' : other}`, () => { commit({do: 'set_opening', opening: o.id, swing: -side, label: `${o.name || 'Door'} now swings ${other === 'outside' ? 'outside' : 'into ' + other}`}); showPop(null); });
       btn('Flip hinge', () => { commit({do: 'set_opening', opening: o.id, hinge: o.hinge === 'e' ? 's' : 'e', label: `Flipped the hinge on ${o.name || 'the door'}`}); showPop(null); });
     }
-    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : [28, 30, 32, 36, 48, 72];
+    const sizes = o.op === 'overhead' || /garage|overhead|roll/i.test(o.name) ? [96, 108, 192, 216] : o.kind === 'void' ? [36, 48, 72, 96, 120, 144] : o.kind === 'window' ? [24, 30, 36, 48, 72] : [18, 24, 28, 30, 32, 36, 48, 72];
     sizes.forEach(inch => { const b = btn(inch >= 96 ? `${inch / 12}'` : `${inch}"`, () => resizeOpening(o, inch * IN)); if (Math.abs(o.w - inch * IN) < 0.01) b.setAttribute('aria-pressed', 'true'); });
     btn('Width…', () => widthInput(o));
     btn('Rename', () => renameInput('opening', o.id, o.name || ''));
@@ -680,12 +680,14 @@ const isSwingDoor = o => o.kind === 'door' && o.op !== 'overhead' && o.w < 1.25;
 function roomName(p, st){ const r = rooms.filter(x => x.st === st && inPoly(p, x.poly)).sort((a, b) => a.area - b.area)[0]; return r ? r.name : 'outside'; }
 function addOpening(w, kind, at){
   const garage = kind === 'garage'; if (garage) kind = 'door';
-  const {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? 32 * IN : 36 * IN;
+  let {d, L} = wallFrame(w), wd = garage ? (L >= 16.6 * FT ? 16 * FT : 9 * FT) : kind === 'door' ? 32 * IN : 36 * IN;
   let off = snapIn(dot(sub(at, w.s), d) - wd / 2); off = Math.max(0.1, Math.min(L - wd - 0.1, off));
   // stay inside the solid stretch you clicked (not over a removed section or another opening)
   const u = dot(sub(at, w.s), d), solid = []; let a0 = 0.1;
   S.openings.filter(q => q.host === w.id).sort((x, y) => x.off - y.off).forEach(q => { if (q.off - 0.1 > a0) solid.push([a0, q.off - 0.1]); a0 = Math.max(a0, q.off + q.w + 0.1); });
   if (L - 0.1 > a0) solid.push([a0, L - 0.1]);
+  // a door on a short stretch of wall: the widest standard door that fits, down to 18"
+  if (kind === 'door' && !garage && !solid.some(([x, y]) => y - x >= wd)){ const room = Math.max(0, ...solid.map(([x, y]) => y - x)); const fit = [30, 28, 24, 18].find(i => i * IN <= room + 1e-6); if (fit) wd = fit * IN; }
   const fits = solid.filter(([x, y]) => y - x >= wd).sort((p1, p2) => Math.max(0, p1[0] - u, u - p1[1]) - Math.max(0, p2[0] - u, u - p2[1]));
   if (fits.length){ const [x, y] = fits[0]; off = snapIn(Math.max(x, Math.min(y - wd, u - wd / 2))); if (off < x) off = x; if (off + wd > y) off = y - wd; }
   else if (!garage){ toast(`There isn't ${ftin(wd)} of solid wall left on ${w.name || 'that wall'} for a ${kind}.`); return; }
