@@ -8,13 +8,14 @@ are applied (the rest were undone). The as-built file is never written.
 Ops (all lengths in metres, plan coordinates):
   remove_wall   {wall}
   set_walls     {walls: {id: {s, e}}, openings: {id: off}}
-  add_wall      {wall: {id, st, s, e, t, h, b, ext, name}}
+  add_wall      {wall: {id, st, s, e, t, h, b, ext, name, stud?: 4 | 6, oc?: 16 | 24}}
+  set_wall_spec {walls: [ids], ext?, extSet?, stud?: 4 | 6, oc?: 16 | 24, t?}   outside / inside wall, 2x4 / 2x6, stud spacing (inches); extSet = picked by hand
   add_opening   {opening: {id, host, kind, off, w, h, sill, name, op}}
   remove_opening{opening}
   set_opening   {opening, off?, w?, h?, sill?}
   name_room     {at: [x, y], name}
   add_item      {item: {id, cat, st, at, rot, w, d, h, z, name}}   catalogue item (cabinet, fixture, bed...)
-  set_item      {item, at?, rot?, w?, d?, h?, z?}
+  set_item      {item, at?, rot?, w?, d?, h?, z?, bump?, flush?}   bump = metres a cabinet sits out from the wall on a framed bump-out (flush with the fridge)
   remove_item   {item}
   set_roof      {roof, framing?: truss | rafter | unknown, roles?: [eave|rake|abut per footprint edge]}
   set_component {id, at?, wall?, u?, z?, remove?, label?, lines?}   move / remove an existing fixture (meter, AC, chimney)
@@ -34,6 +35,7 @@ rooms take the largest one's id. Each op also yields a scope line for the takeof
 from __future__ import annotations
 
 import copy
+import re
 import json
 import math
 import sys
@@ -52,6 +54,41 @@ def _wall_len(w):
     return math.dist(w["start"], w["end"])
 
 
+LITE = {"none": "solid", "quarter": "1/4 lite", "half": "1/2 lite", "tq": "3/4 lite", "full": "full glass"}
+
+
+def _door_text(op, lite, ext):
+    """The editor's door type as the opening's filling.operation (the takeoff reads these words)."""
+    op = op or "swing"
+    if op == "slider":
+        return "sliding glass patio door" if ext else "bypass slider"
+    if op == "double":
+        return "french pair, full glass, exterior" if ext else "french pair"
+    if op == "swing":
+        return f"exterior swing, {LITE.get(lite or 'none', 'solid')}" if ext else "swing"
+    return {"pocket": "pocket door (pocket frame kit, header over door + pocket, no plumbing / wiring in the pocket)",
+            "bifold": "bifold", "bypass": "bypass slider", "barn": "barn door on a surface track",
+            "cased": "cased opening, no door", "overhead": "overhead"}.get(op, op)
+
+
+def _door_key(op, lite, ext):
+    op = op or "swing"
+    if ext:
+        return {"slider": "door_slider", "double": "door_ext_french"}.get(op, "door_ext_glass" if lite == "full" else "door_ext")
+    return {"pocket": "door_pocket", "bifold": "door_bifold", "bypass": "door_bypass", "slider": "door_bypass", "barn": "door_barn",
+            "double": "door_int_french", "cased": "cased_opening"}.get(op, "door_int")
+
+
+def _wall_spec(w, ext, stud=None, oc=None):
+    """Record a wall's framing (2x4 / 2x6, stud spacing) the editor chose, in the wall's info.material, e.g. '2x6 studs @ 16" o.c.'."""
+    info = w.setdefault("info", {})
+    m = re.match(r'2x(\d) studs @ (\d+)" o\.c\.', info.get("material") or "")
+    stud = int(stud or (m and m.group(1)) or (6 if (w.get("thickness") or {}).get("value", 0.1143) >= 5.4 * 0.0254 else 4))
+    oc = int(oc or (m and m.group(2)) or 16)
+    info.update({"category": "exterior wall" if ext else "interior wall", "material": f'2x{stud} studs @ {oc}" o.c.',
+                 "subtype": "new wall, sheathed + sided" if ext else "new wood stud partition"})
+
+
 def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[dict, list[dict]]:
     g = copy.deepcopy(asbuilt)
     E = g["elements"]
@@ -61,6 +98,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         flat.extend(op.get("ops", []) if op.get("do") == "batch" else [op])
     ops = flat
     layout, names, touched = [], [], set()
+    door_lines = {}                                          # opening added in the design -> its layout entry
     base_spaces = {k: copy.deepcopy(e) for k, e in E.items() if e["type"] == "space"}
 
     def hosted(eid):
@@ -146,6 +184,8 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                       "base_offset": _v(v.get("b", 0.0), "design"), "exterior": ext,
                       "info": {"category": "exterior wall" if ext else "interior wall",
                                "subtype": "new 2x6 wall, sheathed + sided to match (addition)" if ext else "new wood stud partition"}})
+            if v.get("stud") or v.get("oc"):
+                _wall_spec(w, ext, v.get("stud"), v.get("oc"))
             E[w["id"]] = w
             touched.add(w["storey"])
         elif do == "add_opening":
@@ -157,13 +197,15 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
             E[v["id"]] = {"type": "opening", "id": v["id"], "name": v.get("name", f"New {kind}"), "host": v["host"],
                           "kind": kind, "phase": "new", "offset": _v(v["off"], "design"), "width": _v(v["w"], "design"),
                           "height": _v(v["h"], "design"), "sill": _v(v.get("sill", 0.0), "design"),
-                          "filling": {"type": "none"} if kind == "void" else {"type": kind, "operation": v.get("op") or ("swing" if kind == "door" else "double-hung")}}
+                          "filling": {"type": "none"} if kind == "void" else
+                          {"type": kind, "operation": _door_text(v.get("op"), v.get("lite"), bool(w.get("exterior"))) if kind == "door" else (v.get("op") or "double-hung")}}
             overhead = (v.get("op") or "") == "overhead"
             if (v.get("op") or "") == "open":
                 E[v["id"]]["info"] = {"category": "opening", "subtype": "removed section"}
                 touched.add(w["storey"])
                 continue
-            key = "window_std" if kind == "window" else "door_garage" if overhead else "cased_opening" if kind == "void" else ("door_ext" if w.get("exterior") else "door_int")
+            key = "window_std" if kind == "window" else "door_garage" if overhead else "cased_opening" if kind == "void" else _door_key(v.get("op"), v.get("lite"), bool(w.get("exterior")))
+            door_lines[v["id"]] = len(layout)
             lines = [{"key": "opening_new", "qty": 1, "note": ""}, {"key": key, "qty": 1, "note": "trim it out" if kind == "void" else "unit"}]
             if v["w"] > 6 * 0.3048:
                 lines.append({"key": "beam", "qty": 1, "note": f"{v['w'] * FT:.0f} ft header (LVL, engineer to size)"})
@@ -185,6 +227,22 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                         o[f] = _v(op[k], "design")
                 touched.add(E[o["host"]]["storey"])
                 continue
+            if (op.get("op") is not None or op.get("lite") is not None) and o.get("kind") == "door":      # door type changed
+                ext = bool(E[o["host"]].get("exterior"))
+                o.setdefault("_door", {})
+                o["_door"].update({k: op[k] for k in ("op", "lite") if op.get(k) is not None})
+                dop, dlite = o["_door"].get("op"), o["_door"].get("lite")
+                o["filling"] = {**(o.get("filling") or {"type": "door"}), "type": "door", "operation": _door_text(dop, dlite, ext)}
+                if op.get("name"):
+                    o["name"] = op["name"]
+                key = _door_key(dop, dlite, ext)
+                if op["opening"] in door_lines:          # added in this design: its line follows the type
+                    for ln in layout[door_lines[op["opening"]]]["options"]["do"]["lines"]:
+                        if ln["key"].startswith("door_") or ln["key"] == "cased_opening":
+                            ln["key"] = key
+                else:
+                    line(i, f"Change door: {o.get('name', op['opening'])}", "", [{"key": key, "qty": 1, "note": _door_text(dop, dlite, ext)}])
+                    o["phase"] = "new"
             if op.get("swing") is not None or op.get("hinge") is not None:
                 fl = o.get("filling") or {"type": "door"}
                 fl["operation"] = f"swing door, hinged at the {'end' if op.get('hinge') == 'e' else 'start'} jamb, swings to the {'+' if (op.get('swing') or 1) > 0 else '-'} side of the wall"
@@ -304,6 +362,18 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                     b = (w.get("base_offset") or {"value": 0.0})["value"]
                     w["height"] = _v(op["top"] - b, "design: top of wall set")
                     touched.add(w["storey"])
+        elif do == "set_wall_spec":    # outside / inside, 2x4 / 2x6, stud spacing
+            for wid in op["walls"]:
+                w = E.get(wid)
+                if not w or w["type"] != "wall":
+                    raise DesignError(f"op {i}: no wall {wid}")
+                ext = bool(op["ext"]) if op.get("ext") is not None else bool(w.get("exterior"))
+                if op.get("t") is not None:
+                    w["thickness"] = _v(op["t"], "design: wall framing changed")
+                w["exterior"] = ext
+                _wall_spec(w, ext, op.get("stud"), op.get("oc"))
+                w["phase"] = "new" if wid not in asbuilt["elements"] else w.get("phase", "existing")
+                touched.add(w["storey"])
         elif do == "add_scope":
             line(i, op["label"], op.get("existing", ""), copy.deepcopy(op["lines"]))
         elif do == "add_beam":
@@ -315,7 +385,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         elif do == "set_item":
             it = items.get(op["item"])
             if it:
-                for k in ("at", "rot", "w", "d", "h", "z", "st", "name"):
+                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush", "style", "flip", "pick", "boxD", "retW"):
                     if op.get(k) is not None:
                         it[k] = copy.deepcopy(op[k])
         elif do == "remove_item":
@@ -335,6 +405,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                   {"key": "frame_int", "qty": round(L * w["height"]["value"] * FT, 1), "note": f"{L:.1f} lf rebuilt in the new spot, sf of wall"}])
     for w in E.values():
         w.pop("_moved", None) if w["type"] == "wall" else None
+        w.pop("_door", None) if w["type"] == "opening" else None
         if w["type"] == "wall" and w.get("phase") == "new" and w["id"] not in moved:
             L = _wall_len(w) * FT
             A = round(L * w["height"]["value"] * FT, 1)
@@ -413,6 +484,9 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
 ITEM = {
     "base": ("fixture", "base cabinet", "base"), "sink": ("fixture", "sink base cabinet", "base"),
     "upper": ("fixture", "wall cabinet", "wall"), "tall": ("fixture", "tall cabinet", "tall"),
+    "trash": ("fixture", "trash pull-out base cabinet", "base"), "corner": ("fixture", "corner base cabinet", None),
+    "panel": ("fixture", "refrigerator end panel", None),
+    "micro": ("equipment", "over-the-range microwave + wall cabinet", None), "hood": ("equipment", "range hood", None),
     "island": ("fixture", "kitchen island", "island"), "filler": ("fixture", "cabinet filler", None),
     "range": ("equipment", "range", "range"), "fridge": ("equipment", "refrigerator", "fridge"),
     "dw": ("equipment", "dishwasher", None), "vanity": ("fixture", "vanity", "vanity"),
@@ -421,6 +495,7 @@ ITEM = {
     "king": ("furnishing", "bed", None), "queen": ("furnishing", "bed", None), "full": ("furnishing", "bed", None),
     "twin": ("furnishing", "bed", None), "night": ("furnishing", "nightstand", None), "dresser": ("furnishing", "dresser", None),
     "sofa": ("furnishing", "sofa", None), "table": ("furnishing", "dining table", None),
+    "chair": ("furnishing", "lounge chair", None), "coffee": ("furnishing", "coffee table", None),
 }
 
 
@@ -434,8 +509,14 @@ def _place_items(E, items, layout):
     """Editor items become components (box at a point, rotated); casework also gets a renderer spec."""
     cabinets, lf = [], {"base": 0.0, "wall": 0.0, "tall": 0.0, "island": 0.0}
     counter_sf, fixtures, appliances = 0.0, [], 0
+    bumps = []                                              # cabinets pulled out flush with the fridge: framed bump-out behind
+    hardware = {"trash": 0, "lazy": 0, "panel": 0, "hood": 0}
     for it in items.values():
+        if (it.get("bump") or 0) > 0.002:
+            bumps.append(it)
         kind, cat, cab = ITEM.get(it["cat"], ("furnishing", it["cat"], None))
+        if it["cat"] == "tall" and it.get("style") == "linen":      # a pantry at vanity depth is a linen cabinet
+            cat = "linen cabinet"
         E[it["id"]] = {"type": "component", "id": it["id"], "name": it.get("name", cat), "storey": it["st"], "kind": kind,
                        "phase": "new", "geometry": "box",
                        "placement": {"on": "point", "at": [round(it["at"][0], 6), round(it["at"][1], 6)],
@@ -455,9 +536,14 @@ def _place_items(E, items, layout):
                 spec["units"] = [{"a": [round((c - half) * FT, 3), round((c + half) * FT, 3)], "type": "pantry"}]
             cabinets.append(spec)
         w_ft = it["w"] * FT
-        if it["cat"] in ("base", "sink", "filler") and it.get("z", 0) < 1.0:
+        if it["cat"] == "corner" and it.get("style", "lazy") != "blind":     # L-shaped corner: 36" along each wall
+            lf["base"] += (it["w"] + it["d"] - 0.6096) * FT
+            counter_sf += (it["w"] * it["d"] - (it["w"] - 0.6096) * (it["d"] - 0.6096)) / 0.3048 ** 2 + 0.2
+            hardware["lazy"] += it.get("style", "lazy") == "lazy"
+        elif it["cat"] in ("base", "sink", "filler", "trash", "corner") and it.get("z", 0) < 1.0:
+            hardware["trash"] += it["cat"] == "trash"
             lf["base"] += w_ft
-            counter_sf += w_ft * (it["d"] + 0.025) * FT
+            counter_sf += w_ft * (it["d"] + (it.get("bump") or 0) + 0.025) * FT     # the top runs back to the wall over a bump-out
         elif it["cat"] == "upper" or (it["cat"] == "filler" and it.get("z", 0) >= 1.0):
             lf["wall"] += w_ft
         elif it["cat"] == "tall":
@@ -471,6 +557,15 @@ def _place_items(E, items, layout):
             fixtures.append(it["cat"])
         elif it["cat"] in ("range", "fridge", "dw"):
             appliances += 1
+            if it["cat"] == "dw":                            # the countertop runs over the dishwasher
+                counter_sf += w_ft * (it["d"] + (it.get("bump") or 0) + 0.025) * FT
+        elif it["cat"] == "panel":
+            hardware["panel"] += 1
+        elif it["cat"] == "micro":                            # the cabinet over the microwave is upper run; the microwave is an appliance
+            lf["wall"] += w_ft
+            appliances += 1
+        elif it["cat"] == "hood":
+            hardware["hood"] += 1
     lines = []
     run = max(lf["base"], lf["wall"])
     if run:
@@ -485,6 +580,22 @@ def _place_items(E, items, layout):
         lines.append({"key": "appliances", "qty": 1, "note": f"{appliances} placed"})
     if fixtures:
         lines.append({"key": "plumb_fixture", "qty": len(fixtures), "note": ", ".join(fixtures)})
+    if hardware["trash"]:
+        lines.append({"key": "trash_pullout", "qty": hardware["trash"], "note": "double-bin pull-out kit"})
+    if hardware["hood"]:
+        lines.append({"key": "range_hood", "qty": hardware["hood"], "note": "stainless chimney hood, ducted outside"})
+    if hardware["panel"]:
+        lines.append({"key": "fridge_panel", "qty": hardware["panel"], "note": "full-height end panel beside the fridge"})
+    if hardware["lazy"]:
+        lines.append({"key": "lazy_susan", "qty": hardware["lazy"], "note": "corner lazy susan"})
+    if bumps:
+        b_lf = sum(it["w"] for it in bumps) * FT
+        sizes = ", ".join(f"{it['w'] / 0.0254:.0f}\" wide x {it['h'] / 0.0254:.0f}\" tall x {it['bump'] / 0.0254:.1f}\" deep" for it in bumps)
+        layout.append({"id": "layout:bumpout", "group": "Layout changes", "label": "Framed bump-out behind cabinets flush with the fridge",
+                       "existing": "", "default": "do",
+                       "options": {"do": {"label": "Do it", "lines": [{"key": "cab_bumpout", "qty": round(b_lf, 1),
+                                                                       "note": f"2x4 plates + studs @ 16\" o.c., drywall; {sizes}"}]},
+                                   "skip": {"label": "Skip", "lines": []}}})
     if lines:
         layout.append({"id": "layout:items", "group": "Layout changes", "label": "Cabinets, fixtures + appliances (from the design)",
                        "existing": "", "default": "do",

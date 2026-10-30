@@ -289,6 +289,11 @@ ADDED = {
     'recessed': ('Recessed LED light', 'ea', 165.0), 'firewall': ('5/8" Type X drywall, garage side', 'sf', 3.75),
     'insul_spray': ('Closed-cell spray foam at vaulted ceilings (R-38+)', 'sf', 4.50), 'turf': ('Golf sim turf / carpet', 'sf', 6.00),
     'drip': ('Drip edge', 'lf', 3.50), 'ridge_cap': ('Ridge cap + ridge vent', 'lf', 9.00),
+    'cab_bumpout': ('Framed bump-out behind cabinets set flush with the fridge (2x4 + drywall)', 'lf', 45.0),
+    'trash_pullout': ('Trash pull-out kit (double bin) in a base cabinet', 'ea', 220.0), 'lazy_susan': ('Lazy susan in a corner base', 'ea', 260.0),
+    'fridge_panel': ('Refrigerator end panel, full height, finished to match', 'ea', 350.0),
+    'range_hood': ('Stainless chimney range hood + duct + roof / wall cap', 'ea', 1100.0),
+    'door_barn': ('Barn door slab + surface track + blocking', 'ea', 700.0), 'door_ext_french': ('Exterior French door pair (full glass), sill pan', 'ea', 3200.0),
 }
 for k, v in PB.items():          # a real pricebook entry always wins over an added rate
     ADDED.pop(k, None)
@@ -344,6 +349,15 @@ L('Windows & Doors', 'Reinstall existing garage doors', 'Openings: Garage door /
 L('Windows & Doors', 'Interior prehung doors', 'new doors + doors added to open doorways', f'={OC("Interior door", "New")}+{OC("Doorway", "Add door")}', 'door_int', 1)
 L('Windows & Doors', 'Cased openings', 'Openings: Cased', f'={OC("Doorway", "Cased")}', 'cased_opening', 1)
 L('Windows & Doors', 'Closet bifolds', 'Openings: Bifold', f'={OC("Closet opening", "Bifold")}', 'door_bifold', 1)
+L('Windows & Doors', 'Bifold doors (drawn)', 'Openings: Bifold / New', f'={OC("Bifold", "New")}', 'door_bifold', 1)
+L('Windows & Doors', 'Pocket doors + frame kits', 'Openings: Pocket door / New — header over door + pocket', f'={OC("Pocket door", "New")}', 'door_pocket', 1)
+L('Windows & Doors', 'Bypass sliders', 'Openings: Bypass / New', f'={OC("Bypass", "New")}', 'door_bypass', 1)
+L('Windows & Doors', 'Barn doors + track', 'Openings: Barn door / New', f'={OC("Barn door", "New")}', 'door_barn', 1)
+L('Windows & Doors', 'Interior French pairs', 'Openings: French pair / New', f'={OC("French pair", "New")}', 'door_int_french', 1)
+L('Windows & Doors', 'Cased openings (drawn)', 'Openings: Cased opening / New', f'={OC("Cased opening", "New")}', 'cased_opening', 1)
+L('Windows & Doors', 'Full-lite exterior doors', 'Openings: Exterior glass door / New', f'={OC("Exterior glass door", "New")}', 'door_ext_glass', 1)
+L('Windows & Doors', 'Exterior French doors', 'Openings: Exterior French / New', f'={OC("Exterior French", "New")}', 'door_ext_french', 1)
+L('Windows & Doors', 'Patio sliders', 'Openings: Patio slider / New', f'={OC("Patio slider", "New")}', 'door_slider', 1)
 L('Insulation', 'Wall insulation R-20 — outside walls', 'Framing sheet: walls to insulate', f'={INS_EXT}', 'insul_wall', 1)
 L('Insulation', 'Blown insulation R-49 — flat ceilings', 'finished rooms', f'=SUMIFS({RNG("G")},{RNG("F")},"flat*",{RNG("K")},"Y")', 'insul_roof', 1)
 L('Insulation', 'Spray foam — vaulted ceilings', 'along the slope', f'=SUMIFS({RNG("G")},{RNG("F")},"vaulted",{RNG("K")},"Y")', 'insul_spray', 1)
