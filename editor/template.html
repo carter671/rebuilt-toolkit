@@ -353,7 +353,7 @@ function applyOp(st, op){
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
     case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge', 'op', 'name', 'lite']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
-    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD']) if (op[k] != null) it[k] = clone(op[k]); break; }
+    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD', 'retW']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
     case 'set_roof': { const r = st.roofs.find(x => x.id === op.roof); if (r){ if (op.framing) r.framing = op.framing; if (op.roles && op.roles.length === r.fp.length) r.roles = op.roles.slice(); } break; }
     case 'add_beam': st.beams.push(clone(op.beam)); break;
@@ -1519,22 +1519,70 @@ const CAT = {
   linen:   {g: 'Bath', label: 'Linen cabinet', w: 18, d: 21, h: 84, z: 0, wall: true, widths: [12, 15, 18, 24, 30, 36], cab: 'tall', as: 'tall', style: 'linen'},
   vanity:  {g: 'Bath', label: 'Vanity', w: 36, d: 21, h: 34.5, z: 0, wall: true, widths: [24, 30, 36, 48, 60, 72], cab: 'vanity'},
   toilet:  {g: 'Bath', label: 'Toilet', w: 20, d: 28, h: 30, z: 0, wall: true},
-  tub:     {g: 'Bath', label: 'Tub', w: 60, d: 30, h: 20, z: 0, wall: true, widths: [60, 66, 72]},
-  shower:  {g: 'Bath', label: 'Shower', w: 48, d: 36, h: 4, z: 0, wall: true, widths: [36, 48, 60]},
+  tub:     {g: 'Bath', label: 'Tub', w: 60, d: 30, h: 20, z: 0, wall: true, style: 'alcove'},
+  shower:  {g: 'Bath', label: 'Shower', w: 60, d: 32, h: 4, z: 0, wall: true, style: 'rect'},
   washer:  {g: 'Laundry', label: 'Washer', w: 27, d: 30, h: 38, z: 0, wall: true},
   dryer:   {g: 'Laundry', label: 'Dryer', w: 27, d: 30, h: 38, z: 0, wall: true},
   king:    {g: 'Bedroom', label: 'King bed', w: 76, d: 80, h: 24, z: 0, wall: true},
   queen:   {g: 'Bedroom', label: 'Queen bed', w: 60, d: 80, h: 24, z: 0, wall: true},
   full:    {g: 'Bedroom', label: 'Full bed', w: 54, d: 75, h: 24, z: 0, wall: true},
   twin:    {g: 'Bedroom', label: 'Twin bed', w: 39, d: 75, h: 24, z: 0, wall: true},
-  night:   {g: 'Bedroom', label: 'Nightstand', w: 22, d: 16, h: 26, z: 0, wall: true},
-  dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true},
-  sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 36, h: 34, z: 0, wall: true},
+  night:   {g: 'Bedroom', label: 'Nightstand', w: 22, d: 16, h: 26, z: 0, wall: true, style: 'std'},
+  dresser: {g: 'Bedroom', label: 'Dresser', w: 60, d: 18, h: 32, z: 0, wall: true, style: 'low'},
+  sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 38, h: 34, z: 0, wall: true, style: 'sofa'},
+  chair:   {g: 'Living', label: 'Club chair', w: 33, d: 36, h: 32, z: 0, wall: false, style: 'club'},
+  coffee:  {g: 'Living', label: 'Coffee table', w: 48, d: 24, h: 18, z: 0, wall: false, style: 'rect'},
   table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false, style: 'rect'},
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
   panel:   {g: null, label: 'Fridge end panel', w: 1.5, d: 33, h: 90, z: 0, wall: true},
 };
 const isUpper = it => it.z > 1.0;
+/* furniture configurations and sizes (inches): [w, d] or, for an L sectional / chaise, [w, d, return width] (d = full depth on
+   the long side; the seat is 38" deep along the back) */
+const FURN = {
+  sofa: {sofa: {label: 'Sofa', h: 34, sizes: [[72, 38], [84, 38], [90, 38], [96, 40]]}, love: {label: 'Loveseat', h: 34, sizes: [[56, 36], [60, 38], [64, 38]]},
+         sect: {label: 'L sectional', h: 34, sizes: [[96, 84, 38], [108, 90, 38], [120, 96, 38], [132, 108, 40]]}, chaise: {label: 'Sofa + chaise', h: 34, sizes: [[90, 64, 34], [100, 65, 36], [110, 68, 36]]},
+         sleeper: {label: 'Sleeper sofa', h: 34, sizes: [[78, 38], [88, 40]]}},
+  chair: {club: {label: 'Club chair', h: 32, sizes: [[30, 34], [33, 36], [36, 38]]}, accent: {label: 'Accent chair', h: 32, sizes: [[26, 30], [28, 32], [30, 32]]},
+          recliner: {label: 'Recliner', h: 40, sizes: [[34, 38], [38, 40]]}, swivel: {label: 'Swivel chair', h: 32, sizes: [[32, 34], [34, 36]]}},
+  coffee: {rect: {label: 'Rectangle', h: 18, sizes: [[42, 22], [48, 24], [54, 28], [60, 30]]}, square: {label: 'Square', h: 18, sizes: [[30, 30], [36, 36], [42, 42]]},
+           round: {label: 'Round', h: 18, sizes: [[30, 30], [36, 36], [42, 42]]}, oval: {label: 'Oval', h: 18, sizes: [[48, 28], [54, 30]]}},
+  dresser: {low: {label: 'Dresser', h: 32, sizes: [[36, 18], [48, 18], [60, 18], [66, 20], [72, 20]]}, tall: {label: 'Tall chest', h: 50, sizes: [[32, 18], [36, 20], [40, 20]]},
+            media: {label: 'Media console', h: 24, sizes: [[60, 18], [72, 18], [84, 20]]}},
+  shower: {rect: {label: 'Alcove', h: 4, sizes: [[48, 32], [48, 36], [54, 30], [60, 30], [60, 32], [60, 36], [60, 42]]}, square: {label: 'Square', h: 4, sizes: [[32, 32], [36, 36], [42, 42], [48, 48]]},
+           neo: {label: 'Neo-angle', h: 4, sizes: [[36, 36], [38, 38], [42, 42]]}, tile: {label: 'Tiled (curbless)', h: 1, sizes: [[60, 36], [60, 42], [72, 42]]}},
+  tub: {alcove: {label: 'Alcove tub', h: 20, sizes: [[60, 30], [60, 32], [66, 32], [72, 36]]}, free: {label: 'Freestanding', h: 22, sizes: [[59, 30], [67, 32]]}, dropin: {label: 'Drop-in', h: 20, sizes: [[60, 32], [72, 36]]}},
+  night: {std: {label: 'Nightstand', h: 26, sizes: [[18, 16], [22, 16], [24, 18], [28, 18]]}, chest: {label: '3-drawer chest', h: 28, sizes: [[24, 18], [30, 18]]}},
+};
+const furnStyle = it => FURN[it.cat] ? (FURN[it.cat][it.style] ? it.style : Object.keys(FURN[it.cat])[0]) : null;
+const isL = it => it.cat === 'sofa' && (it.style === 'sect' || it.style === 'chaise') && it.retW;
+const isRoundish = it => (it.cat === 'table' || it.cat === 'coffee') && (it.style === 'round' || it.style === 'oval');
+function setFurn(it, style, size){
+  const F = FURN[it.cat][style], [w, d, rw] = size, c = CAT[it.cat], {f} = itemFrame(it);
+  const lb = it.cat === 'coffee' ? `${F.label} coffee table` : it.cat === 'shower' ? (style === 'tile' ? 'Tiled shower (curbless)' : `${F.label} shower`) : F.label;
+  const nm = (it.cat === 'shower' || it.cat === 'tub') ? `${lb} ${w}x${d}` : `${lb} ${w}"` + (it.cat === 'coffee' && (style === 'round' || style === 'square') ? '' : F.sizes[0].length > 2 || it.cat === 'coffee' || it.cat === 'dresser' ? ` x ${d}"` : '');
+  const keep = new RegExp('^(' + Object.values(FURN[it.cat]).map(x => x.label.replace(/[+]/g, '\\+')).join('|') + '|' + c.label + ')').test(it.name || '') || /coffee table|shower|tub/i.test(it.name || '');
+  // things against a wall keep their back on the wall
+  const at = c.wall ? add(it.at, mul(f, (d * IN - it.d) / 2)) : it.at;
+  commit({do: 'set_item', item: it.id, style, w: w * IN, d: d * IN, h: F.h * IN, at, retW: rw ? rw * IN : 0, name: keep ? nm : it.name, label: `${it.name} → ${nm}`}); showPop(null);
+}
+function furnSizeInput(it){
+  const st = furnStyle(it), F = FURN[it.cat][st], L3 = F.sizes[0].length > 2;
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; t.textContent = L3 ? 'Inches: long side x depth x return width (e.g. 112 x 90 x 38)' : 'Inches: wide x deep (e.g. 80 x 38)'; pop.appendChild(t);
+  const inp = document.createElement('input'); inp.value = L3 ? `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)} x ${Math.round((it.retW || 38 * IN) / IN)}` : `${Math.round(it.w / IN)} x ${Math.round(it.d / IN)}`; inp.setAttribute('aria-label', 'Size'); pop.appendChild(inp);
+  const go = () => { const n = (inp.value.match(/\d+(\.\d+)?/g) || []).map(Number).filter(x => x >= 8 && x <= 200); if (n.length < (L3 ? 3 : 1)){ toast(L3 ? 'Type three sizes, like 112 x 90 x 38' : 'Type a size, like 80 x 38'); return; }
+    setFurn(it, st, L3 ? n.slice(0, 3) : [n[0], n[1] || Math.round(it.d / IN)]); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') hidePop(); });
+  btn('Save', go); setTimeout(() => inp.select(), 0);
+}
+function neoShape(it){ const W = it.w, D = it.d, s2 = 12 * IN, P = (x, y) => cornerPt(it, x / W, y / D); return [P(0, 0), P(W, 0), P(W, s2), P(s2, D), P(0, D)]; }
+function partsOf(it){ if (!isL(it)) return [itemPoly(it)];       // an L as two rectangles (the overlap test needs convex shapes)
+  const {a, f} = itemFrame(it), W = it.w, D = it.d, sd = Math.min(D, 38 * IN), rw = it.retW, R = (u0, u1, v0, v1) => [[u0, v0], [u1, v0], [u1, v1], [u0, v1]].map(([u, v]) => add(add(it.at, mul(a, u)), mul(f, v)));
+  const r0 = it.flip ? -W / 2 : W / 2 - rw; return [R(-W / 2, W / 2, -D / 2, -D / 2 + sd), R(r0, r0 + rw, -D / 2, D / 2)]; }
+// an L sectional / chaise in the item's own frame: back strip along the whole width, return on the flip side
+function lShape(it){ const {a, f} = itemFrame(it), hd = it.flip ? -1 : 1, W = it.w, D = it.d, sd = Math.min(D, 38 * IN), rw = it.retW;
+  const P = (u, v) => add(add(it.at, mul(a, u)), mul(f, v)), x0 = -W / 2, x1 = W / 2, yb = -D / 2, ys = yb + sd, yf = D / 2;
+  return hd > 0 ? [P(x0, yb), P(x1, yb), P(x1, yf), P(x1 - rw, yf), P(x1 - rw, ys), P(x0, ys)] : [P(x0, yb), P(x1, yb), P(x1, ys), P(x0 + rw, ys), P(x0 + rw, yf), P(x0, yf)]; }
 /* dining tables: rectangle / square / round (w = d = diameter), preset sizes or any size */
 const TABLE = {rect: {label: 'Rectangle', sizes: [[60, 36], [72, 40], [84, 40], [96, 42]]}, square: {label: 'Square', sizes: [[36, 36], [42, 42], [48, 48], [54, 54]]},
                round: {label: 'Round', sizes: [[36, 36], [42, 42], [48, 48], [54, 54], [60, 60]]}};
@@ -2007,7 +2055,7 @@ function drawBumps(g){
 }
 function drawItems(g, upper){
   S.items.filter(it => SHOW.has(it.st) && isUpper(it) === upper).forEach(it => {
-    const round = it.cat === 'table' && tableShape(it) === 'round', P = round ? Array.from({length: 40}, (_, k) => add(it.at, [Math.cos(k / 40 * 2 * Math.PI) * it.w / 2, Math.sin(k / 40 * 2 * Math.PI) * it.w / 2])) : itemPoly(it);
+    const round = isRoundish(it), fr0 = itemFrame(it), P = it.cat === 'shower' && it.style === 'neo' ? neoShape(it) : round ? Array.from({length: 40}, (_, k) => add(add(it.at, mul(fr0.a, Math.cos(k / 40 * 2 * Math.PI) * it.w / 2)), mul(fr0.f, Math.sin(k / 40 * 2 * Math.PI) * it.d / 2))) : isL(it) ? lShape(it) : itemPoly(it);
     const bad = issueIds.has(it.id), on = sel && sel.kind === 'item' && sel.id === it.id;
     const grp = el('g', {class: 'item' + (upper ? ' up' : '') + (bad ? ' bad' : '') + (on ? ' sel' : ''), 'data-item': it.id}, g);
     el('polygon', {points: pts(P), 'stroke-width': (on ? 2.2 : 1.2) * pxm(), 'stroke-dasharray': upper ? `${5 * pxm()} ${3 * pxm()}` : ''}, grp);
@@ -2030,13 +2078,20 @@ function drawItems(g, upper){
       case 'range': [[-0.5, -0.45], [0.5, -0.45], [-0.5, 0.4], [0.5, 0.4]].forEach(([u, v]) => circ(L(u, v), Math.min(it.w, it.d) * 0.16)); break;
       case 'vanity': circ(L(0, -0.1), Math.min(it.w, it.d) * 0.28); break;
       case 'toilet': line(L(-1, -0.45), L(1, -0.45)); el('ellipse', {cx: toSvg(L(0, 0.3))[0], cy: toSvg(L(0, 0.3))[1], rx: it.w * 0.4, ry: it.d * 0.32, transform: `rotate(${-it.rot} ${toSvg(L(0, 0.3)).join(' ')})`, class: 'sym', 'stroke-width': sw}, grp); break;
-      case 'tub': el('polygon', {points: pts([L(-0.88, -0.75), L(0.88, -0.75), L(0.88, 0.8), L(-0.88, 0.8)]), class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.75, 0), 0.03); break;
-      case 'shower': line(L(-1, -1), L(1, 1)); line(L(1, -1), L(-1, 1)); break;
+      case 'tub': if (it.style === 'free'){ el('ellipse', {cx: toSvg(it.at)[0], cy: toSvg(it.at)[1], rx: it.w * 0.44, ry: it.d * 0.4, transform: `rotate(${-it.rot} ${toSvg(it.at).join(' ')})`, class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.7, 0), 0.03); break; }
+        el('polygon', {points: pts([L(-0.88, -0.75), L(0.88, -0.75), L(0.88, 0.8), L(-0.88, 0.8)]), class: 'sym', 'stroke-width': sw}, grp); circ(L(-0.75, 0), 0.03); break;
+      case 'shower': if (it.style === 'neo'){ circ(cornerPt(it, 0.38, 0.38), 1.5 * IN); const [x, y] = toSvg(cornerPt(it, 0.38, 0.6)); el('text', {x, y, class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'NEO'; break; }
+        if (it.style === 'tile'){ circ(L(0.75, 0), 1.5 * IN); line(L(-1, -1), L(1, -1)); const [x, y] = toSvg(L(-0.2, 0.2)); el('text', {x, y, class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'CURBLESS'; break; }
+        line(L(-1, -1), L(1, 1)); line(L(1, -1), L(-1, 1)); break;
       case 'king': case 'queen': case 'full': case 'twin': {
         const k = it.cat === 'twin' ? [[0, 0.8]] : [[-0.5, 0.42], [0.5, 0.42]];
         k.forEach(([u, hw]) => el('polygon', {points: pts([L(u - hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.92), L(u + hw / 2 * 0.9, -0.72), L(u - hw / 2 * 0.9, -0.72)]), class: 'sym', 'stroke-width': sw}, grp));
         line(L(-1, -0.45), L(1, -0.2)); break; }
-      case 'sofa': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); break;
+      case 'sofa': if (isL(it)){ const sb = -1 + 2 * 10 * IN / it.d; line(L(-1, sb), L(1, sb)); const n2 = Math.max(2, Math.round(it.w / (30 * IN))); for (let k = 1; k < n2; k++) line(L(-1 + 2 * k / n2, sb), L(-1 + 2 * k / n2, -1 + 2 * 38 * IN / it.d)); break; }
+        line(L(-1, -0.45), L(1, -0.45)); line(L(-0.85, -0.45), L(-0.85, 1)); line(L(0.85, -0.45), L(0.85, 1)); { const n2 = it.style === 'love' ? 2 : 3; for (let k = 1; k < n2; k++) line(L(-0.85 + 1.7 * k / n2, -0.45), L(-0.85 + 1.7 * k / n2, 1)); } break;
+      case 'chair': line(L(-1, -0.45), L(1, -0.45)); line(L(-0.7, -0.45), L(-0.7, 1)); line(L(0.7, -0.45), L(0.7, 1)); break;
+      case 'dresser': case 'night': { const rows = it.style === 'tall' ? 1 : it.cat === 'night' ? 1 : 2; for (let k = 1; k <= rows; k++) line(L(-1 + 2 * k / (rows + 1), 0.4), L(-1 + 2 * k / (rows + 1), 1)); line(L(-1, 0.4), L(1, 0.4)); break; }
+      case 'coffee': break;
       case 'table': chairsOf(it).forEach(ch => { const c = add(add(it.at, mul(a, ch.u)), mul(f, ch.v)), r = 8 * IN;
         const ca = [Math.cos(ch.t), Math.sin(ch.t)], cA = add(mul(a, ca[0]), mul(f, ca[1])), cB = perp(cA);
         el('polygon', {points: pts([add(add(c, mul(cA, -r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, -r)), add(add(c, mul(cA, r)), mul(cB, r)), add(add(c, mul(cA, -r)), mul(cB, r))]), class: 'sym', 'stroke-width': sw, 'stroke-dasharray': `${3 * sw} ${2 * sw}`}, grp); });
@@ -2082,7 +2137,7 @@ function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
   const frU = fridgeUnder(it);
-  t.textContent = it.cat === 'table' ? `${it.name} · seats about ${seats(it)}` : `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  t.textContent = it.cat === 'table' ? `${it.name} · seats about ${seats(it)}` : FURN[it.cat] ? `${it.name} · ${Math.round(it.w / IN)}" x ${Math.round(it.d / IN)}"` + (isL(it) ? ` (return ${Math.round(it.retW / IN)}")` : '') : `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
   const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
   if (it.cat === 'corner'){ brk();
@@ -2108,6 +2163,12 @@ function itemPop(t){
         btn(`Frame in ${g} ${E.side} (2x4 + return)`, () => endWall(it, E, 'fill'));
         if (isNewWall(E.wall)) btn(`Move ${E.side} wall ${g} to it`, () => endWall(it, E, 'move')); }
       else if (!E.wall) btn(`Add wall at ${E.side} end`, () => endWall(it, E, 'add')); }); brk(); } }
+  if (FURN[it.cat]){ brk(); const st = furnStyle(it);
+    Object.entries(FURN[it.cat]).forEach(([k, F]) => { const b = btn(F.label, () => { const cur = F.sizes.find(z => Math.abs(z[0] * IN - it.w) < 0.01) || F.sizes[Math.min(1, F.sizes.length - 1)]; setFurn(it, k, cur); }); if (st === k) b.setAttribute('aria-pressed', 'true'); });
+    brk(); FURN[it.cat][st].sizes.forEach(z => { const b = btn(z.length > 2 ? `${z[0]}x${z[1]}` : (st === 'round' || st === 'square') ? `${z[0]}"` : `${z[0]}x${z[1]}`, () => setFurn(it, st, z)); if (Math.abs(it.w - z[0] * IN) < 0.005 && Math.abs(it.d - z[1] * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    btn('Size…', () => furnSizeInput(it));
+    if (isL(it)) btn('Chaise / return other side ⇄', () => { commit({do: 'set_item', item: it.id, flip: !it.flip, label: `${it.name}: return on the other side`}); showPop(null); });
+    brk(); }
   if (it.cat === 'table'){ brk(); const sh = tableShape(it);
     Object.entries(TABLE).forEach(([k, T]) => { const b = btn(T.label, () => { const cur = TABLE[k].sizes.find(z => Math.abs(z[0] * IN - Math.max(it.w, it.d)) < 0.01) || TABLE[k].sizes[Math.min(2, TABLE[k].sizes.length - 1)]; setTable(it, k, cur[0], cur[1]); }); if (sh === k) b.setAttribute('aria-pressed', 'true'); });
     brk(); TABLE[sh].sizes.forEach(([a, b2]) => { const b = btn(sh === 'rect' ? `${a}x${b2}` : `${a}"`, () => setTable(it, sh, a, b2)); if (Math.abs(it.w - a * IN) < 0.005 && Math.abs(it.d - b2 * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
@@ -2297,7 +2358,7 @@ function computeChecks(){
   const its = S.items.filter(it => SHOW.has(it.st));
   for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++){
     const A = its[i], B = its[j]; if (A.st !== B.st || !zOverlap(A, B)) continue;
-    if (sat(itemPoly(A), itemPoly(B))) out.push({type: 'overlap', a: A.id, b: B.id, ids: [A.id, B.id], msg: `${A.name} overlaps ${B.name}`});
+    if (partsOf(A).some(pa => partsOf(B).some(pb => sat(pa, pb)))) out.push({type: 'overlap', a: A.id, b: B.id, ids: [A.id, B.id], msg: `${A.name} overlaps ${B.name}`});
   }
   its.forEach(it => {
     S.walls.filter(w => w.st === it.st).forEach(w => { if (sat(itemPoly(it, -0.002), wallPoly(w))) out.push({type: 'wall', it: it.id, ids: [it.id], msg: `${it.name} runs into ${w.name || 'a wall'}`}); });
@@ -2553,12 +2614,19 @@ function buildItems3D(grp){
       case 'fridge': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
       case 'dw': itemBox(it, -1, 1, -1, 0.95, 0, H, on ? IM.pick : IM.steel, grp); itemBox(it, -1, 1, -1, 1.04, H, H + 1.5 * IN, IM.top, grp); break;     // countertop over the dishwasher
       case 'panel': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.cab, grp); break;
-      case 'toilet': case 'tub': case 'shower': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
+      case 'shower': if (it.style === 'neo'){ polyPrism(neoShape(it), EL(it.st) + it.z, EL(it.st) + it.z + H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
+      case 'toilet': case 'tub': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
       case 'king': case 'queen': case 'full': case 'twin':
         itemBox(it, -1, 1, -1, 1, 0, 0.3, on ? IM.pick : bad ? IM.bad : IM.wood, grp); itemBox(it, -0.97, 0.97, -0.97, 0.97, 0.3, 0.6, IM.bed, grp); itemBox(it, -1, 1, -1, -0.94, 0, 1.2, on ? IM.pick : IM.wood, grp); break;
-      case 'sofa': itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
-      case 'table': { const mat = on ? IM.pick : bad ? IM.bad : IM.wood, z0 = EL(it.st) + it.z;
-        if (tableShape(it) === 'round'){ const top = new THREE.Mesh(new THREE.CylinderGeometry(it.w / 2, it.w / 2, 1.5 * IN, 40), mat); top.position.copy(P3(it.at[0], it.at[1], z0 + H - 0.75 * IN)); top.castShadow = true; top.userData.item = it.id; grp.add(top);
+      case 'sofa': if (isL(it)){ const mat = on ? IM.pick : bad ? IM.bad : IM.fabric, z0 = EL(it.st) + it.z; polyPrism(lShape(it), z0, z0 + 0.45, mat, grp); itemBox(it, -1, 1, -1, -1 + 2 * 10 * IN / it.d, 0.45, H, IM.fabric, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, 0.45, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.45, 0.45, H, IM.fabric, grp); break;
+      case 'chair': itemBox(it, -1, 1, -1, 1, 0, 0.42, on ? IM.pick : bad ? IM.bad : IM.fabric, grp); itemBox(it, -1, 1, -1, -0.5, 0.42, H, IM.fabric, grp); itemBox(it, -1, -0.7, -0.5, 1, 0.42, 0.62, IM.fabric, grp); itemBox(it, 0.7, 1, -0.5, 1, 0.42, 0.62, IM.fabric, grp); break;
+      case 'coffee': case 'table': { const mat = on ? IM.pick : bad ? IM.bad : IM.wood, z0 = EL(it.st) + it.z;
+        if (isRoundish(it) && it.style === 'oval'){ const sh2 = new THREE.Shape(); sh2.absellipse(0, 0, it.w / 2, it.d / 2, 0, 2 * Math.PI); const m2 = new THREE.Mesh(new THREE.ExtrudeGeometry(sh2, {depth: 1.5 * IN, bevelEnabled: false}), mat);
+          m2.rotation.x = -Math.PI / 2; m2.rotation.z = it.rot * Math.PI / 180; m2.position.copy(P3(it.at[0], it.at[1], z0 + H - 1.5 * IN)); grp.add(m2);
+          for (const su of [-1, 1]) itemBox(it, su * 0.55 - 0.06, su * 0.55 + 0.06, -0.3, 0.3, 0, H - 1.5 * IN, IM.wood, grp); break; }
+        if (isRoundish(it)){ const top = new THREE.Mesh(new THREE.CylinderGeometry(it.w / 2, it.w / 2, 1.5 * IN, 40), mat); top.position.copy(P3(it.at[0], it.at[1], z0 + H - 0.75 * IN)); top.castShadow = true; top.userData.item = it.id; grp.add(top);
           const leg = new THREE.Mesh(new THREE.CylinderGeometry(2 * IN, 2 * IN, H - 1.5 * IN, 16), IM.wood); leg.position.copy(P3(it.at[0], it.at[1], z0 + (H - 1.5 * IN) / 2)); leg.userData.item = it.id; grp.add(leg);
           const base = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(10 * IN, it.w / 3), Math.min(10 * IN, it.w / 3), 1.5 * IN, 24), IM.wood); base.position.copy(P3(it.at[0], it.at[1], z0 + 0.75 * IN)); grp.add(base); }
         else { itemBox(it, -1, 1, -1, 1, H - 1.5 * IN, H, mat, grp); const lu = 1 - 4 * IN / it.w, lv = 1 - 4 * IN / it.d, lw = 2.5 * IN / it.w, lh = 2.5 * IN / it.d;

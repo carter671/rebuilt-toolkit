@@ -385,7 +385,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         elif do == "set_item":
             it = items.get(op["item"])
             if it:
-                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush", "style", "flip", "pick", "boxD"):
+                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush", "style", "flip", "pick", "boxD", "retW"):
                     if op.get(k) is not None:
                         it[k] = copy.deepcopy(op[k])
         elif do == "remove_item":
@@ -494,6 +494,7 @@ ITEM = {
     "king": ("furnishing", "bed", None), "queen": ("furnishing", "bed", None), "full": ("furnishing", "bed", None),
     "twin": ("furnishing", "bed", None), "night": ("furnishing", "nightstand", None), "dresser": ("furnishing", "dresser", None),
     "sofa": ("furnishing", "sofa", None), "table": ("furnishing", "dining table", None),
+    "chair": ("furnishing", "lounge chair", None), "coffee": ("furnishing", "coffee table", None),
 }
 
 
