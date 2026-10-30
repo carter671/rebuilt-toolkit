@@ -27,6 +27,8 @@ h1 small{display:block;font:500 .72rem var(--f-mono);color:var(--chrome-muted);l
 .sp{flex:1}
 button,select,input{font:inherit;color:var(--chrome-ink);background:var(--chrome-2);border:1px solid var(--line);border-radius:5px;padding:5px 10px}
 button{cursor:pointer}
+body.locked #cat,body.locked #lot,body.locked #roof,body.locked #hist{pointer-events:none;opacity:.45}
+#tLock[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
 button:hover:not(:disabled){border-color:var(--chrome-muted)}
 button:disabled{opacity:.4;cursor:default}
 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -162,6 +164,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <select id="design" aria-label="Design option"></select>
       <button id="newDesign" title="Start a new design option from the as-built">New</button>
       <button id="renameDesign" title="Rename this design option">Rename</button>
+      <button id="tLock" aria-pressed="false" title="Lock the design so you can look around without changing anything (L)">Lock</button>
     </div>
     <div class="grp" role="group" aria-label="Tools">
       <button id="tSel" aria-pressed="true" title="Select and drag (V)">Select</button>
@@ -378,6 +381,7 @@ function applyOp(st, op){
 }
 function rebuild(){ S = baseState(); for (let i = 0; i < cursor; i++) applyOp(S, ops[i]); (typeof proposal !== 'undefined' ? proposal : []).forEach(op => applyOp(S, op)); }
 function commit(op){
+  if (locked){ toast('Locked — click Lock to make changes.'); return; }
   if (proposal.length){ proposal = []; rebuild(); showProposal(); toast('Chat preview discarded.'); }
   ops = ops.slice(0, cursor).concat([op]); cursor = ops.length;
   applyOp(S, op); afterChange(true);
@@ -1264,7 +1268,7 @@ function pick(ev){
 }
 function floorPoint(ev){ const p = new THREE.Vector3(); pick(ev).ray.intersectPlane(floorPlane, p); return p ? [p.x, -p.z] : null; }
 R.domElement.addEventListener('pointerdown', ev => {
-  if (tool !== 'select' || ev.button > 0) return;
+  if (locked || tool !== 'select' || ev.button > 0) return;
   hidePop();
   const hits = pick(ev).intersectObjects(Object.values(wallMeshes), true);
   if (!hits.length) return;
@@ -1644,7 +1648,7 @@ function fitLot(){ const P = lotPoly(); if (!P) return; const r = svg.getBoundin
   const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad, k = Math.max((x1 - x0) / r.width, (y1 - y0) / r.height);
   vb = {x: (x0 + x1) / 2 - r.width * k / 2, y: (y0 + y1) / 2 - r.height * k / 2, w: r.width * k, h: r.height * k}; }
 let lotSaveT = null;
-function lotChanged(){ issues = computeChecks(); drawPlan(); drawSide(); drawLotPanel(); clearTimeout(lotSaveT); lotSaveT = setTimeout(saveLot, 800); }
+function lotChanged(){ if (locked) return; issues = computeChecks(); drawPlan(); drawSide(); drawLotPanel(); clearTimeout(lotSaveT); lotSaveT = setTimeout(saveLot, 800); }
 async function saveLot(){ if (!db || !SITE) return; try { await db.doc('site/' + BASE_ID).set({adj: lotAdj, setbacks_ft: SITE.setbacks_ft || {}, roles: SITE.lot.roles || [], updated: new Date().toISOString()}); } catch (e) { toast('Lot changes not saved.'); } }
 async function loadLot(){ if (!db || !SITE) return; try { const d = await db.doc('site/' + BASE_ID).get(); if (d.exists){ const v = d.data();
   lotAdj = Object.assign({dx: 0, dy: 0, rot: 0}, v.adj || {}); if (v.setbacks_ft) SITE.setbacks_ft = v.setbacks_ft; if (v.roles && v.roles.length === SITE.lot.poly.length) SITE.lot.roles = v.roles;
@@ -2585,7 +2589,7 @@ function drawSide(){
   ops.forEach((op, i) => { const li = document.createElement('li'); li.textContent = op.label || op.do; if (i >= cursor) li.classList.add('future'); li.onclick = () => jump(i + 1); hl.appendChild(li); });
 }
 function jump(k){ proposal = []; showProposal(); cursor = k; sel = null; hidePop(); rebuild(); afterChange(true); }
-function updateButtons(){ $('#undo').disabled = cursor === 0; $('#redo').disabled = cursor >= ops.length; }
+function updateButtons(){ $('#undo').disabled = locked || cursor === 0; $('#redo').disabled = locked || cursor >= ops.length; }
 $('#undo').onclick = () => { if (cursor > 0) jump(cursor - 1); };
 $('#redo').onclick = () => { if (cursor < ops.length) jump(cursor + 1); };
 function placeOpeningAt(p, ev){
@@ -2609,6 +2613,8 @@ document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
 });
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'l' || e.key === 'L'){ if (!e.ctrlKey && !e.metaKey){ setLock(!locked); return; } }
+  if (locked && e.key !== 'Escape') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? $('#redo').click() : $('#undo').click(); }
   else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
@@ -2618,6 +2624,25 @@ addEventListener('keydown', e => {
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');
 });
+/* ---------------- lock: look without changing ---------------- */
+let locked = false;
+try { locked = localStorage.getItem('rebuilt-lock-' + BASE_ID) === '1'; } catch (e) {}
+const LOCK_IDS = ['tSel', 'tBox', 'tWall', 'tRoom', 'tDoor', 'tWin', 'tStretch', 'undo', 'redo', 'newDesign', 'renameDesign', 'chatBtn'];
+function setLock(v){
+  locked = v; document.body.classList.toggle('locked', v);
+  const b = $('#tLock'); b.setAttribute('aria-pressed', v); b.textContent = v ? 'Locked' : 'Lock';
+  if (v){ if (typeof placing !== 'undefined' && placing) stopPlacing(); setTool('select'); sel = null; hidePop(); drawPlan(); highlight3D(); }
+  LOCK_IDS.forEach(id => { const e = document.getElementById(id); if (e) e.disabled = v || (id === 'undo' && cursor === 0) || (id === 'redo' && cursor >= ops.length); });
+  if (!v && typeof updateButtons === 'function') updateButtons();
+  try { localStorage.setItem('rebuilt-lock-' + BASE_ID, v ? '1' : '0'); } catch (e) {}
+}
+$('#tLock').onclick = () => { setLock(!locked); toast(locked ? 'Locked: look around freely, nothing will change.' : 'Unlocked: you can edit again.'); };
+// while locked, any press on the plan just pans it (walls, windows, items and handles can't be grabbed)
+svg.addEventListener('pointerdown', ev => {
+  if (!locked) return;
+  ev.stopImmediatePropagation(); ev.preventDefault(); hidePop();
+  svg.setPointerCapture(ev.pointerId); drag = {type: 'pan', c0: [ev.clientX, ev.clientY], vb0: {...vb}, look: true}; dragMoved = true;
+}, true);
 let tt; function toast(t){ const el2 = $('#toast'); el2.textContent = t; el2.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el2.classList.remove('on'), 2600); }
 addEventListener('resize', () => { resize3(); drawPlan(); });
 
@@ -2707,5 +2732,6 @@ for (const st of Object.keys(PLAN.storeys)){
   roomsFor(st).filter(r => r.area > 2).forEach((r, i) => BASE_SPACES.push({id: `BASE-${st}-${i}`, name: nm, st, poly: r.poly, pt: r.pt}));
 }
 setPlanTag(); rooms = computeRooms(); issues = computeChecks(); buildCatalogue();
+if (locked) setTimeout(() => setLock(true), 0);
 requestAnimationFrame(() => { if (showLot && SITE) fitLot(); else fit(); drawLotPanel(); drawPlan(); resize3(); build3D(); drawSide(); updateButtons(); loop(); fillPicker(); initDb(); initChat(); });
 </script>
