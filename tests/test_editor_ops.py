@@ -56,3 +56,15 @@ def test_corner_and_trash_cabinets(raw):
     assert lines["trash_pullout"]["qty"] == 1 and lines["lazy_susan"]["qty"] == 1
     assert "5.5 lf base" in lines["cab_base"]["note"]          # L corner 36" + 36" - 24" = 4 lf, plus the 18" trash = 5.5 lf
     assert compile_genome(parse(dg)[0]).ok
+
+
+def test_fridge_panel_and_dishwasher_top(raw):
+    dw = {"id": "N-I-D1", "cat": "dw", "st": "G", "at": [1.3, 0.35], "rot": 0, "w": 0.6096, "d": 0.6096, "h": 0.8763, "z": 0.0, "name": "Dishwasher"}
+    sp = {"id": "N-I-S1", "cat": "filler", "auto": "sp", "of": "N-I-D1", "side": 1, "st": "G", "at": [1.6175, 0.35], "rot": 0, "w": IN, "d": 0.6096, "h": 0.9144, "z": 0.0, "name": 'DW spacer 1"'}
+    pn = {"id": "N-I-P1", "cat": "panel", "auto": "panel", "of": "X", "side": 1, "st": "G", "at": [3, 0.5], "rot": 0, "w": 1.5 * IN, "d": 0.8382, "h": 2.286, "z": 0.0, "name": "Fridge end panel"}
+    doc = {"cursor": 3, "ops": [{"do": "add_item", "item": dw}, {"do": "add_item", "item": sp}, {"do": "add_item", "item": pn}]}
+    dg, layout = apply_editor(copy.deepcopy(raw), doc)
+    lines = {x["key"]: x for x in next(x for x in layout if x["id"] == "layout:items")["options"]["do"]["lines"]}
+    assert lines["fridge_panel"]["qty"] == 1
+    assert lines["counter"]["qty"] > 0                     # dishwasher (and its spacer) get countertop
+    assert dg["elements"]["N-I-P1"]["info"]["category"] == "refrigerator end panel"

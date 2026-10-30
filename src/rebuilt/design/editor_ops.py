@@ -341,7 +341,7 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
         elif do == "set_item":
             it = items.get(op["item"])
             if it:
-                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush", "style", "flip", "pick"):
+                for k in ("at", "rot", "w", "d", "h", "z", "st", "name", "bump", "flush", "style", "flip", "pick", "boxD"):
                     if op.get(k) is not None:
                         it[k] = copy.deepcopy(op[k])
         elif do == "remove_item":
@@ -440,6 +440,7 @@ ITEM = {
     "base": ("fixture", "base cabinet", "base"), "sink": ("fixture", "sink base cabinet", "base"),
     "upper": ("fixture", "wall cabinet", "wall"), "tall": ("fixture", "tall cabinet", "tall"),
     "trash": ("fixture", "trash pull-out base cabinet", "base"), "corner": ("fixture", "corner base cabinet", None),
+    "panel": ("fixture", "refrigerator end panel", None),
     "island": ("fixture", "kitchen island", "island"), "filler": ("fixture", "cabinet filler", None),
     "range": ("equipment", "range", "range"), "fridge": ("equipment", "refrigerator", "fridge"),
     "dw": ("equipment", "dishwasher", None), "vanity": ("fixture", "vanity", "vanity"),
@@ -462,7 +463,7 @@ def _place_items(E, items, layout):
     cabinets, lf = [], {"base": 0.0, "wall": 0.0, "tall": 0.0, "island": 0.0}
     counter_sf, fixtures, appliances = 0.0, [], 0
     bumps = []                                              # cabinets pulled out flush with the fridge: framed bump-out behind
-    hardware = {"trash": 0, "lazy": 0}
+    hardware = {"trash": 0, "lazy": 0, "panel": 0}
     for it in items.values():
         if (it.get("bump") or 0) > 0.002:
             bumps.append(it)
@@ -507,6 +508,10 @@ def _place_items(E, items, layout):
             fixtures.append(it["cat"])
         elif it["cat"] in ("range", "fridge", "dw"):
             appliances += 1
+            if it["cat"] == "dw":                            # the countertop runs over the dishwasher
+                counter_sf += w_ft * (it["d"] + (it.get("bump") or 0) + 0.025) * FT
+        elif it["cat"] == "panel":
+            hardware["panel"] += 1
     lines = []
     run = max(lf["base"], lf["wall"])
     if run:
@@ -523,6 +528,8 @@ def _place_items(E, items, layout):
         lines.append({"key": "plumb_fixture", "qty": len(fixtures), "note": ", ".join(fixtures)})
     if hardware["trash"]:
         lines.append({"key": "trash_pullout", "qty": hardware["trash"], "note": "double-bin pull-out kit"})
+    if hardware["panel"]:
+        lines.append({"key": "fridge_panel", "qty": hardware["panel"], "note": "full-height end panel beside the fridge"})
     if hardware["lazy"]:
         lines.append({"key": "lazy_susan", "qty": hardware["lazy"], "note": "corner lazy susan"})
     if bumps:

@@ -352,7 +352,7 @@ function applyOp(st, op){
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
     case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
     case 'add_item': st.items.push(clone(op.item)); break;
-    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick']) if (op[k] != null) it[k] = clone(op[k]); break; }
+    case 'set_item': { const it = st.items.find(x => x.id === op.item); if (it) for (const k of ['at', 'rot', 'w', 'd', 'h', 'z', 'st', 'name', 'bump', 'flush', 'style', 'flip', 'pick', 'boxD']) if (op[k] != null) it[k] = clone(op[k]); break; }
     case 'remove_item': st.items = st.items.filter(x => x.id !== op.item); break;
     case 'set_roof': { const r = st.roofs.find(x => x.id === op.roof); if (r){ if (op.framing) r.framing = op.framing; if (op.roles && op.roles.length === r.fp.length) r.roles = op.roles.slice(); } break; }
     case 'add_beam': st.beams.push(clone(op.beam)); break;
@@ -832,7 +832,7 @@ function startOpeningDrag(ev, id){
 }
 svg.addEventListener('pointerdown', ev => {
   hidePop();
-  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commitSynced({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
+  if (placing){ if (ev.button > 0){ stopPlacing(); return; } shiftFree = ev.shiftKey; snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commitSynced({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
   if (tool === 'door' || tool === 'window'){ placeOpeningAt(screenToPlan(ev), ev); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (!roomDraft){ roomDraft = {a: p, b: p}; } else { roomDraft.b = roomPoint(screenToPlan(ev)); finishRoom(ev); } drawPlan(); return; }
   if (tool === 'wall'){ const p = snapPoint(screenToPlan(ev)); if (!draft){ draft = {a: p, b: p}; } else { finishDraft(ev); } drawPlan(); return; }
@@ -842,7 +842,7 @@ svg.addEventListener('pointerdown', ev => {
   drag = {type: 'pan', c0: [ev.clientX, ev.clientY], vb0: {...vb}}; dragMoved = false;
 });
 svg.addEventListener('pointermove', ev => {
-  if (placing){ snapItem(placing, screenToPlan(ev)); drawPlan(); return; }
+  if (placing){ shiftFree = ev.shiftKey; snapItem(placing, screenToPlan(ev)); drawPlan(); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (roomDraft){ roomDraft.b = p; showDims(ev, `${ftin(Math.abs(p[0] - roomDraft.a[0]))} × ${ftin(Math.abs(p[1] - roomDraft.a[1]))}`); } drawPlan(); return; }
   if (tool === 'wall' && draft){ let p = snapPoint(screenToPlan(ev)); if (!ev.shiftKey) p = ortho(draft.a, p); draft.b = p; drawPlan(); showDims(ev, ftin(dist(draft.a, draft.b)) + (chain && chain.ids.length >= 2 ? ' · click the first corner to close' : ' · click again to stop')); return; }
   if (tool === 'wall'){ snapPoint(screenToPlan(ev)); drawPlan(); return; }
@@ -1454,6 +1454,7 @@ const CAT = {
   sofa:    {g: 'Living', label: 'Sofa', w: 84, d: 36, h: 34, z: 0, wall: true},
   table:   {g: 'Living', label: 'Dining table', w: 72, d: 40, h: 30, z: 0, wall: false},
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
+  panel:   {g: null, label: 'Fridge end panel', w: 1.5, d: 33, h: 90, z: 0, wall: true},
 };
 const isUpper = it => it.z > 1.0;
 /* corner base cabinets: lazy susan (36" each way, L-shaped front), diagonal (angled door), blind corner (one end dead under the
@@ -1496,11 +1497,12 @@ const CASEWORK = new Set(['base', 'sink', 'trash', 'upper', 'tall', 'filler']);
 // cabinets running out from each side of a fridge on the same wall, same level (uppers / bases), touching each other
 function flushChain(fr, items){
   const L = items || S.items, {a, f} = itemFrame(fr), fa = dot(fr.at, a), out = [];
+  const panelW = sg => { const pn = L.find(o => o.auto === 'panel' && o.of === fr.id && o.side === sg); return pn ? pn.w : 0; };
   for (const upper of [true, false]){
     const row = L.filter(o => CASEWORK.has(o.cat) && o.st === fr.st && isUpper(o) === upper && dot(itemFrame(o).f, f) > 0.99
       && Math.abs(dot(sub(facePt(o), backPt(fr)), f)) < 3 * IN && !fridgeUnder(o, L));
     for (const sg of [1, -1]){
-      let edge = fa + sg * fr.w / 2, k = 0;
+      let edge = fa + sg * (fr.w / 2 + panelW(sg)), k = 0;
       const side = row.filter(o => (dot(o.at, a) - fa) * sg > 0).sort((x, y) => (dot(x.at, a) - dot(y.at, a)) * sg);
       for (const o of side){ const near = dot(o.at, a) - sg * o.w / 2; if (Math.abs(near - edge) > 1 * IN) break; out.push({it: o, upper, sg, k: k++}); edge = dot(o.at, a) + sg * o.w / 2; }
     }
@@ -1534,19 +1536,84 @@ function topLine(it, items){
 // a cabinet over a fridge: as deep as the fridge (front flush with it), bottom 1" above the fridge,
 // up to the tops of the other uppers unless a height has been picked for it
 function overFridgeFit(it, fr, items){
+  // a standard cabinet box (24" deep unless 12" was picked) on a framed bump-out, so its front is flush with the fridge
   const z = overFridgeBottom(fr), fill = Math.max(6 * IN, topLine(it, items) - z), {f} = itemFrame(fr);
-  const h = it.d > 13 * IN && it.pick ? it.h : fill;
-  return {d: fr.d, h, z, at: add(backPt(it), mul(f, fr.d / 2))};
+  const h = it.pick ? it.h : fill, d = Math.min(fr.d, (it.boxD || 24) * IN), bump = Math.max(0, fr.d - d);
+  return {d, bump, h, z, at: add(facePt(it), mul(f, bump + d / 2))};
 }
-// commit, then pull every cabinet that sits over a fridge out flush with that fridge (one undo step)
+// Kevin's kitchen rules, applied after every cabinet / appliance change as part of the same undo step:
+//  dishwasher: 1" spacer each side (and a countertop over it) · fridge: full-height end panel on a side with no pantry
+//  (a pantry against the fridge closes up to it) · cabinet over a fridge: flush, 1" above it · flush cabinets on bump-outs
+//  · a gap under 9" between cabinets (or a cabinet and a wall) gets a filler
+const PAD = {dw: 1 * IN, fridge: 1.5 * IN};
+const padOf = it => isUpper(it) ? 0 : (PAD[it.cat] || 0);
+let shiftFree = false;                                    // Shift held while placing / dragging: no connecting, no centring
+const near = (a, b, e) => Math.abs(a - b) < (e || 0.003);
+function sameItem(it, v){ return near(it.w, v.w) && near(it.d, v.d) && near(it.h, v.h) && near(it.z, v.z) && dist(it.at, v.at) < 0.003 && near(it.rot, v.rot, 0.5) && near(it.bump || 0, v.bump || 0); }
+function syncPads(T, push){
+  const want = [];
+  T.items.filter(o => PAD[o.cat] && !isUpper(o) && !o.auto).forEach(o => {
+    const {a, f} = itemFrame(o), pw = PAD[o.cat];
+    for (const sg of [-1, 1]){
+      const edge = dot(o.at, a) + sg * o.w / 2;
+      if (isFridge(o)){
+        const tall = T.items.find(t => t.cat === 'tall' && t.st === o.st && dot(itemFrame(t).f, f) > 0.99 && Math.abs(dot(sub(facePt(t), facePt(o)), f)) < 3 * IN
+          && (dot(t.at, a) - edge) * sg > 0 && Math.abs((dot(t.at, a) - sg * t.w / 2) - edge) < pw + 1 * IN);
+        if (tall){ const g = (dot(tall.at, a) - sg * tall.w / 2) - edge; if (Math.abs(g) > 0.003) push({do: 'set_item', item: tall.id, at: add(tall.at, mul(a, -g))}, 'pantry moved up to the fridge'); continue; }
+      }
+      const cab = isFridge(o) ? T.items.find(x => fridgeUnder(x, T.items) === o) : null;
+      const h = isFridge(o) ? Math.max(o.h + 1 * IN, cab ? cab.z + cab.h : topLine(o, T.items)) : 36 * IN;
+      want.push({of: o.id, side: sg, kind: isFridge(o) ? 'panel' : 'sp', st: o.st, rot: o.rot, w: pw, d: o.d, h, z: 0, bump: 0, at: add(o.at, mul(a, sg * (o.w / 2 + pw / 2)))});
+    }
+  });
+  const have = T.items.filter(x => x.auto === 'sp' || x.auto === 'panel');
+  want.forEach(v => { const ex = have.find(x => x.of === v.of && x.side === v.side && x.auto === v.kind);
+    if (!ex) push({do: 'add_item', item: {id: uid('N-I'), cat: v.kind === 'panel' ? 'panel' : 'filler', auto: v.kind, of: v.of, side: v.side, st: v.st, rot: v.rot, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z,
+      name: v.kind === 'panel' ? 'Fridge end panel' : 'DW spacer 1"'}}, v.kind === 'panel' ? 'fridge end panel' : 'dishwasher spacers');
+    else if (!sameItem(ex, v)) push({do: 'set_item', item: ex.id, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, rot: v.rot, st: v.st}); });
+  have.forEach(x => { if (!want.some(v => v.of === x.of && v.side === x.side && v.kind === x.auto)) push({do: 'remove_item', item: x.id}, x.auto === 'panel' ? 'end panel off (pantry there)' : ''); });
+}
+// rows of cabinets / appliances along each wall face, base level and upper level; gaps under 9" get a filler
+const BASE_ROW = new Set(['base', 'sink', 'trash', 'corner', 'filler', 'dw', 'range', 'fridge', 'tall', 'panel']);
+function syncGaps(T, push){
+  const want = [], rows = {};
+  T.items.filter(o => !(o.auto === 'gap')).forEach(o => {
+    const up = isUpper(o), row = up ? (o.cat === 'upper' || o.cat === 'filler') : BASE_ROW.has(o.cat);
+    const rowsOf = up ? (row ? ['upper'] : []) : row ? (o.cat === 'tall' || o.cat === 'panel' ? ['base', 'upper'] : ['base']) : [];
+    if (!rowsOf.length) return; const W = wallOfItem(o); if (!W) return;
+    rowsOf.forEach(r => { const k = W.w.id + '|' + W.side + '|' + r; (rows[k] = rows[k] || {w: W.w, side: W.side, row: r, list: []}).list.push({o, u0: W.u - o.w / 2, u1: W.u + o.w / 2}); });
+  });
+  Object.values(rows).forEach(R => {
+    if (R.row === 'upper' && !R.list.some(x => isUpper(x.o))) return;
+    const L = R.list.sort((x, y) => x.u0 - y.u0), Lz = L[L.length - 1];
+    const s0 = centerSpans(L[0].o, R.w, R.side, (L[0].u0 + L[0].u1) / 2), s1 = centerSpans(Lz.o, R.w, R.side, (Lz.u0 + Lz.u1) / 2);
+    const sp = [(s0.gap || s0.wall || [-1e9])[0], (s1.gap || s1.wall || [0, 1e9])[1]];
+    const pick = (x, y) => { const cand = [x, y].filter(Boolean).map(q => q.o); return cand.find(o => R.row === 'upper' ? o.cat === 'upper' : ['base', 'sink', 'trash', 'filler'].includes(o.cat)) || cand[0]; };
+    const gap = (u0, u1, nb) => { if (u1 - u0 < 0.25 * IN || u1 - u0 >= 9 * IN) return;
+      const {d: wd, n} = wallFrame(R.w), f = mul(n, R.side), up = R.row === 'upper', src = up && nb.cat !== 'upper' ? {d: 12 * IN, h: 36 * IN, z: 54 * IN, bump: 0} : !up && !['base', 'sink', 'trash', 'filler'].includes(nb.cat) ? {d: 24 * IN, h: 36 * IN, z: 0, bump: 0} : nb;
+      const bump = src.bump || 0, at = add(add(R.w.s, mul(wd, (u0 + u1) / 2)), mul(f, R.w.t / 2 + 0.003 + bump + src.d / 2));
+      want.push({wall: R.w.id, side: R.side, row: R.row, st: R.w.st, rot: rotOf(f), at, w: u1 - u0, d: src.d, h: src.h, z: src.z, bump, flush: !!(bump && nb.flush)}); };
+    let prev = null; L.forEach(x => { if (!prev){ if (x.u0 - sp[0] > 0) gap(sp[0], x.u0, x.o); } else if (x.u0 > prev.u1) gap(prev.u1, x.u0, pick(prev, x)); if (!prev || x.u1 > prev.u1) prev = x; });
+    if (prev && sp[1] - prev.u1 > 0) gap(prev.u1, sp[1], prev.o);
+  });
+  const have = T.items.filter(x => x.auto === 'gap'), used = new Set();
+  want.forEach(v => { const ex = have.find(x => !used.has(x.id) && x.wall === v.wall && x.side === v.side && x.row === v.row && dist(x.at, v.at) < v.w / 2 + x.w / 2);
+    if (ex){ used.add(ex.id); if (!sameItem(ex, v)) push({do: 'set_item', item: ex.id, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, bump: v.bump, flush: v.flush}); return; }
+    push({do: 'add_item', item: {id: uid('N-I'), cat: 'filler', auto: 'gap', wall: v.wall, side: v.side, row: v.row, st: v.st, rot: v.rot, at: v.at, w: v.w, d: v.d, h: v.h, z: v.z, bump: v.bump, flush: v.flush,
+      name: v.row === 'upper' ? 'Filler (upper)' : 'Filler'}}, `${ftinHalf(v.w).replace(/^0'-/, '')} filler`); });
+  have.forEach(x => { if (!used.has(x.id)) push({do: 'remove_item', item: x.id}); });
+}
 function commitSynced(op){
   const T = clone(S); applyOp(T, op);
-  const ups = [];
-  T.items.forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
-    if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) ups.push({do: 'set_item', item: it.id, ...fit}); });
-  T.items.forEach(it => { if (!it.flush && !it.bump) return; const fit = flushFit(it, T.items);
-    if (Math.abs(fit.bump - (it.bump || 0)) > 0.002 || fit.flush !== !!it.flush || dist(fit.at, it.at) > 0.002){ ups.push({do: 'set_item', item: it.id, ...fit}); Object.assign(it, fit); } });
-  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + (/flush|back on the wall/i.test(op.label || '') ? '' : ' (cabinets kept flush with the fridge)')} : op);
+  const ups = [], notes = new Set(), push = (o, note) => { ups.push(o); applyOp(T, o); if (note) notes.add(note); };
+  syncPads(T, push);
+  T.items.slice().forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
+    if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.bump - (it.bump || 0)) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) push({do: 'set_item', item: it.id, ...fit}, 'cabinet over the fridge fitted'); });
+  T.items.slice().forEach(it => { if ((!it.flush && !it.bump) || fridgeUnder(it, T.items)) return; const fit = flushFit(it, T.items);
+    if (Math.abs(fit.bump - (it.bump || 0)) > 0.002 || fit.flush !== !!it.flush || dist(fit.at, it.at) > 0.002) push({do: 'set_item', item: it.id, ...fit}, /flush|back on the wall/i.test(op.label || '') ? '' : 'kept flush with the fridge'); });
+  syncPads(T, push);                                      // end-panel heights follow the cabinet over the fridge
+  syncGaps(T, push);
+  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + (notes.size ? ` (+ ${[...notes].join(', ')})` : '')} : op);
 }
 function setFridgeDepth(fr, inch){
   const {f} = itemFrame(fr), d = inch * IN;
@@ -1554,7 +1621,7 @@ function setFridgeDepth(fr, inch){
 }
 function cabinetOverFridge(fr){
   const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
-  const fit = overFridgeFit({...it, d: fr.d, at: fr.at}, fr); Object.assign(it, fit);
+  const fit = overFridgeFit({...it, d: fr.d, at: fr.at, bump: 0}, fr); Object.assign(it, fit);
   commitSynced({do: 'add_item', item: it, label: `Added a ${ftin(it.h)} cabinet over the fridge, flush with its front`});
   sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
 }
@@ -1598,7 +1665,7 @@ function centerSpans(it, w, side, u){
   if (!isUpper(it)) S.openings.filter(o => o.host === w.id && o.kind !== 'window').forEach(o => take(o.off, o.off + o.w));
   const reach = (it.d || 0.3) + (it.bump || 0);
   S.items.forEach(o => {
-    if (o.id === it.id || o.st !== it.st || !zOverlap(o, it)) return;
+    if (o.id === it.id || o.of === it.id || o.st !== it.st || !zOverlap(o, it)) return;
     const P = itemPoly(o), us = P.map(q => dot(sub(q, w.s), wd)), vs = P.map(q => dot(sub(q, face0), f));
     if (Math.min(...vs) > reach - 0.02 || Math.max(...vs) < 0.01) return;      // not in the strip in front of this face
     take(Math.min(...us), Math.max(...us));
@@ -1617,8 +1684,9 @@ function snapItem(it, back){
   let side = Math.sign(dot(sub(back, best.pr.q), n)) || 1;
   const f = mul(n, side); it.rot = rotOf(f);
   let u = snapIn(dot(sub(back, w.s), wd));
-  // edge snaps (within 3 in): wall faces at corners, then other items on the same wall face
-  const tol = 3 * IN, half = it.w / 2, cands = [];
+  // edge snaps: wall faces at corners, then other items on the same wall face. Connects within 12" (Shift: no snapping at all).
+  // A dishwasher / fridge counts its 1" spacers / end panels, so it leaves room for them.
+  const tol = shiftFree ? 0 : 12 * IN, half = it.w / 2 + padOf(it), cands = [];
   S.walls.forEach(o => {
     if (o.id === w.id || o.st !== w.st || Math.abs(dot(wallFrame(o).d, wd)) > 0.3) return;
     for (const end of ['s', 'e']){ const pr = projOnSeg(o[end], w.s, w.e); const other = end === 's' ? o.e : o.s;
@@ -1628,19 +1696,20 @@ function snapItem(it, back){
   });
   const backLine = dot(w.s, n) + side * (w.t / 2);
   S.items.forEach(o => {
-    if (o.id === it.id || o.st !== it.st || isUpper(o) !== isUpper(it)) return;
+    if (o.id === it.id || o.of === it.id || o.st !== it.st || isUpper(o) !== isUpper(it)) return;
     const of = itemFrame(o).f; if (dot(of, f) < 0.99) return;
     if (Math.abs(dot(o.at, n) - side * o.d / 2 - backLine) > 0.03) return;
     const ou = dot(sub(o.at, w.s), wd); cands.push(ou - o.w / 2, ou + o.w / 2);
   });
+  const CS0 = centerSpans(it, w, side, u); if (CS0.gap) cands.push(CS0.gap[0], CS0.gap[1]);
   let bestDu = null;
   cands.forEach(cu => { for (const du of [cu - (u - half), cu - (u + half)]) if (Math.abs(du) < tol && (bestDu === null || Math.abs(du) < Math.abs(bestDu))) bestDu = du; });
   const CS = centerSpans(it, w, side, u);
-  const tolC = Math.max(4 * IN, 10 * pxm());
+  const tolC = shiftFree ? 0 : Math.max(4 * IN, 10 * pxm());
   for (const sp of [CS.gap, CS.wall]) if (sp){ const du = (sp[0] + sp[1]) / 2 - u; if (Math.abs(du) < tolC && (bestDu === null || Math.abs(du) <= Math.abs(bestDu) + 0.5 * IN)) { bestDu = du; break; } }   // centring wins a near-tie
   if (bestDu !== null) u += bestDu;
   const face = CS.wall || [0, L];                                    // stay inside the room: between the faces of the walls it meets
-  u = face[1] - face[0] >= it.w ? Math.max(face[0] + half, Math.min(face[1] - half, u)) : Math.max(half, Math.min(L - half, u));
+  u = face[1] - face[0] >= 2 * half ? Math.max(face[0] + half, Math.min(face[1] - half, u)) : Math.max(half, Math.min(L - half, u));
   const q = add(w.s, mul(wd, u));
   it.at = add(q, mul(f, w.t / 2 + it.d / 2 + 0.003));
   itemGuide = {wid: w.id, side, u, half, d: it.d, spans: centerSpans(it, w, side, u)};
@@ -1664,7 +1733,7 @@ function cabinetRun(w, at, dry){
       if (projOnSeg(w.e, o.s, o.e).d < o.t / 2 + TOL) bl.push([L - o.t / 2, L + 1]);
     });
     // fridge, range, pantry, dishwasher... already on this wall: the run stops at them
-    S.items.forEach(it => { if (it.st !== w.st || isUpper(it) || ['base', 'sink', 'trash', 'filler'].includes(it.cat)) return;
+    S.items.forEach(it => { if (it.st !== w.st || isUpper(it) || (['base', 'sink', 'trash', 'filler'].includes(it.cat) && it.auto !== 'sp')) return;
       if (dot(itemFrame(it).f, mul(n, side)) < 0.99 || Math.abs(dot(backPt(it), n) - faceLine) > 3 * IN) return;
       const uu = dot(sub(it.at, w.s), wd); bl.push([uu - it.w / 2, uu + it.w / 2]); });
     S.openings.filter(o => o.host === w.id).forEach(o => {
@@ -1718,7 +1787,7 @@ function cabinetRun(w, at, dry){
   S.items.filter(fr => isFridge(fr) && fr.st === w.st && dot(itemFrame(fr).f, mul(n, side)) > 0.99 && Math.abs(dot(backPt(fr), n) - faceLine) < 3 * IN).forEach(fr => {
     const uu = dot(sub(fr.at, w.s), wd); if (uu + fr.w / 2 < b0 - 2 * IN || uu - fr.w / 2 > b1 + 2 * IN || S.items.some(o => fridgeUnder(o) === fr)) return;
     const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
-    Object.assign(it, overFridgeFit({...it, d: fr.d}, fr, S.items.concat(items))); items.push(it); nU++; });
+    Object.assign(it, overFridgeFit({...it, d: fr.d, bump: 0}, fr, S.items.concat(items))); items.push(it); nU++; });
   const nB = items.length - nU;
   const runOp = {do: 'batch', ops: items.map(it => ({do: 'add_item', item: it})), label: `Added cabinet run on ${w.name || 'wall'} (${ftin(b1 - b0)}: ${nB} base, ${nU} upper)`};
   if (dry) return runOp;
@@ -1750,6 +1819,38 @@ function wallOfItem(it){
     if (!best || pr.d < best.d) best = {w, d: pr.d, side: Math.sign(dot(sub(p, pr.q), wallFrame(w).n)) || 1}; });
   return best ? {w: best.w, side: best.side, u: dot(sub(it.at, best.w.s), wallFrame(best.w).d)} : null;
 }
+// standard cabinet widths that fill a space best: least left over (that becomes a filler), then fewest boxes, then widest
+function bestFill(spaceIn){
+  let best = null;
+  const tryIt = combo => { const sum = combo.reduce((a, b) => a + b, 0), r = spaceIn - sum; if (r < -1e-6) return;
+    const score = [Math.round(r * 2) / 2, combo.length, -Math.min(...combo)];
+    if (!best || score[0] < best.score[0] - 1e-6 || (Math.abs(score[0] - best.score[0]) < 1e-6 && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = {combo: combo.slice().sort((a, b) => b - a), r, score}; };
+  for (const a of STD){ tryIt([a]); for (const b of STD){ if (b > a) continue; tryIt([a, b]); for (const c of STD){ if (c > b) continue; tryIt([a, b, c]); } } }
+  return best && best.combo.length ? best : null;
+}
+// the open space on each side of a base-level item along its wall, and what would fill it
+function sideFills(it){
+  const W = wallOfItem(it); if (!W) return [];
+  const CS = centerSpans(it, W.w, W.side, W.u), sp = CS.gap || CS.wall; if (!sp) return [];
+  const {d: wd} = wallFrame(W.w), a = itemFrame(it).a, pad = padOf(it), out = [];
+  [[-1, sp[0], W.u - it.w / 2 - pad], [1, W.u + it.w / 2 + pad, sp[1]]].forEach(([sgU, u0, u1]) => {
+    const space = (u1 - u0) / IN; if (space < 9 - 1e-6) return;
+    const fill = bestFill(space); if (!fill) return;
+    const right = dot(mul(wd, sgU), mul(a, -1)) > 0;               // as you face the wall
+    out.push({sgU, u0, u1, space, fill, side: right ? 'Right' : 'Left'});
+  });
+  return out;
+}
+// put the suggested base cabinets in, starting next to the item; what's left at the far end gets a filler automatically
+function fillSides(it, list){
+  const W = wallOfItem(it), {d: wd, n} = wallFrame(W.w), f = mul(n, W.side), ops2 = [];
+  list.forEach(sd => { let u = sd.sgU < 0 ? sd.u1 : sd.u0;
+    sd.fill.combo.forEach(inch => { const wdt = inch * IN, c = u + sd.sgU * wdt / 2;
+      const nb = newItem('base', {st: it.st, w: wdt, rot: rotOf(f), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 12 * IN))});
+      ops2.push({do: 'add_item', item: nb}); u += sd.sgU * wdt; }); });
+  const what = list.map(sd => `${sd.side.toLowerCase()}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`).join('; ');
+  commitSynced({do: 'batch', ops: ops2, label: `Base cabinets beside ${it.name} (${what})`}); showPop(null);
+}
 function centerItem(it, which){
   const W = wallOfItem(it); if (!W) return;
   const sp = centerSpans(it, W.w, W.side, W.u)[which] || centerSpans(it, W.w, W.side, W.u).wall; if (!sp) return;
@@ -1772,6 +1873,7 @@ function drawItems(g, upper){
     const sw = pxm();
     switch (it.cat){
       case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); } break;
+      case 'panel': line(L(-1, -1), L(1, 1)); line(L(-1, 1), L(1, -1)); break;
       case 'trash': { line(L(-1, 0.8), L(1, 0.8)); const [x, y] = toSvg(L(0, -0.1)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = 'TRASH';
         el('polygon', {points: pts([L(-0.7, -0.75), L(-0.05, -0.75), L(-0.05, 0.55), L(-0.7, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp);
         el('polygon', {points: pts([L(0.05, -0.75), L(0.7, -0.75), L(0.7, 0.55), L(0.05, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp); break; }
@@ -1818,7 +1920,7 @@ function itemDragMove(ev, p){
   if (!dragMoved && Math.hypot(ev.clientX - drag.ev0.clientX, ev.clientY - drag.ev0.clientY) < 4) return;
   dragMoved = true;
   const it = S.items.find(x => x.id === drag.id); Object.assign(it, clone(drag.orig));
-  snapItem(it, add(drag.back0, sub(p, drag.p0)));
+  shiftFree = ev.shiftKey; snapItem(it, add(drag.back0, sub(p, drag.p0)));
   issues = computeChecks(); drawPlan(); build3D();
 }
 function itemDragEnd(d, ev){
@@ -1832,7 +1934,7 @@ function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
   const frU = fridgeUnder(it);
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ' · flush with the fridge' : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (it.cat === 'tall' ? ` · ${ftin(it.h)} tall` : '') + (it.auto ? ' · added automatically' : '') + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (it.bump > 0.002 && !fridgeUnder(it) ? ` · flush with the fridge on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ` · flush with the fridge` + (it.bump > 0.002 ? ` on a ${Math.round(it.bump / IN * 2) / 2}" bump-out` : '') : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
   const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
   if (it.cat === 'corner'){ brk();
@@ -1852,10 +1954,21 @@ function itemPop(t){
     if (it.flush) btn('Back on the wall', () => setFlush(row.filter(c => c.k >= cf.k).map(c => c.it), false));
     else btn('Flush with fridge', () => setFlush(row.filter(c => c.k <= cf.k).map(c => c.it), true));
     brk(); }
+  if (it.cat === 'tall'){ brk();
+    [84, 90, 96].forEach(inch => { const b = btn(`${inch}" tall`, () => { commitSynced({do: 'set_item', item: it.id, h: inch * IN, z: 0, label: `${it.name} → ${inch}" tall`}); showPop(null); }); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    const tl = topLine(it); btn(`Up to the uppers (${ftinHalf(tl).replace(/^0'-/, '')})`, () => { commitSynced({do: 'set_item', item: it.id, h: tl, z: 0, label: `${it.name} → up to the uppers`}); showPop(null); });
+    brk(); }
   if (it.cat === 'upper'){ brk();
     (frU ? OVER_FRIDGE_H : UPPER_H).forEach(inch => { const b = btn(`${inch}" tall`, () => setUpperHeight(it, inch)); if ((!frU || it.pick) && Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
-    if (frU){ const b = btn('Up to the other uppers', () => setUpperHeight(it, 0)); if (!it.pick) b.setAttribute('aria-pressed', 'true'); }
+    if (frU){ const b = btn('Up to the other uppers', () => setUpperHeight(it, 0)); if (!it.pick) b.setAttribute('aria-pressed', 'true'); brk();
+      [24, 12].forEach(di => { const b2 = btn(`${di}" deep box`, () => { commitSynced({do: 'set_item', item: it.id, boxD: di, label: `${it.name} → ${di}" deep on a bump-out`}); showPop(null); }); if (Math.abs(it.d - di * IN) < 0.005) b2.setAttribute('aria-pressed', 'true'); }); }
     brk(); }
+  if (!isUpper(it) && c.wall && !it.auto && ['range', 'dw', 'fridge', 'sink', 'base', 'trash', 'tall', 'corner'].includes(it.cat)){
+    const fills = sideFills(it);
+    if (fills.length){ brk();
+      fills.forEach(sd => btn(`${sd.side} ${ftinHalf(sd.space * IN)}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`, () => fillSides(it, [sd])));
+      if (fills.length > 1) btn('Fill both sides', () => fillSides(it, fills));
+      brk(); } }
   const Wi = c.wall && it.cat !== 'filler' ? wallOfItem(it) : null;
   if (Wi){ const CS = centerSpans(it, Wi.w, Wi.side, Wi.u), off = sp => sp && Math.abs((sp[0] + sp[1]) / 2 - Wi.u) > 0.25 * IN;
     if (CS.gap) { const b = btn('Center in space', () => centerItem(it, 'gap')); if (!off(CS.gap)) b.setAttribute('aria-pressed', 'true'); }
@@ -1863,7 +1976,7 @@ function itemPop(t){
   btn('Rename', () => renameInput('item', it.id, it.name));
   btn('Rotate', () => { commit({do: 'set_item', item: it.id, rot: (it.rot + 90) % 360, label: `Rotated ${it.name}`}); showPop(null); });
   btn('Copy', () => { const {a} = itemFrame(it), cp = clone(it); cp.id = uid('N-I'); cp.at = add(it.at, mul(a, it.w)); commit({do: 'add_item', item: cp, label: `Copied ${it.name}`}); sel = {kind: 'item', id: cp.id}; drawPlan(); showPop(null); });
-  btn('Remove', () => { commit({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); }, 'danger');
+  btn('Remove', () => { commitSynced({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); }, 'danger');
   return true;
 }
 function resizeItem(it, wNew){
@@ -2259,9 +2372,13 @@ function buildItems3D(grp){
         itemBox(it, -1, 1, -1, 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break;
       case 'base': case 'sink': case 'trash': case 'vanity': case 'island':
         itemBox(it, -1, 1, -1, it.cat === 'island' ? 1 : 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break;
-      case 'upper': case 'tall': case 'filler': itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
+      case 'filler': if (!isUpper(it)){ itemBox(it, -1, 1, -1, 0.92, 0, H - 0.032, body, grp); itemBox(it, -1, 1, -1, 1.04, H - 0.032, H, IM.top, grp); break; }
+        itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
+      case 'upper': case 'tall': itemBox(it, -1, 1, -1, 1, 0, H, body, grp); break;
       case 'range': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
-      case 'fridge': case 'dw': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
+      case 'fridge': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
+      case 'dw': itemBox(it, -1, 1, -1, 0.95, 0, H, on ? IM.pick : IM.steel, grp); itemBox(it, -1, 1, -1, 1.04, H, H + 1.5 * IN, IM.top, grp); break;     // countertop over the dishwasher
+      case 'panel': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.cab, grp); break;
       case 'toilet': case 'tub': case 'shower': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
       case 'king': case 'queen': case 'full': case 'twin':
         itemBox(it, -1, 1, -1, 1, 0, 0.3, on ? IM.pick : bad ? IM.bad : IM.wood, grp); itemBox(it, -0.97, 0.97, -0.97, 0.97, 0.3, 0.6, IM.bed, grp); itemBox(it, -1, 1, -1, -0.94, 0, 1.2, on ? IM.pick : IM.wood, grp); break;
@@ -2949,7 +3066,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; chain = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
     if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && (!w.ext || isNewWall(w)))); }
-    else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commit({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
+    else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commitSynced({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
     else if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id); commit({do: 'remove_opening', opening: o.id, label: `Removed ${o.name || o.kind}`}); sel = null; hidePop(); }
   }
   else if (e.key === 'w' || e.key === 'W') setTool('wall'); else if (e.key === 'v' || e.key === 'V') setTool('select'); else if (e.key === 'b' || e.key === 'B') setTool('box'); else if (e.key === 'r' || e.key === 'R') setTool('room'); else if (e.key === 'd' || e.key === 'D') setTool('door');
