@@ -149,6 +149,9 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
 .bearing.maybe{stroke-opacity:.55}
 .beam{stroke:var(--danger);pointer-events:none}
 .joist{stroke:#C98A2B;opacity:.45;pointer-events:none}
+.stud{fill:#B98A4E;pointer-events:none}
+#wallOpts{border-left:1px solid var(--line);padding-left:8px}
+#wallOpts .lbl{font:500 .72rem var(--f-mono);color:var(--chrome-muted);letter-spacing:.06em;text-transform:uppercase;margin-right:2px}
 .roomfill{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
 .newwall{fill:var(--accent);fill-opacity:.75;pointer-events:none}
 .gridl{stroke:var(--grid);stroke-width:1;vector-effect:non-scaling-stroke}
@@ -172,6 +175,14 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button id="tWin" aria-pressed="false" title="Click an outside wall to put a window there">Add window</button>
       <button id="tStretch" aria-pressed="false" title="Normally the walls attached to the one you move stretch to stay connected. Turn this on to move just the one wall. (Or hold Alt while dragging.)">Move one wall only</button>
     </div>
+    <div class="grp" id="wallOpts" role="group" aria-label="New wall settings" hidden>
+      <span class="lbl">New wall</span>
+      <button data-wext="1" aria-pressed="false" title="Outside wall: sheathed and sided, windows allowed">Exterior</button>
+      <button data-wext="0" aria-pressed="false" title="Inside wall (partition)">Interior</button>
+      <button data-wstud="4" aria-pressed="false" title="2x4 studs: 3-1/2&quot; framing, 4-1/2&quot; finished wall">2x4</button>
+      <button data-wstud="6" aria-pressed="false" title="2x6 studs: 5-1/2&quot; framing, 6-1/2&quot; finished wall">2x6</button>
+      <select id="wOc" aria-label="Stud spacing" title="Stud spacing"><option value="16">16" on center</option><option value="24">24" on center</option></select>
+    </div>
     <div class="grp">
       <button id="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
       <button id="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
@@ -183,6 +194,7 @@ aside h2{font:600 .72rem var(--f-mono);letter-spacing:.1em;text-transform:upperc
       <button data-v="plan" aria-pressed="false">Plan</button>
       <button data-v="3d" aria-pressed="false">3D</button>
       <button id="tRoof" aria-pressed="false" title="Show the roof in the 3D view">Roof</button>
+      <button id="tFrameTop" aria-pressed="false" title="Show the studs, plates and headers (and roof framing) in 3D and on the plan">Framing</button>
       <button id="tLot" aria-pressed="false" title="Show the lot lines and the setbacks (no-build zone)">Lot</button>
     </div>
     <span class="save" id="save" aria-live="polite"></span>
@@ -330,6 +342,7 @@ function applyOp(st, op){
       for (const [id, off] of Object.entries(op.openings || {})){ const o = O(id); if (o) o.off = off; }
       break;
     case 'add_wall': st.walls.push(clone(op.wall)); break;
+    case 'set_wall_spec': (op.walls || []).forEach(id => { const w = W(id); if (!w) return; if (op.ext != null) w.ext = !!op.ext; if (op.stud) w.stud = op.stud; if (op.oc) w.oc = op.oc; if (op.t != null) w.t = op.t; }); break;
     case 'add_opening': st.openings.push(clone(op.opening)); break;
     case 'remove_opening': st.openings = st.openings.filter(o => o.id !== op.opening); break;
     case 'set_opening': { const o = O(op.opening); if (o) for (const k of ['off', 'w', 'h', 'sill', 'swing', 'hinge']) if (op[k] != null) o[k] = op[k]; break; }
@@ -453,6 +466,7 @@ const svg = $('#svg'), NS = 'http://www.w3.org/2000/svg';
 let vb = null;                                       // view box in plan metres: {x, y, w, h} with y up
 function fit(){
   const ws = S.walls.filter(w => SHOW.has(w.st)); const xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+  if (!xs.length){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page (new building): start with a 12 m x 9 m window around the origin
   const r = svg.getBoundingClientRect(), pad = 1.5;
   let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
   const s = Math.max((x1 - x0) / Math.max(r.width, 1), (y1 - y0) / Math.max(r.height, 1));
@@ -497,9 +511,12 @@ function drawPlan(){
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const {d: wd0, L: wl} = wallFrame(w), cuts = S.openings.filter(o => o.host === w.id && o.op === 'open').map(o => [o.off, o.off + o.w]).sort((a, b) => a[0] - b[0]);
     const spans = []; let u0 = 0; cuts.forEach(([a, b]) => { if (a > u0) spans.push([u0, a]); u0 = Math.max(u0, b); }); if (wl > u0) spans.push([u0, wl]);
+    const J = endJoins(w); if (spans.length && spans[0][0] < 0.001) spans[0][0] = -cornerExt(J.s); if (spans.length && spans[spans.length - 1][1] > wl - 0.001) spans[spans.length - 1][1] = wl + cornerExt(J.e);
     spans.forEach(([a, b]) => { const piece = {...w, s: add(w.s, mul(wd0, a)), e: add(w.s, mul(wd0, b))};
       const p = el('polygon', {points: pts(wallPoly(piece)), class: 'wall' + (w.ext ? ' ext' : '') + (isWallSel(w.id) ? ' sel' : ''), 'data-wall': w.id}, g);
-      p.addEventListener('pointerdown', ev => startWallDrag(ev, w.id)); });
+      p.addEventListener('pointerdown', ev => startWallDrag(ev, w.id));
+      p.addEventListener('pointermove', ev => { if (!drag && !draft && !roomDraft && !placing) showDims(ev, wallInfo(w)); });
+      p.addEventListener('pointerleave', () => { if (!drag && !draft && !roomDraft) dims.hidden = true; }); });
   });
   // openings: gap + symbol
   S.openings.forEach(o => {
@@ -560,10 +577,11 @@ function showPop(ev){
   if (sel.kind === 'wall'){
     const w = S.walls.find(x => x.id === sel.id); if (!w){ hidePop(); return; }
     const bi = bearingWalls().get(w.id);
-    t.textContent = `${w.name || 'Wall'} · ${ftin(wallFrame(w).L)}${w.ext ? ' · exterior' : ''}${bi && bi.why !== 'eave' ? (bi.why === 'joists' ? ' · bearing' : ' · may be bearing') : ''}`;
+    t.textContent = `${w.name || 'Wall'} · ${wallInfo(w)}${bi && bi.why !== 'eave' ? (bi.why === 'joists' ? ' · bearing' : ' · may be bearing') : ''}`;
     const at = sel.at || mul(add(w.s, w.e), 0.5);
     const roomsBoth = [1, -1].every(sg => rooms.some(r => r.st === w.st && inPoly(add(mul(add(w.s, w.e), 0.5), mul(wallFrame(w).n, sg * (w.t / 2 + 0.3))), r.poly)));
-    if (!w.ext || roomsBoth) btn('Remove wall', () => { commit({do: 'remove_wall', wall: w.id, label: `Removed ${w.name || 'wall'}`}); sel = null; hidePop(); }, 'danger');
+    if (!w.ext || roomsBoth || isNewWall(w)) btn('Remove wall', () => { commit({do: 'remove_wall', wall: w.id, label: `Removed ${w.name || 'wall'}`}); sel = null; hidePop(); }, 'danger');
+    specButtons([w]);
     btn('Remove part of wall', () => openUp(w, at));
     btn('Add door', () => addOpening(w, 'door', at));
     if (w.ext) btn('Add garage door', () => addOpening(w, 'garage', at));
@@ -575,9 +593,10 @@ function showPop(ev){
     if (!itemPop(t)) return;
   } else if (sel.kind === 'walls'){
     const ws = sel.ids.map(id => S.walls.find(x => x.id === id)).filter(Boolean); if (!ws.length){ hidePop(); return; }
-    const inner = ws.filter(w => !w.ext), total = ws.reduce((a, w) => a + wallFrame(w).L, 0);
+    const inner = ws.filter(w => !w.ext || isNewWall(w)), total = ws.reduce((a, w) => a + wallFrame(w).L, 0);
     t.textContent = `${ws.length} walls selected · ${ftin(total)} total` + (inner.length < ws.length ? ` · ${ws.length - inner.length} exterior` : '');
     if (inner.length) btn(inner.length === ws.length ? `Remove all ${inner.length}` : `Remove the ${inner.length} interior`, () => removeWalls(inner), 'danger');
+    specButtons(ws);
     btn('Clear selection', () => { sel = null; hidePop(); drawPlan(); highlight3D(); });
     const hint = document.createElement('div'); hint.className = 't'; hint.textContent = 'Drag any of them to move them together.'; pop.appendChild(hint);
   } else if (sel.kind === 'opening'){
@@ -806,7 +825,7 @@ function startOpeningDrag(ev, id){
 }
 svg.addEventListener('pointerdown', ev => {
   hidePop();
-  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commit({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
+  if (placing){ if (ev.button > 0){ stopPlacing(); return; } snapItem(placing, screenToPlan(ev)); const it = clone(placing); delete it.ghost; stopPlacing(); commitSynced({do: 'add_item', item: it, label: `Added ${it.name}`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(ev); return; }
   if (tool === 'door' || tool === 'window'){ placeOpeningAt(screenToPlan(ev), ev); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (!roomDraft){ roomDraft = {a: p, b: p}; } else { roomDraft.b = roomPoint(screenToPlan(ev)); finishRoom(ev); } drawPlan(); return; }
   if (tool === 'wall'){ const p = snapPoint(screenToPlan(ev)); if (!draft){ draft = {a: p, b: p}; } else { finishDraft(ev); } drawPlan(); return; }
@@ -818,7 +837,7 @@ svg.addEventListener('pointerdown', ev => {
 svg.addEventListener('pointermove', ev => {
   if (placing){ snapItem(placing, screenToPlan(ev)); drawPlan(); return; }
   if (tool === 'room'){ const p = roomPoint(screenToPlan(ev)); if (roomDraft){ roomDraft.b = p; showDims(ev, `${ftin(Math.abs(p[0] - roomDraft.a[0]))} × ${ftin(Math.abs(p[1] - roomDraft.a[1]))}`); } drawPlan(); return; }
-  if (tool === 'wall' && draft){ let p = snapPoint(screenToPlan(ev)); if (!ev.shiftKey) p = ortho(draft.a, p); draft.b = p; drawPlan(); showDims(ev, ftin(dist(draft.a, draft.b))); return; }
+  if (tool === 'wall' && draft){ let p = snapPoint(screenToPlan(ev)); if (!ev.shiftKey) p = ortho(draft.a, p); draft.b = p; drawPlan(); showDims(ev, ftin(dist(draft.a, draft.b)) + (chain && chain.ids.length >= 2 ? ' · click the first corner to close' : ' · click again to stop')); return; }
   if (tool === 'wall'){ snapPoint(screenToPlan(ev)); drawPlan(); return; }
   if (!drag) return;
   if (drag.type === 'pan'){ const r = svg.getBoundingClientRect(), k = vb.w / r.width; vb.x = drag.vb0.x - (ev.clientX - drag.c0[0]) * k; vb.y = drag.vb0.y + (ev.clientY - drag.c0[1]) * k; drawPlan(); dragMoved = true; return; }
@@ -868,6 +887,7 @@ svg.addEventListener('pointermove', ev => {
     drawPlan(); build3D(); showDims(ev, `${ftin(o.off)} from the end`);
   }
 });
+svg.addEventListener('dblclick', () => { if (tool === 'wall'){ endChain(); drawPlan(); } });
 svg.addEventListener('pointerup', ev => {
   dims.hidden = true;
   if (!drag) return;
@@ -949,13 +969,155 @@ function wallKind(st, a, b){
   if (outside){ const ex = S.walls.filter(w => w.st === st && w.ext); return {ext: true, t: pick(ex, 't', 0.1524), h: pick(ex, 'h', 2.44), b: pick(ex, 'b', 0)}; }
   const inn = S.walls.filter(w => w.st === st && !w.ext); return {ext: false, t: 4.5 * IN, h: pick(inn, 'h', 2.44), b: pick(inn, 'b', 0)};
 }
+/* ---------------- wall settings, corners, framing ---------------- */
+const STUD_D = {4: 3.5 * IN, 6: 5.5 * IN};
+const studOf = w => w.stud || (w.t >= 5.4 * IN ? 6 : 4);
+const ocOf = w => w.oc || 16;
+const wallT = stud => STUD_D[stud] + 1 * IN;                         // studs + 1/2" drywall + 1/2" drywall or sheathing (siding not counted)
+const isNewWall = w => !PLAN.walls.some(b => b.id === w.id);
+// what Draw wall makes; null = match the building (as-built houses). A blank page starts on a 2x6 outside wall.
+let drawSpec = PLAN.walls.length ? {ext: null, stud: null, oc: 16} : {ext: true, stud: 6, oc: 16};
+try { const k = JSON.parse(localStorage.getItem('rebuilt-wallspec-' + BASE_ID) || 'null'); if (k) drawSpec = {...drawSpec, ...k}; } catch (e) {}
+function syncWallOpts(){
+  document.querySelectorAll('[data-wext]').forEach(b => b.setAttribute('aria-pressed', drawSpec.ext != null && String(+drawSpec.ext) === b.dataset.wext));
+  document.querySelectorAll('[data-wstud]').forEach(b => b.setAttribute('aria-pressed', drawSpec.stud != null && String(drawSpec.stud) === b.dataset.wstud));
+  $('#wOc').value = String(drawSpec.oc || 16);
+  try { localStorage.setItem('rebuilt-wallspec-' + BASE_ID, JSON.stringify(drawSpec)); } catch (e) {}
+}
+document.querySelectorAll('[data-wext]').forEach(b => b.onclick = () => { drawSpec.ext = b.dataset.wext === '1'; if (drawSpec.stud == null) drawSpec.stud = drawSpec.ext ? 6 : 4; syncWallOpts(); });
+document.querySelectorAll('[data-wstud]').forEach(b => b.onclick = () => { drawSpec.stud = +b.dataset.wstud; syncWallOpts(); });
+$('#wOc').onchange = () => { drawSpec.oc = +$('#wOc').value; syncWallOpts(); };
+syncWallOpts();
+
+// walls meeting at an end: corners (end to end, not in line) and tees (end on the side of another wall)
+function endJoins(w){
+  const out = {s: [], e: []}, {d} = wallFrame(w);
+  S.walls.forEach(w2 => { if (w2 === w || w2.st !== w.st) return;
+    for (const end of ['s', 'e']){
+      for (const e2 of ['s', 'e']) if (dist(w[end], w2[e2]) < TOL){ const v = unit(sub(e2 === 's' ? w2.e : w2.s, w2[e2])); if (Math.abs(dot(v, d)) < 0.95) out[end].push({w2, v}); }
+      if (!out[end].some(j => j.w2 === w2)){ const pr = projOnSeg(w[end], w2.s, w2.e); if (pr.d < TOL && pr.t > 0.001 && pr.t < 0.999 && Math.abs(dot(wallFrame(w2).d, d)) < 0.95) out[end].push({w2, tee: true}); }
+    } });
+  return out;
+}
+const cornerExt = list => Math.max(0, ...list.filter(j => !j.tee).map(j => j.w2.t / 2));   // run on to the other wall's outside face
+// which side of the wall is inside: +1 = the left (n) side
+function insideSign(w){
+  const {n} = wallFrame(w), mid = mul(add(w.s, w.e), 0.5), o = w.t / 2 + 0.3;
+  const inRoom = sg => rooms.some(r => r.st === w.st && inPoly(add(mid, mul(n, sg * o)), r.poly));
+  if (inRoom(1) !== inRoom(-1)) return inRoom(1) ? 1 : -1;
+  const ws = S.walls.filter(x => x.st === w.st && x.ext), c = ws.length ? mul(ws.reduce((a, x) => add(a, add(x.s, x.e)), [0, 0]), 1 / (2 * ws.length)) : mid;
+  return dot(sub(c, mid), n) >= 0 ? 1 : -1;
+}
+// length of each face: outside / inside for an outside wall, the clear length between walls for an inside wall
+function faceLengths(w){
+  const {n, L} = wallFrame(w), sg = insideSign(w), J = endJoins(w); let out = L, inn = L;
+  for (const end of ['s', 'e']){
+    const j = J[end].find(q => !q.tee), tj = J[end].find(q => q.tee);
+    if (j){ const k = j.w2.t / 2; if (dot(j.v, mul(n, sg)) > 0){ out += k; inn -= k; } else { out -= k; inn += k; } }
+    else if (tj){ out -= tj.w2.t / 2; inn -= tj.w2.t / 2; }
+  }
+  return {out, inn};
+}
+function ftinHalf(m){ const tot = Math.round(m / IN * 2) / 2, f = Math.floor(tot / 12), i = tot - f * 12, wh = Math.floor(i); return `${f}'-${wh}${i > wh ? '½' : ''}"`; }   // to the half inch
+function wallInfo(w){
+  const f = faceLengths(w), sp = `2x${studOf(w)} @ ${ocOf(w)}" o.c.`;
+  return w.ext ? `Outside ${ftinHalf(f.out)} · Inside ${ftinHalf(f.inn)} · ${sp}` : `Inside wall ${ftinHalf(Math.min(f.out, f.inn))} between walls · ${sp}`;
+}
+// where two lines meet (each {p, d})
+function lineX(l1, l2){ const den = l1.d[0] * l2.d[1] - l1.d[1] * l2.d[0]; if (Math.abs(den) < 1e-6) return l2.p.slice(); const t = ((l2.p[0] - l1.p[0]) * l2.d[1] - (l2.p[1] - l1.p[1]) * l2.d[0]) / den; return add(l1.p, mul(l1.d, t)); }
+
+// change walls to outside / inside, 2x4 / 2x6, stud spacing. An outside wall keeps its outside face where it is.
+function setSpec(ws, patch){
+  ws = ws.filter(Boolean); if (!ws.length) return;
+  const op = {do: 'set_wall_spec', walls: ws.map(w => w.id), ...patch}; if (patch.stud) op.t = wallT(patch.stud);
+  const cur = {}, offs = {}, get = w => cur[w.id] || (cur[w.id] = {s: w.s.slice(), e: w.e.slice()});
+  ws.forEach(w => {
+    const ext = patch.ext != null ? patch.ext : w.ext, nt = patch.stud ? wallT(patch.stud) : w.t, dt = nt - w.t;
+    if (!ext || Math.abs(dt) < 0.001) return;
+    const {d, n} = wallFrame(w), sh = mul(n, insideSign(w) * dt / 2), me = get(w), J = endJoins(w);
+    const line2 = {p: add(me.s, sh), d};
+    for (const end of ['s', 'e']){
+      const j = J[end].find(q => !q.tee), old = w[end];
+      if (!j){ me[end] = add(me[end], sh); continue; }
+      const w2 = j.w2, e2 = dist(w2.s, old) < TOL ? 's' : 'e', o2 = get(w2), np = lineX(line2, {p: o2[e2], d: wallFrame(w2).d});
+      if (e2 === 's') S.openings.filter(o => o.host === w2.id).forEach(o => { offs[o.id] = (offs[o.id] != null ? offs[o.id] : o.off) - dot(sub(np, o2.s), wallFrame(w2).d); });
+      o2[e2] = np; me[end] = np.slice();
+    }
+  });
+  const parts = Object.keys(cur).length ? [{do: 'set_walls', walls: cur, openings: offs}, op] : [op];
+  const what = [patch.ext != null ? (patch.ext ? 'outside' : 'inside') : '', patch.stud ? `2x${patch.stud}` : '', patch.oc ? `${patch.oc}" o.c.` : ''].filter(Boolean).join(', ');
+  commit({do: 'batch', ops: parts, label: `Made ${ws.length === 1 ? (ws[0].name || 'wall') : ws.length + ' walls'} ${what}`});
+  const x0 = pop.style.left, y0 = pop.style.top; showPop(null); pop.style.left = x0; pop.style.top = y0;   // the popup stays where it was
+}
+function specButtons(ws){
+  const allExt = ws.every(w => w.ext), all6 = ws.every(w => studOf(w) === 6), all16 = ws.every(w => ocOf(w) === 16);
+  btn(allExt ? 'Make interior' : 'Make exterior', () => setSpec(ws, {ext: !allExt}));
+  btn(all6 ? 'Make 2x4' : 'Make 2x6', () => setSpec(ws, {stud: all6 ? 4 : 6}));
+  btn(all16 ? 'Studs 24" o.c.' : 'Studs 16" o.c.', () => setSpec(ws, {oc: all16 ? 24 : 16}));
+}
+
+let chain = null;                       // walls drawn one after another: {start, st, ids}
+function endChain(){ chain = null; draft = null; snapMark = null; }
 function finishDraft(ev){
   const L = dist(draft.a, draft.b);
-  if (L < 0.3){ draft = null; return; }
-  const st = storeyAt(draft.a), k = wallKind(st, draft.a, draft.b);
-  const w = {id: uid('N-W'), st, s: draft.a, e: draft.b, ...k, name: k.ext ? 'New outside wall' : 'New wall'};
-  draft = null; snapMark = null;
-  commit({do: 'add_wall', wall: w, label: `Added a ${ftin(L)} ${k.ext ? 'outside ' : ''}wall`});
+  if (L < 0.3){ endChain(); return; }                                    // click the same point again to stop
+  const st = chain ? chain.st : storeyAt(draft.a), k = wallKind(st, draft.a, draft.b);
+  const ext = drawSpec.ext != null ? drawSpec.ext : k.ext, stud = drawSpec.stud || studOf(k), oc = drawSpec.oc || 16;
+  const w = {id: uid('N-W'), st, s: draft.a.slice(), e: draft.b.slice(), h: k.h, b: k.b, ext, t: drawSpec.stud ? wallT(stud) : k.t, stud, oc, name: ext ? 'Outside wall' : 'Wall'};
+  if (!chain) chain = {start: draft.a.slice(), st, ids: []};
+  chain.ids.push(w.id);
+  const end = draft.b.slice(), closed = chain.ids.length >= 3 && dist(end, chain.start) < TOL;
+  draft = closed ? null : {a: end, b: end.slice()};
+  commit({do: 'add_wall', wall: w, label: `Added a ${ftin(L)} ${ext ? 'outside' : 'inside'} 2x${stud} wall`});
+  if (closed){ const c = chain; endChain(); if (ext) faceOutLoop(c); }
+}
+// a closed ring of outside walls: what you drew is the OUTSIDE face, so the wall centre lines move in by half a wall
+function faceOutLoop(c){
+  const ws = c.ids.map(id => S.walls.find(w => w.id === id)); if (ws.some(w => !w) || !ws.every(w => w.ext)) return;
+  const A = polyArea(ws.map(w => w.s)), sg = A > 0 ? 1 : -1, n = ws.length;
+  const lines = ws.map(w => { const {d, n: nn} = wallFrame(w); return {p: add(w.s, mul(nn, sg * w.t / 2)), d}; });
+  const map = {}; ws.forEach((w, i) => { map[w.id] = {s: lineX(lines[(i - 1 + n) % n], lines[i]), e: lineX(lines[i], lines[(i + 1) % n])}; });
+  commit({do: 'set_walls', walls: map, openings: {}, label: 'Outside walls closed: the lines you drew are the outside face'});
+  toast('Closed. The lines you drew are the outside of the walls.');
+}
+
+// stud layout of one wall (lengths along the wall from its start): plates, studs, openings
+function frameLayout(w){
+  const t = 1.5 * IN, sd = STUD_D[studOf(w)], oc = ocOf(w) * IN, {L} = wallFrame(w), J = endJoins(w), {d} = wallFrame(w);
+  const runs = Math.abs(d[0]) >= Math.abs(d[1]);                     // at a corner the east-west wall runs through, the other one butts into it
+  const endU = list => { const j = list.find(q => !q.tee); if (j){ const k = STUD_D[studOf(j.w2)] / 2; return runs ? k : -k; } const tj = list.find(q => q.tee); return tj ? -STUD_D[studOf(tj.w2)] / 2 : 0; };
+  const u0 = -endU(J.s), u1 = L + endU(J.e), elev = EL(w.st), z0 = elev + w.b, z1 = z0 + w.h;
+  const ops2 = S.openings.filter(o => o.host === w.id && o.op !== 'open').map(o => ({o, a: Math.max(u0 + 2 * t, o.off), b: Math.min(u1 - 2 * t, o.off + o.w), z0: elev + o.sill, z1: elev + o.sill + o.h}));
+  const hd = wd => wd <= 4 * FT ? 7.25 * IN : wd <= 6 * FT ? 9.25 * IN : 11.25 * IN;   // header depth, first pass
+  const busy = c => ops2.some(q => c > q.a - 2.2 * t && c < q.b + 2.2 * t);
+  const studs = [u0 + t / 2, u0 + 1.5 * t, u1 - t / 2, u1 - 1.5 * t];   // two studs at each end (corner / tee)
+  for (let c = u0 + oc; c < u1 - 2 * t; c += oc) if (!busy(c) && c > u0 + 2 * t) studs.push(c);
+  return {t, sd, oc, u0, u1, z0, z1, ops: ops2, hd, studs};
+}
+function buildWallFraming3D(grp){
+  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+    const F = frameLayout(w), {t, sd, u0, u1, z0, z1} = F, wf = {...w, t: sd};
+    const fb = (a, b, za, zb, mat) => { const m = boxAlong(wf, a, b, za, zb, mat || FM.wood); if (m){ m.castShadow = false; grp.add(m); } };
+    let u = u0; F.ops.filter(q => q.z0 < z0 + 0.05).sort((x, y) => x.a - y.a).forEach(q => { fb(u, q.a, z0, z0 + t, FM.plate); u = q.b; }); fb(u, u1, z0, z0 + t, FM.plate);   // bottom plate, cut at doors
+    fb(u0, u1, z1 - 2 * t, z1 - t, FM.plate); fb(u0, u1, z1 - t, z1, FM.plate);                     // double top plate
+    F.studs.forEach(c => fb(c - t / 2, c + t / 2, z0 + t, z1 - 2 * t));
+    F.ops.forEach(q => {
+      const hd = F.hd(q.b - q.a), hTop = Math.min(z1 - 2 * t, q.z1 + hd);
+      fb(q.a - 2 * t, q.a - t, z0 + t, z1 - 2 * t); fb(q.b + t, q.b + 2 * t, z0 + t, z1 - 2 * t);    // king studs
+      fb(q.a - t, q.a, z0 + t, hTop - hd); fb(q.b, q.b + t, z0 + t, hTop - hd);                      // jack studs
+      fb(q.a - t, q.b + t, hTop - hd, hTop, FM.header);                                              // header
+      const lay = []; for (let c = u0 + F.oc; c < u1; c += F.oc) if (c > q.a + t / 2 && c < q.b - t / 2) lay.push(c);
+      lay.forEach(c => { if (z1 - 2 * t - hTop > IN) fb(c - t / 2, c + t / 2, hTop, z1 - 2 * t); });  // cripples above
+      if (q.z0 > z0 + 0.05){ fb(q.a, q.b, q.z0 - t, q.z0, FM.plate); lay.forEach(c => fb(c - t / 2, c + t / 2, z0 + t, q.z0 - t)); }   // window sill + cripples below
+    });
+  });
+}
+function drawStudsPlan(g){
+  S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
+    const F = frameLayout(w), {d} = wallFrame(w), at = u => add(w.s, mul(d, u));
+    const cs = F.studs.concat(...F.ops.map(q => [q.a - 1.5 * F.t, q.a - F.t / 2, q.b + F.t / 2, q.b + 1.5 * F.t]));
+    cs.forEach(c => el('polygon', {points: pts(wallPoly({...w, s: at(c - F.t / 2), e: at(c + F.t / 2), t: F.sd})), class: 'stud'}, g));
+  });
 }
 
 /* ---------------- add a room: drag a rectangle ---------------- */
@@ -1029,6 +1191,8 @@ const M = {
   sel: new THREE.MeshStandardMaterial({color: '#D9732F', roughness: .6}), floor: new THREE.MeshStandardMaterial({color: '#C9A77A', roughness: .7}),
   floorNew: new THREE.MeshStandardMaterial({color: '#D8B88A', roughness: .7}), glass: new THREE.MeshStandardMaterial({color: '#BFD9E6', roughness: .1, transparent: true, opacity: .35}),
   comp: new THREE.MeshStandardMaterial({color: '#FAFAF7', roughness: .5}),
+  ghost: new THREE.MeshStandardMaterial({color: '#E4E1D8', roughness: .9, transparent: true, opacity: .12, depthWrite: false}),
+  selGhost: new THREE.MeshStandardMaterial({color: '#D9732F', roughness: .6, transparent: true, opacity: .3, depthWrite: false}),
 };
 let group = new THREE.Group(); scene.add(group);
 const wallMeshes = {};
@@ -1046,7 +1210,8 @@ function build3D(){
   S.walls.filter(w => SHOW.has(w.st)).forEach(w => {
     const elev = EL(w.st), {L} = wallFrame(w), z0 = elev + w.b, z1 = z0 + w.h, mat = w.ext ? M.ext : M.wall;
     const ops2 = S.openings.filter(o => o.host === w.id).sort((a, b) => a.off - b.off);
-    const parts = []; let u = 0;
+    const J = endJoins(w), xs = cornerExt(J.s), xe = cornerExt(J.e);
+    const parts = []; let u = -xs;
     ops2.forEach(o => {
       const a = Math.max(0, o.off), b = Math.min(L, o.off + o.w), oz0 = elev + o.sill, oz1 = oz0 + o.h;
       parts.push(boxAlong(w, u, a, z0, z1, mat));
@@ -1055,7 +1220,7 @@ function build3D(){
       if (o.kind === 'window'){ const gl = boxAlong({...w, t: 0.01}, a, b, oz0, oz1, M.glass); if (gl){ gl.castShadow = false; parts.push(gl); } }
       u = Math.max(u, b);
     });
-    parts.push(boxAlong(w, u, L, z0, z1, mat));
+    parts.push(boxAlong(w, u, L + xe, z0, z1, mat));
     const wg = new THREE.Group(); parts.filter(Boolean).forEach(p => { p.userData.wall = w.id; wg.add(p); });
     wg.userData.wall = w.id; wallMeshes[w.id] = wg; group.add(wg);
   });
@@ -1177,7 +1342,7 @@ function buildRoof3D(grp){
 function highlight3D(){
   for (const [id, g] of Object.entries(wallMeshes)){
     const on = isWallSel(id), w = S.walls.find(x => x.id === id);
-    g.children.forEach(m => { if (m.material !== M.glass) m.material = on ? M.sel : (w && w.ext ? M.ext : M.wall); });
+    g.children.forEach(m => { if (m.material !== M.glass) m.material = showFraming ? (on ? M.selGhost : M.ghost) : on ? M.sel : (w && w.ext ? M.ext : M.wall); m.castShadow = !showFraming; });
   }
 }
 let camSet = false;
@@ -1186,8 +1351,9 @@ function resize3(){
   R.setSize(r.width, r.height, false); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
   if (!camSet){
     const ws = S.walls.filter(w => SHOW.has(w.st)), xs = ws.flatMap(w => [w.s[0], w.e[0]]), ys = ws.flatMap(w => [w.s[1], w.e[1]]);
+    const blank = !xs.length; if (blank){ xs.push(-6, 6); ys.push(-4.5, 4.5); }   // blank page: frame a 12 m x 9 m window until the first wall is drawn
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2, span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = true;
+    orbit.target.copy(P3(cx, cy, elev)); cam.position.copy(P3(cx - span * 0.1, cy - span * 0.95, span * 1.25)); orbit.update(); camSet = !blank;
   }
 }
 // pick + drag walls in 3D
@@ -1252,7 +1418,7 @@ const CAT = {
   tall:    {g: 'Kitchen', label: 'Pantry cabinet', w: 24, d: 24, h: 84, z: 0, wall: true, widths: [18, 24, 30, 36], cab: 'tall'},
   island:  {g: 'Kitchen', label: 'Island', w: 72, d: 36, h: 36, z: 0, wall: false, widths: [48, 60, 72, 84, 96], cab: 'island'},
   range:   {g: 'Kitchen', label: 'Range', w: 30, d: 26, h: 36, z: 0, wall: true, widths: [30, 36], cab: 'range'},
-  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 30, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
+  fridge:  {g: 'Kitchen', label: 'Refrigerator', w: 36, d: 33, h: 70, z: 0, wall: true, widths: [30, 33, 36], cab: 'fridge'},
   dw:      {g: 'Kitchen', label: 'Dishwasher', w: 24, d: 24, h: 34.5, z: 0, wall: true, widths: [18, 24]},
   vanity:  {g: 'Bath', label: 'Vanity', w: 36, d: 21, h: 34.5, z: 0, wall: true, widths: [24, 30, 36, 48, 60, 72], cab: 'vanity'},
   toilet:  {g: 'Bath', label: 'Toilet', w: 20, d: 28, h: 30, z: 0, wall: true},
@@ -1271,6 +1437,57 @@ const CAT = {
   filler:  {g: null, label: 'Filler', w: 3, d: 24, h: 36, z: 0, wall: true, cab: 'filler'},
 };
 const isUpper = it => it.z > 1.0;
+/* fridges + the cabinet over them */
+const FRIDGE_D = {std: 33, counter: 27};              // inches, wall to the front of the fridge doors
+const UPPER_H = [30, 36, 42], OVER_FRIDGE_H = [12, 15, 18, 24];
+const isFridge = it => it.cat === 'fridge';
+function backPt(it){ const {f} = itemFrame(it); return sub(it.at, mul(f, it.d / 2)); }
+// the fridge under an upper cabinet: same wall, same way, the cabinet's centre over the fridge
+function fridgeUnder(it, items){
+  if (!isUpper(it)) return null; const fi = itemFrame(it).f;
+  return (items || S.items).find(fr => isFridge(fr) && fr.st === it.st && dot(itemFrame(fr).f, fi) > 0.99
+    && Math.abs(dot(sub(it.at, fr.at), itemFrame(fr).a)) < fr.w / 2 - IN && Math.abs(dot(sub(backPt(it), backPt(fr)), fi)) < 3 * IN) || null;
+}
+// where the tops of the other upper cabinets on that wall are (default 90" = 36" uppers starting at 54")
+function topLine(it, items){
+  const fi = itemFrame(it).f, L = items || S.items;
+  const tops = L.filter(o => o.id !== it.id && isUpper(o) && o.cat !== 'filler' && o.st === it.st && dot(itemFrame(o).f, fi) > 0.99
+    && Math.abs(dot(sub(backPt(o), backPt(it)), fi)) < 3 * IN && !fridgeUnder(o, L)).map(o => o.z + o.h);
+  return tops.length ? Math.max(...tops) : 90 * IN;
+}
+// a cabinet over a fridge: as deep as the fridge (front flush with it), top in line with the other uppers
+function overFridgeFit(it, fr, items){
+  const top = topLine(it, items), room = top - (fr.z + fr.h + 1 * IN);
+  const best = (OVER_FRIDGE_H.slice().reverse().find(x => x * IN <= room + 1e-6) || 12) * IN;
+  const keep = it.d > 13 * IN && OVER_FRIDGE_H.some(x => Math.abs(x * IN - it.h) < 0.004) && it.h <= room + 1e-6;   // a height already picked for this spot
+  const h = keep ? it.h : best, {f} = itemFrame(fr);
+  return {d: fr.d, h, z: top - h, at: add(backPt(it), mul(f, fr.d / 2))};
+}
+// commit, then pull every cabinet that sits over a fridge out flush with that fridge (one undo step)
+function commitSynced(op){
+  const T = clone(S); applyOp(T, op);
+  const ups = [];
+  T.items.forEach(it => { const fr = fridgeUnder(it, T.items); if (!fr) return; const fit = overFridgeFit(it, fr, T.items);
+    if (Math.abs(fit.d - it.d) > 0.003 || Math.abs(fit.z - it.z) > 0.003 || Math.abs(fit.h - it.h) > 0.003 || dist(fit.at, it.at) > 0.003) ups.push({do: 'set_item', item: it.id, ...fit}); });
+  commit(ups.length ? {do: 'batch', ops: [op, ...ups], label: (op.label || 'Change') + ' (cabinet over the fridge kept flush)'} : op);
+}
+function setFridgeDepth(fr, inch){
+  const {f} = itemFrame(fr), d = inch * IN;
+  commitSynced({do: 'set_item', item: fr.id, d, at: add(fr.at, mul(f, (d - fr.d) / 2)), label: `${fr.name} → ${inch === FRIDGE_D.counter ? 'counter depth' : 'standard depth'}`}); showPop(null);
+}
+function cabinetOverFridge(fr){
+  const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+  const fit = overFridgeFit({...it, d: fr.d, at: fr.at}, fr); Object.assign(it, fit);
+  commitSynced({do: 'add_item', item: it, label: `Added a ${ftin(it.h)} cabinet over the fridge, flush with its front`});
+  sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
+}
+function setUpperHeight(it, inch){
+  const h = inch * IN, fr = fridgeUnder(it);
+  if (fr){ const top = it.z + it.h, z = top - h; if (z < fr.z + fr.h + 0.5 * IN){ toast(`A ${inch}" cabinet won't fit over the fridge with the tops lined up.`); return; }
+    commit({do: 'set_item', item: it.id, h, z, label: `${it.name} → ${inch}" tall`}); }      // over a fridge the top stays in line
+  else commit({do: 'set_item', item: it.id, h, label: `${it.name} → ${inch}" tall`});      // the bottom stays 18" over the counter
+  showPop(null);
+}
 function newItem(cat, extra){
   const c = CAT[cat];
   return Object.assign({id: uid('N-I'), cat, st: ST, at: [0, 0], rot: 0, w: c.w * IN, d: c.d * IN, h: c.h * IN, z: c.z * IN, name: c.label}, extra || {});
@@ -1326,7 +1543,7 @@ function cabinetRun(w, at, dry){
   let side = Math.sign(dot(sub(at, w.s), n));
   const inRoom = sd => rooms.some(r => r.st === w.st && inPoly(add(at, mul(n, sd * 0.5)), r.poly));
   if (!side || !inRoom(side)) side = inRoom(1) ? 1 : -1;
-  const uc = dot(sub(at, w.s), wd);
+  const uc = dot(sub(at, w.s), wd), faceLine = dot(w.s, n) + side * w.t / 2;
   const blocks = (forUpper) => {
     const bl = [];
     S.walls.forEach(o => {
@@ -1336,6 +1553,10 @@ function cabinetRun(w, at, dry){
       if (projOnSeg(w.s, o.s, o.e).d < o.t / 2 + TOL) bl.push([-1, o.t / 2]);
       if (projOnSeg(w.e, o.s, o.e).d < o.t / 2 + TOL) bl.push([L - o.t / 2, L + 1]);
     });
+    // fridge, range, pantry, dishwasher... already on this wall: the run stops at them
+    S.items.forEach(it => { if (it.st !== w.st || isUpper(it) || ['base', 'sink', 'filler'].includes(it.cat)) return;
+      if (dot(itemFrame(it).f, mul(n, side)) < 0.99 || Math.abs(dot(backPt(it), n) - faceLine) > 3 * IN) return;
+      const uu = dot(sub(it.at, w.s), wd); bl.push([uu - it.w / 2, uu + it.w / 2]); });
     S.openings.filter(o => o.host === w.id).forEach(o => {
       if (o.kind === 'door') bl.push([o.off - 3 * IN, o.off + o.w + 3 * IN]);
       else if (forUpper) bl.push([o.off - 2 * IN, o.off + o.w + 2 * IN]);
@@ -1383,10 +1604,15 @@ function cabinetRun(w, at, dry){
   ubl.forEach(([x0, x1]) => { segs = segs.flatMap(([s0, s1]) => x1 <= s0 || x0 >= s1 ? [[s0, s1]] : [[s0, x0], [x1, s1]].filter(([p, q]) => q - p >= 9 * IN)); });
   let nU = 0;
   segs.forEach(([s0, s1]) => fill(s0, s1).forEach(([x0, x1, inch]) => { items.push(inch < 9 ? place('filler', x0, x1, {d: 12 * IN, h: (tall ? 36 : 30) * IN, z: 54 * IN, name: 'Filler (upper)'}) : place('upper', x0, x1, {h: (tall ? 36 : 30) * IN})); nU++; }));
+  // a fridge at the end of the run gets a cabinet over it, flush with its front
+  S.items.filter(fr => isFridge(fr) && fr.st === w.st && dot(itemFrame(fr).f, mul(n, side)) > 0.99 && Math.abs(dot(backPt(fr), n) - faceLine) < 3 * IN).forEach(fr => {
+    const uu = dot(sub(fr.at, w.s), wd); if (uu + fr.w / 2 < b0 - 2 * IN || uu - fr.w / 2 > b1 + 2 * IN || S.items.some(o => fridgeUnder(o) === fr)) return;
+    const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
+    Object.assign(it, overFridgeFit({...it, d: fr.d}, fr, S.items.concat(items))); items.push(it); nU++; });
   const nB = items.length - nU;
   const runOp = {do: 'batch', ops: items.map(it => ({do: 'add_item', item: it})), label: `Added cabinet run on ${w.name || 'wall'} (${ftin(b1 - b0)}: ${nB} base, ${nU} upper)`};
   if (dry) return runOp;
-  commit(runOp);
+  commitSynced(runOp);
   sel = null; hidePop();
 }
 
@@ -1447,14 +1673,23 @@ function itemDragEnd(d, ev){
   const it = S.items.find(x => x.id === d.id);
   if (!dragMoved){ select({kind: 'item', id: d.id}, ev); return; }
   const v = {at: it.at, rot: it.rot, st: it.st}; rebuild();
-  commit({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
+  commitSynced({do: 'set_item', item: d.id, ...v, label: `Moved ${it.name}`});
   sel = {kind: 'item', id: d.id}; drawPlan();
 }
 function itemPop(t){
   const it = S.items.find(x => x.id === sel.id); if (!it){ hidePop(); return false; }
   const c = CAT[it.cat];
-  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isUpper(it) ? ` · ${ftin(it.z)} up` : '');
+  const frU = fridgeUnder(it);
+  t.textContent = `${it.name} · ${ftin(it.w)} wide` + (isFridge(it) ? ` · ${ftin(it.d)} deep` : '') + (isUpper(it) && it.cat !== 'filler' ? ` · ${ftin(it.h)} tall · ${ftin(it.z)} up` + (frU ? ' · flush with the fridge' : '') : isUpper(it) ? ` · ${ftin(it.z)} up` : '');
   (c.widths || []).forEach(inch => { const b = btn(`${inch}"`, () => resizeItem(it, inch * IN)); if (Math.abs(it.w - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+  const brk = () => { const d = document.createElement('div'); d.style.width = '100%'; pop.appendChild(d); };
+  if (isFridge(it)){ brk();
+    [['Standard depth', FRIDGE_D.std], ['Counter depth', FRIDGE_D.counter]].forEach(([lb, inch]) => { const b = btn(`${lb} ${inch}"`, () => setFridgeDepth(it, inch)); if (Math.abs(it.d - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    if (!S.items.some(o => fridgeUnder(o) === it)) btn('Cabinet above', () => cabinetOverFridge(it));
+    brk(); }
+  if (it.cat === 'upper'){ brk();
+    (frU ? OVER_FRIDGE_H : UPPER_H).forEach(inch => { const b = btn(`${inch}" tall`, () => setUpperHeight(it, inch)); if (Math.abs(it.h - inch * IN) < 0.005) b.setAttribute('aria-pressed', 'true'); });
+    brk(); }
   btn('Rename', () => renameInput('item', it.id, it.name));
   btn('Rotate', () => { commit({do: 'set_item', item: it.id, rot: (it.rot + 90) % 360, label: `Rotated ${it.name}`}); showPop(null); });
   btn('Copy', () => { const {a} = itemFrame(it), cp = clone(it); cp.id = uid('N-I'); cp.at = add(it.at, mul(a, it.w)); commit({do: 'add_item', item: cp, label: `Copied ${it.name}`}); sel = {kind: 'item', id: cp.id}; drawPlan(); showPop(null); });
@@ -1463,7 +1698,7 @@ function itemPop(t){
 }
 function resizeItem(it, wNew){
   const {a} = itemFrame(it), at = add(it.at, mul(a, (wNew - it.w) / 2));   // keep the left end where it is
-  commit({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
+  commitSynced({do: 'set_item', item: it.id, w: wNew, at, label: `${it.name} → ${ftin(wNew)}`}); showPop(null);
 }
 
 /* ---------------- live checks ---------------- */
@@ -1882,6 +2117,7 @@ const FRAMING = {
   rafter:  {label: 'Rafters + ceiling joists, 16" o.c.', sp: 16},
 };
 let showFraming = false;
+function toggleFraming(){ showFraming = !showFraming; drawPlan(); build3D(); drawRoofPanel(); }
 // a gable roof in its own frame: u along the eaves (ridge direction), v across the span from the first eave
 // the roof follows its building: if the outside walls moved, its outline stretches with them
 function liveFp(r){
@@ -1985,7 +2221,7 @@ function bearingChecks(out){
 /* 3D members: thin boxes between two plan+height points */
 const FM = {
   wood: new THREE.MeshStandardMaterial({color: '#C9A06A', roughness: .8}), beam: new THREE.MeshStandardMaterial({color: '#B4432F', roughness: .6}),
-  plate: new THREE.MeshStandardMaterial({color: '#A57E4E', roughness: .8}),
+  plate: new THREE.MeshStandardMaterial({color: '#A57E4E', roughness: .8}), header: new THREE.MeshStandardMaterial({color: '#8C6A3F', roughness: .8}),
 };
 function member(grp, p0, z0, p1, z1, w, h, mat){
   const A = P3(p0[0], p0[1], z0), B = P3(p1[0], p1[1], z1), L = A.distanceTo(B); if (L < 0.01) return;
@@ -1994,6 +2230,7 @@ function member(grp, p0, z0, p1, z1, w, h, mat){
 }
 function buildFraming3D(grp){
   if (!showFraming) return;
+  buildWallFraming3D(grp);
   (S.roofs || []).forEach(r => {
     const {F, sp, n} = roofStats(r), t = 1.5 * IN, dd = 3.5 * IN, zP = F.z, zR = zP + F.rise, oh = r.oh;
     for (let k = 0; k < n; k++){
@@ -2017,6 +2254,7 @@ function drawFramingPlan(g){
     el('polygon', {points: pts(wallPoly({...w, t: w.t + 0.12})), class: 'bearing' + (info.why === 'maybe' ? ' maybe' : ''), 'stroke-width': 1.5 * pxm(), 'stroke-dasharray': `${4 * pxm()} ${3 * pxm()}`}, g); });
   (S.beams || []).forEach(b => el('line', {x1: toSvg(b.s)[0], y1: toSvg(b.s)[1], x2: toSvg(b.e)[0], y2: toSvg(b.e)[1], class: 'beam', 'stroke-width': 5 * pxm(), 'stroke-dasharray': `${10 * pxm()} ${4 * pxm()}`}, g));
   if (!showFraming) return;
+  drawStudsPlan(g);
   (S.roofs || []).forEach(r => { const {F, sp, n} = roofStats(r);
     for (let k = 0; k < n; k++){ const s = Math.min(k * sp, F.L), a = add(F.o, mul(F.u, s)), b = add(a, mul(F.v, F.W));
       el('line', {x1: toSvg(a)[0], y1: toSvg(a)[1], x2: toSvg(b)[0], y2: toSvg(b)[1], class: 'joist', 'stroke-width': pxm()}, g); } });
@@ -2112,7 +2350,8 @@ function drawRoofPanel(){
     host.appendChild(box);
   });
   const t = document.createElement('button'); t.id = 'tFrame'; t.setAttribute('aria-pressed', showFraming); t.textContent = showFraming ? 'Hide framing' : 'Show framing';
-  t.onclick = () => { showFraming = !showFraming; drawPlan(); build3D(); drawRoofPanel(); }; host.appendChild(t);
+  t.onclick = toggleFraming; host.appendChild(t);
+  $('#tFrameTop').setAttribute('aria-pressed', showFraming);
 }
 function copyOrder(r){
   const {F, commons} = roofStats(r), B = bearingWalls(), bw = [...B.entries()].filter(([, i]) => i.roof === r && i.why === 'eave').map(([id]) => (PLAN.walls.find(w => w.id === id) || {}).name || id);
@@ -2517,10 +2756,10 @@ function placeOpeningAt(p, ev){
   if (tool === 'window' && !best.w.ext){ toast('Windows go in outside walls.'); return; }
   const kind = tool; setTool('select'); addOpening(best.w, kind, best.q);
 }
-function setTool(t){ tool = t; draft = null; snapMark = null; $('#tSel').setAttribute('aria-pressed', t === 'select'); $('#tBox').setAttribute('aria-pressed', t === 'box'); $('#tWall').setAttribute('aria-pressed', t === 'wall'); $('#tRoom').setAttribute('aria-pressed', t === 'room'); $('#tDoor').setAttribute('aria-pressed', t === 'door'); $('#tWin').setAttribute('aria-pressed', t === 'window'); roomDraft = null; svg.style.cursor = t === 'select' ? '' : 'crosshair'; if (t === 'wall' || t === 'room' || t === 'door' || t === 'window'){ sel = null; hidePop(); } if (t === 'door' || t === 'window') toast(`Click the wall where the ${t} goes.`); drawPlan(); highlight3D(); }
+function setTool(t){ tool = t; draft = null; chain = null; snapMark = null; $('#wallOpts').hidden = t !== 'wall'; $('#tSel').setAttribute('aria-pressed', t === 'select'); $('#tBox').setAttribute('aria-pressed', t === 'box'); $('#tWall').setAttribute('aria-pressed', t === 'wall'); $('#tRoom').setAttribute('aria-pressed', t === 'room'); $('#tDoor').setAttribute('aria-pressed', t === 'door'); $('#tWin').setAttribute('aria-pressed', t === 'window'); roomDraft = null; svg.style.cursor = t === 'select' ? '' : 'crosshair'; if (t === 'wall' || t === 'room' || t === 'door' || t === 'window'){ sel = null; hidePop(); } if (t === 'door' || t === 'window') toast(`Click the wall where the ${t} goes.`); drawPlan(); highlight3D(); }
 $('#tSel').onclick = () => setTool('select'); $('#tBox').onclick = () => setTool('box'); $('#tRoom').onclick = () => setTool('room');
 $('#tRoof').onclick = () => { showRoof = !showRoof; $('#tRoof').setAttribute('aria-pressed', showRoof); try { localStorage.setItem('rebuilt-roof', showRoof ? '1' : '0'); } catch (e) {} build3D(); };
-$('#tRoof').setAttribute('aria-pressed', showRoof); $('#tLot').onclick = toggleLot; $('#tLot').setAttribute('aria-pressed', showLot); $('#tDoor').onclick = () => setTool('door'); $('#tWin').onclick = () => setTool('window');
+$('#tRoof').setAttribute('aria-pressed', showRoof); $('#tFrameTop').onclick = toggleFraming; $('#tLot').onclick = toggleLot; $('#tLot').setAttribute('aria-pressed', showLot); $('#tDoor').onclick = () => setTool('door'); $('#tWin').onclick = () => setTool('window');
 function setStretch(v){ stretch = v; $('#tStretch').setAttribute('aria-pressed', !v); try { localStorage.setItem('rebuilt-solo', v ? '0' : '1'); } catch (e) {} }
 $('#tStretch').onclick = () => { setStretch(!stretch); toast(stretch ? 'Walls stay connected when you move one.' : 'Moving one wall only — attached walls stay put.'); };
 setStretch(stretch); $('#tWall').onclick = () => setTool('wall');
@@ -2532,9 +2771,9 @@ document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? $('#redo').click() : $('#undo').click(); }
-  else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
+  else if (e.key === 'Escape'){ if (placing) stopPlacing(); draft = null; chain = null; roomDraft = null; sel = null; hidePop(); drawPlan(); highlight3D(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && sel){
-    if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && !w.ext)); }
+    if (sel.kind === 'wall' || sel.kind === 'walls'){ removeWalls(selWalls().map(id => S.walls.find(x => x.id === id)).filter(w => w && (!w.ext || isNewWall(w)))); }
     else if (sel.kind === 'item'){ const it = S.items.find(x => x.id === sel.id); if (it){ commit({do: 'remove_item', item: it.id, label: `Removed ${it.name}`}); sel = null; hidePop(); } }
     else if (sel.kind === 'opening'){ const o = S.openings.find(x => x.id === sel.id); commit({do: 'remove_opening', opening: o.id, label: `Removed ${o.name || o.kind}`}); sel = null; hidePop(); }
   }
