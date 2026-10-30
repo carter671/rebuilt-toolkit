@@ -8,7 +8,8 @@ are applied (the rest were undone). The as-built file is never written.
 Ops (all lengths in metres, plan coordinates):
   remove_wall   {wall}
   set_walls     {walls: {id: {s, e}}, openings: {id: off}}
-  add_wall      {wall: {id, st, s, e, t, h, b, ext, name}}
+  add_wall      {wall: {id, st, s, e, t, h, b, ext, name, stud?: 4 | 6, oc?: 16 | 24}}
+  set_wall_spec {walls: [ids], ext?, stud?: 4 | 6, oc?: 16 | 24, t?}   outside / inside wall, 2x4 / 2x6, stud spacing (inches)
   add_opening   {opening: {id, host, kind, off, w, h, sill, name, op}}
   remove_opening{opening}
   set_opening   {opening, off?, w?, h?, sill?}
@@ -34,6 +35,7 @@ rooms take the largest one's id. Each op also yields a scope line for the takeof
 from __future__ import annotations
 
 import copy
+import re
 import json
 import math
 import sys
@@ -50,6 +52,16 @@ FT = 3.2808399
 
 def _wall_len(w):
     return math.dist(w["start"], w["end"])
+
+
+def _wall_spec(w, ext, stud=None, oc=None):
+    """Record a wall's framing (2x4 / 2x6, stud spacing) the editor chose, in the wall's info.material, e.g. '2x6 studs @ 16" o.c.'."""
+    info = w.setdefault("info", {})
+    m = re.match(r'2x(\d) studs @ (\d+)" o\.c\.', info.get("material") or "")
+    stud = int(stud or (m and m.group(1)) or (6 if (w.get("thickness") or {}).get("value", 0.1143) >= 5.4 * 0.0254 else 4))
+    oc = int(oc or (m and m.group(2)) or 16)
+    info.update({"category": "exterior wall" if ext else "interior wall", "material": f'2x{stud} studs @ {oc}" o.c.',
+                 "subtype": "new wall, sheathed + sided" if ext else "new wood stud partition"})
 
 
 def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[dict, list[dict]]:
@@ -146,6 +158,8 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                       "base_offset": _v(v.get("b", 0.0), "design"), "exterior": ext,
                       "info": {"category": "exterior wall" if ext else "interior wall",
                                "subtype": "new 2x6 wall, sheathed + sided to match (addition)" if ext else "new wood stud partition"}})
+            if v.get("stud") or v.get("oc"):
+                _wall_spec(w, ext, v.get("stud"), v.get("oc"))
             E[w["id"]] = w
             touched.add(w["storey"])
         elif do == "add_opening":
@@ -304,6 +318,18 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                     b = (w.get("base_offset") or {"value": 0.0})["value"]
                     w["height"] = _v(op["top"] - b, "design: top of wall set")
                     touched.add(w["storey"])
+        elif do == "set_wall_spec":    # outside / inside, 2x4 / 2x6, stud spacing
+            for wid in op["walls"]:
+                w = E.get(wid)
+                if not w or w["type"] != "wall":
+                    raise DesignError(f"op {i}: no wall {wid}")
+                ext = bool(op["ext"]) if op.get("ext") is not None else bool(w.get("exterior"))
+                if op.get("t") is not None:
+                    w["thickness"] = _v(op["t"], "design: wall framing changed")
+                w["exterior"] = ext
+                _wall_spec(w, ext, op.get("stud"), op.get("oc"))
+                w["phase"] = "new" if wid not in asbuilt["elements"] else w.get("phase", "existing")
+                touched.add(w["storey"])
         elif do == "add_scope":
             line(i, op["label"], op.get("existing", ""), copy.deepcopy(op["lines"]))
         elif do == "add_beam":
