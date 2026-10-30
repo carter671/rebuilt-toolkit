@@ -1148,7 +1148,7 @@ function build3D(){
   highlight3D();
 }
 const CM = new THREE.MeshStandardMaterial({color: '#F3EFE6', roughness: .9, transparent: true, opacity: .55, side: THREE.DoubleSide});
-function roofOver(r){ return (S.roofs || []).find(rf => rf.st === r.st && inPoly(r.pt, rf.fp)); }
+function roofOver(r){ return (S.roofs || []).find(rf => rf.st === r.st && inPoly(r.pt, liveFp(rf))); }
 function clipHalf(P, o, v, keepPos){
   // keep the part of polygon P on one side of the line through o with normal v
   const out = [], f = q => dot(sub(q, o), v) * (keepPos ? 1 : -1);
@@ -1975,19 +1975,29 @@ let showFraming = false;
 // a gable roof in its own frame: u along the eaves (ridge direction), v across the span from the first eave
 // the roof follows its building: if the outside walls moved, its outline stretches with them
 function liveFp(r){
-  const box = list => { const xs = list.flatMap(w => [w.s[0], w.e[0]]), ys = list.flatMap(w => [w.s[1], w.e[1]]); return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]; };
-  const base = PLAN.walls.filter(w => w.st === r.st && w.ext), now = S.walls.filter(w => base.some(b => b.id === w.id));
-  if (!base.length || now.length < 2) return r.fp;
-  const B = box(base), tol = 0.6;
-  // a side of the roof moves only when every outside wall along that side moved by the same amount
-  // (the whole garage made deeper) — not when one stretch of wall was pushed out for an addition
-  const shift = (axis, val) => {
-    const on = base.filter(w => Math.abs(w.s[axis] - val) < 0.05 && Math.abs(w.e[axis] - val) < 0.05);
-    const ds = on.map(w => { const n = S.walls.find(x => x.id === w.id); return n ? (n.s[axis] + n.e[axis]) / 2 - val : null; }).filter(v => v !== null);
-    return ds.length && ds.every(v => Math.abs(v - ds[0]) < 0.02) ? ds[0] : 0;
-  };
-  const dx0 = shift(0, B[0]), dx1 = shift(0, B[1]), dy0 = shift(1, B[2]), dy1 = shift(1, B[3]);
-  return r.fp.map(([x, y]) => [x + (Math.abs(x - B[0]) < tol ? dx0 : Math.abs(x - B[1]) < tol ? dx1 : 0), y + (Math.abs(y - B[2]) < tol ? dy0 : Math.abs(y - B[3]) < tol ? dy1 : 0)]);
+  // a roof edge follows the outside wall it sits on when that whole wall line moved the same way (push the back wall
+  // out 5 ft: the roof over it gets 5 ft longer, a lower roof butting that wall 5 ft shorter). A wall line only partly
+  // moved is an addition and gets its own roof (buildRoof3D). Same rule as _stretch_roofs() in editor_ops.py.
+  const P = r.fp, n = P.length, c = mul(P.reduce((a, p) => add(a, p), [0, 0]), 1 / n), zp = EL(r.st) + r.plate, reach = (r.oh || 0.3) + (r.rake || 0) + 0.8;
+  const mid = w => mul(add(w.s, w.e), 0.5), move = P.map(() => [0, 0]); let any = false;
+  for (let i = 0; i < n; i++){
+    const a = P[i], b = P[(i + 1) % n], L = dist(a, b); if (L < 0.3) continue;
+    const u = unit(sub(b, a)); let nv = perp(u); if (dot(sub(c, a), nv) > 0) nv = mul(nv, -1);
+    const ds = []; let ok = true;
+    for (const w0 of PLAN.walls){
+      if (!w0.ext) continue; const z0 = EL(w0.st) + (w0.b || 0), z1 = z0 + w0.h;
+      if (!(z0 <= zp + 0.05 && z1 >= zp - 0.3) || Math.abs(dot(unit(sub(w0.e, w0.s)), u)) < 0.98) continue;
+      const m0 = mid(w0), off = dot(sub(m0, a), nv); if (off < -reach || off > 0.3) continue;
+      const s0 = Math.min(dot(sub(w0.s, a), u), dot(sub(w0.e, a), u)), s1 = Math.max(dot(sub(w0.s, a), u), dot(sub(w0.e, a), u));
+      if (Math.min(s1, L) - Math.max(s0, 0) < 0.3) continue;
+      const w = S.walls.find(x => x.id === w0.id); if (!w) continue;
+      if (Math.abs(dot(unit(sub(w.e, w.s)), u)) < 0.98){ ok = false; break; }
+      ds.push(dot(sub(mid(w), m0), nv));
+    }
+    if (ok && ds.length && ds.every(d => Math.abs(d - ds[0]) < 0.02) && Math.abs(ds[0]) > 0.01){
+      any = true; [i, (i + 1) % n].forEach(k => { move[k] = add(move[k], mul(nv, ds[0])); }); }
+  }
+  return any ? P.map((p, k) => add(p, move[k])) : P;
 }
 function roofFrame(r){
   const k = r.roles.indexOf('eave'), P = liveFp(r), a = P[k], b = P[(k + 1) % P.length];
@@ -2674,8 +2684,15 @@ function scopeData(){
     const low = (r.name || '').toLowerCase();
     return {name: r.name || 'Room', st: r.st, sf: r.area * SFm, addSf: n ? r.area * SFm * out / n : 0, changed: r.changed,
       floor: /garage/.test(low) ? 'none' : /basement|crawl|cellar/.test(low + ' ' + (PLAN.storeys[r.st]?.name || '').toLowerCase()) ? 'unfinished' : /bath|laundry|utility|mud/.test(low) ? 'tile' : 'LVP'}; });
-  const roofs = (S.roofs || []).map(r => { const b = (B.roofs || []).find(x => x.id === r.id); const sf = Math.abs(polyArea(r.fp)) * Math.sqrt(1 + r.pitch * r.pitch) * SFm;
-    return {name: r.name || r.id, sf, p: r.pitch * 12, p0: b ? b.pitch * 12 : null, changed: !b || Math.abs(b.pitch - r.pitch) > 0.001}; }).filter(r => r.changed);
+  const slope = r => Math.sqrt(1 + r.pitch * r.pitch) * SFm;
+  const roofs = (S.roofs || []).map(r => { const b = (B.roofs || []).find(x => x.id === r.id), fp = liveFp(r), a0 = Math.abs(polyArea(r.fp)), a1 = Math.abs(polyArea(fp));
+    const repitch = !b || Math.abs(b.pitch - r.pitch) > 0.001, grow = (a1 - a0) * slope(r);
+    return {name: r.name || r.id, sf: a1 * slope(r), grow, repitch, p: r.pitch * 12, p0: b ? b.pitch * 12 : null, changed: repitch || Math.abs(grow) > 5}; }).filter(r => r.changed);
+  const liveFps = (S.roofs || []).map(liveFp);
+  const roofless = all.reduce((acc, r) => { const xs = r.poly.map(p => p[0]), ys = r.poly.map(p => p[1]); let n = 0, out = 0;
+    for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++){ const q = [Math.min(...xs) + (i + .5) * (Math.max(...xs) - Math.min(...xs)) / 10, Math.min(...ys) + (j + .5) * (Math.max(...ys) - Math.min(...ys)) / 10];
+      if (!inPoly(q, r.poly)) continue; n++; if (!liveFps.some(P => inPoly(q, P))) out++; }
+    return acc + (n ? r.area * SFm * out / n : 0); }, 0);
   const cab = {base: 0, upper: 0, tall: 0}, count = {};
   S.items.forEach(it => { const c = CAT[it.cat] || {}; if (NOT_SCOPE.has(it.cat)) return;
     if (c.cab === 'base') cab.base += it.w * FTm;
@@ -2684,7 +2701,7 @@ function scopeData(){
       const key = it.cat === 'island' ? `Island ${Math.round(it.w / IN)}"` : it.cat === 'fireplace' ? `Fireplace (decorative) ${Math.round(it.w / IN)}"` : it.cat === 'vanity' ? `Vanity ${Math.round(it.w / IN)}"` : k;
       count[key] = (count[key] || 0) + 1; } });
   const beams = (S.beams || []).map(b => ({name: b.name, lf: dist(b.s, b.e) * FTm, size: `${b.plies || 3}-ply 1¾" × ${Math.round(b.depth / IN * 4) / 4}" LVL`}));
-  return {demo, frame, ops, rooms: rooms2, roofs, cab, count, beams};
+  return {demo, frame, ops, rooms: rooms2, roofs, roofless, cab, count, beams};
 }
 const f0 = x => Math.round(x).toLocaleString(), ft1 = x => (Math.round(x * 10) / 10).toLocaleString();
 function scopeLines(){
@@ -2718,13 +2735,16 @@ function scopeLines(){
   const gar = D.rooms.filter(r => r.floor === 'none'); if (gar.length) R('Garage (not in the totals)', f0(gar.reduce((a, r) => a + r.sf, 0)) + ' sf');
   if (unf.length) R('Basement / crawl (unfinished, not in the totals)', f0(unf.reduce((a, r) => a + r.sf, 0)) + ' sf');
   R('Finished floor area, all floors', f0(fin.reduce((a, r) => a + r.sf, 0)) + ' sf');
-  if (add > 10) R('New floor area outside the old house (foundation + roof)', f0(add) + ' sf', D.rooms.filter(r => r.addSf > 5).map(r => `${r.name} ${f0(r.addSf)}`).join(' · '));
+  if (add > 10) R('New floor area outside the old house (new floor framing; foundation under ground-floor parts)', f0(add) + ' sf', D.rooms.filter(r => r.addSf > 5).map(r => `${r.name} ${f0(r.addSf)}`).join(' · '));
   const lvp = fin.filter(r => r.floor === 'LVP').reduce((a, r) => a + r.sf, 0), tile = fin.filter(r => r.floor === 'tile').reduce((a, r) => a + r.sf, 0);
   R('Flooring: LVP', f0(lvp) + ' sf', 'rooms not named bath / laundry / utility / mud'); if (tile) R('Flooring: tile', f0(tile) + ' sf', 'baths, laundry, utility, mud');
   // roof
-  if (D.roofs.length || add > 10){ H('Roof');
-    D.roofs.forEach(r => R(`${r.name}: pitch ${r.p0 == null ? 'new' : ft1(r.p0) + '/12 → '}${ft1(r.p)}/12`, f0(r.sf) + ' sf', 'new framing + sheathing + shingles over the whole roof'));
-    if (add > 10) R('Roof over the new floor area', '≈ ' + f0(add * 1.15) + ' sf', 'plan area + slope and overhang allowance'); }
+  if (D.roofs.length || D.roofless > 10){ H('Roof');
+    D.roofs.forEach(r => {
+      if (r.repitch) R(`${r.name}: pitch ${r.p0 == null ? 'new' : ft1(r.p0) + '/12 → '}${ft1(r.p)}/12`, f0(r.sf) + ' sf', 'new framing + sheathing + shingles over the whole roof');
+      else if (r.grow > 0) R(`${r.name}: extended over the moved wall`, '+' + f0(r.grow) + ' sf', `new framing + roofing for the added part; tie into the old roof (${f0(r.sf)} sf in all)`);
+      else R(`${r.name}: shortened (the wall it butts moved)`, f0(r.grow) + ' sf', 'cut back and re-flash where it meets the wall'); });
+    if (D.roofless > 10) R('Roof over the new floor area', '≈ ' + f0(D.roofless * 1.15) + ' sf', 'plan area + slope and overhang allowance'); }
   // kitchen, bath, fixtures
   const any = D.cab.base + D.cab.upper + D.cab.tall > 0 || Object.keys(D.count).length;
   if (any){ H('Cabinets, fixtures & appliances');

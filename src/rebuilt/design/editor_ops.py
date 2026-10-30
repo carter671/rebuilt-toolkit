@@ -56,10 +56,10 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
     g = copy.deepcopy(asbuilt)
     E = g["elements"]
     ops = doc.get("ops", [])[: doc.get("cursor", len(doc.get("ops", [])))]
-    flat = []
-    for op in ops:   # a multi-wall edit is saved as one "batch" step
-        flat.extend(op.get("ops", []) if op.get("do") == "batch" else [op])
-    ops = flat
+    def _flat(L):   # a multi-wall edit is saved as one "batch" step; chat edits can nest batches
+        for op in L:
+            yield from (_flat(op.get("ops", [])) if op.get("do") == "batch" else [op])
+    ops = list(_flat(ops))
     layout, names, touched = [], [], set()
     base_spaces = {k: copy.deepcopy(e) for k, e in E.items() if e["type"] == "space"}
 
@@ -375,7 +375,8 @@ def apply_editor(asbuilt: dict, doc: dict, extras: dict | None = None) -> tuple[
                     w[k] = [round(p[0] + (q[0] - p[0]) / Lw * back, 6), round(p[1] + (q[1] - p[1]) / Lw * back, 6)]
     for st in touched:
         _rederive_rooms(E, st, base_spaces, names, covers)
-    _additions(asbuilt["elements"], E, layout)
+    stretched = _stretch_roofs(asbuilt, asbuilt["elements"], E)
+    _additions(asbuilt["elements"], E, layout, stretched)
     _ext_trims(E)
     _ceilings(E, ceilings, layout)
     from shapely.geometry import Polygon as _Pg
@@ -753,7 +754,60 @@ def _ext_trims(E):
             rf["trim_by"] = others
 
 
-def _additions(E0, E, layout):
+def _stretch_roofs(asbuilt, E0, E):
+    """A roof edge follows the outside wall it sits on when that whole wall line moved the same way
+    (a back wall pushed out 5 ft: the roof over it gets 5 ft longer, and a lower roof butting that wall
+    gets 5 ft shorter). A wall line only partly moved is an addition and is left to _additions.
+    Same rule as liveFp() in the editor. Returns the ids of the roofs it changed."""
+    elev = {s["id"]: s["elevation"]["value"] for b in asbuilt.get("buildings", []) for s in b.get("storeys", [])}
+    val = lambda x, d=0.0: (x or {}).get("value", d) if isinstance(x, dict) else (x if x is not None else d)
+    unit = lambda a, b: ((b[0] - a[0]) / (math.dist(a, b) or 1), (b[1] - a[1]) / (math.dist(a, b) or 1))
+    dot = lambda p, q: p[0] * q[0] + p[1] * q[1]
+    mid = lambda w: ((w["start"][0] + w["end"][0]) / 2, (w["start"][1] + w["end"][1]) / 2)
+    walls0 = [w for w in E0.values() if w["type"] == "wall" and w.get("exterior")]
+    done = set()
+    for rid, r in E.items():
+        if r["type"] != "roof" or rid not in E0:
+            continue
+        P = [list(p) for p in r["footprint"]]; n = len(P)
+        cx, cy = sum(p[0] for p in P) / n, sum(p[1] for p in P) / n
+        zp = elev.get(r["storey"], 0.0) + val(r.get("plate_height"))
+        reach = val(r.get("overhang"), 0.3) + val(r.get("rake_overhang"), 0.0) + 0.8
+        move = [[0.0, 0.0] for _ in P]
+        for i in range(n):
+            a, b = P[i], P[(i + 1) % n]; L = math.dist(a, b)
+            if L < 0.3:
+                continue
+            u = unit(a, b); nv = (-u[1], u[0])
+            if (cx - a[0]) * nv[0] + (cy - a[1]) * nv[1] > 0:
+                nv = (-nv[0], -nv[1])                       # outward
+            ds, ok = [], True
+            for w0 in walls0:
+                z0 = elev.get(w0["storey"], 0.0) + val(w0.get("base_offset")); z1 = z0 + val(w0.get("height"))
+                if not (z0 <= zp + 0.05 and z1 >= zp - 0.3) or abs(dot(unit(w0["start"], w0["end"]), u)) < 0.98:
+                    continue
+                m0 = mid(w0); off = (m0[0] - a[0]) * nv[0] + (m0[1] - a[1]) * nv[1]
+                if not (-reach <= off <= 0.3):
+                    continue
+                s0, s1 = sorted(((q[0] - a[0]) * u[0] + (q[1] - a[1]) * u[1]) for q in (w0["start"], w0["end"]))
+                if min(s1, L) - max(s0, 0.0) < 0.3:
+                    continue
+                w = E.get(w0["id"])
+                if not w or w["type"] != "wall":
+                    continue
+                if abs(dot(unit(w["start"], w["end"]), u)) < 0.98:
+                    ok = False; break
+                m1 = mid(w); ds.append((m1[0] - m0[0]) * nv[0] + (m1[1] - m0[1]) * nv[1])
+            if ok and ds and all(abs(d - ds[0]) < 0.02 for d in ds) and abs(ds[0]) > 0.01:
+                for k in (i, (i + 1) % n):
+                    move[k][0] += nv[0] * ds[0]; move[k][1] += nv[1] * ds[0]
+        if any(abs(m[0]) > 1e-6 or abs(m[1]) > 1e-6 for m in move):
+            r["footprint"] = [[round(p[0] + m[0], 6), round(p[1] + m[1], 6)] for p, m in zip(P, move)]
+            done.add(rid)
+    return done
+
+
+def _additions(E0, E, layout, stretched=frozenset()):
     """New rooms outside an existing building: slab, roof and the scope that goes with them.
 
     A building made bigger by moving a whole side out keeps its own roof, stretched. Anything
@@ -775,7 +829,7 @@ def _additions(E0, E, layout):
             return ds[0] if ds and all(abs(d - ds[0]) < 0.02 for d in ds) and len(ds) == len(on) else 0.0
         sh = [side_shift(0, B[0]), side_shift(0, B[1]), side_shift(1, B[2]), side_shift(1, B[3])]
         roof0 = next((e for e in E.values() if e["type"] == "roof" and e["storey"] == st and e["id"] in E0), None)
-        if roof0 and any(abs(v) > 0.01 for v in sh):      # the whole side moved: stretch the old roof with it
+        if roof0 and roof0["id"] not in stretched and any(abs(v) > 0.01 for v in sh):      # the whole side moved: stretch the old roof with it
             tol = 0.6
             roof0["footprint"] = [[round(x + (sh[0] if abs(x - B[0]) < tol else sh[1] if abs(x - B[1]) < tol else 0), 6),
                                    round(y + (sh[2] if abs(y - B[2]) < tol else sh[3] if abs(y - B[3]) < tol else 0), 6)] for x, y in roof0["footprint"]]
