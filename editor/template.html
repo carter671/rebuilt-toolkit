@@ -682,6 +682,7 @@ function showPop(ev){
     const vb2 = btn('Vaulted', () => setC('vault', null, 'vaulted ceiling')); if (r.ceil.mode === 'vault') vb2.setAttribute('aria-pressed', 'true');
     btn('Height…', () => ceilingInput(r));
     if (r.ceil.given) btn('As-built', () => setC('reset', null, 'ceiling back to as-built'));
+    btn('Angle a corner…', () => cornerPicker(r));
     setTimeout(() => inp.select(), 0);
   }
   pop.hidden = false;
@@ -1510,6 +1511,8 @@ const CAT = {
   sink:    {g: 'Kitchen', label: 'Sink base', w: 36, d: 24, h: 36, z: 0, wall: true, widths: [30, 33, 36], cab: 'base'},
   trash:   {g: 'Kitchen', label: 'Trash pull-out', w: 18, d: 24, h: 36, z: 0, wall: true, widths: [15, 18, 21, 24], cab: 'base'},
   corner:  {g: 'Kitchen', label: 'Corner base', w: 36, d: 36, h: 36, z: 0, wall: true, widths: [], cab: 'base', style: 'lazy'},
+  micro:   {g: 'Kitchen', label: 'Microwave + cabinet', w: 30, d: 15, h: 32, z: 58, wall: true, widths: [30]},
+  hood:    {g: 'Kitchen', label: 'Vent hood', w: 30, d: 20, h: 30, z: 66, wall: true, widths: [30, 36, 42, 48]},
   upper:   {g: 'Kitchen', label: 'Upper cabinet', w: 30, d: 12, h: 36, z: 54, wall: true, widths: STD, cab: 'wall'},
   tall:    {g: 'Kitchen', label: 'Pantry cabinet', w: 24, d: 24, h: 84, z: 0, wall: true, widths: [18, 24, 30, 36], cab: 'tall'},
   island:  {g: 'Kitchen', label: 'Island', w: 72, d: 36, h: 36, z: 0, wall: false, widths: [48, 60, 72, 84, 96], cab: 'island'},
@@ -1730,7 +1733,7 @@ const BASE_ROW = new Set(['base', 'sink', 'trash', 'corner', 'filler', 'dw', 'ra
 function syncGaps(T, push){
   const want = [], rows = {};
   T.items.filter(o => !(o.auto === 'gap')).forEach(o => {
-    const up = isUpper(o), row = up ? (o.cat === 'upper' || o.cat === 'filler') : BASE_ROW.has(o.cat);
+    const up = isUpper(o), row = up ? ['upper', 'filler', 'micro', 'hood'].includes(o.cat) : BASE_ROW.has(o.cat);
     const rowsOf = up ? (row ? ['upper'] : []) : row ? (o.cat === 'tall' || o.cat === 'panel' ? ['base', 'upper'] : ['base']) : [];
     if (!rowsOf.length) return; const W = wallOfItem(o); if (!W) return;
     rowsOf.forEach(r => { const k = W.w.id + '|' + W.side + '|' + r; (rows[k] = rows[k] || {w: W.w, side: W.side, row: r, list: []}).list.push({o, u0: W.u - o.w / 2, u1: W.u + o.w / 2}); });
@@ -1770,6 +1773,18 @@ function commitSynced(op){
 function setFridgeDepth(fr, inch){
   const {f} = itemFrame(fr), d = inch * IN;
   commitSynced({do: 'set_item', item: fr.id, d, at: add(fr.at, mul(f, (d - fr.d) / 2)), label: `${fr.name} → ${inch === FRIDGE_D.counter ? 'counter depth' : 'standard depth'}`}); showPop(null);
+}
+/* over the range: an over-the-range microwave with a cabinet above it (cabinet top in line with the uppers), or a stainless
+   chimney hood (canopy 30" over the cooktop, chimney to the ceiling) */
+function overRangeFit(it, items){
+  const W = wallOfItem(it), top = topLine(it, items), wallH = W ? W.w.h : 2.44;
+  return it.cat === 'micro' ? {z: top - 32 * IN, h: 32 * IN, d: 15 * IN} : {z: 66 * IN, h: Math.max(18 * IN, wallH - 66 * IN), d: 20 * IN};
+}
+function aboveRange(rg, cat){
+  const it = newItem(cat, {st: rg.st, rot: rg.rot, w: cat === 'micro' ? 30 * IN : rg.w}), {f} = itemFrame(rg);
+  it.at = add(facePt(rg), mul(f, it.d / 2 + 0.003)); const back = facePt(rg); Object.assign(it, overRangeFit(it)); it.at = add(back, mul(f, it.d / 2 + 0.003));
+  S.items.filter(o => isUpper(o) && o.cat === 'upper' && Math.abs(dot(sub(o.at, rg.at), itemFrame(rg).a)) < (o.w + it.w) / 2 - 0.01 && dot(itemFrame(o).f, f) > 0.99).forEach(o => toast(`${o.name} is over the range — remove it first or it will overlap.`));
+  commitSynced({do: 'add_item', item: it, label: `Added ${cat === 'micro' ? 'a microwave + cabinet' : 'a vent hood'} over the range`}); sel = {kind: 'item', id: it.id}; drawPlan(); showPop(null);
 }
 function cabinetOverFridge(fr){
   const it = newItem('upper', {st: fr.st, w: fr.w, rot: fr.rot, at: fr.at.slice(), name: 'Cabinet over fridge'});
@@ -1822,6 +1837,7 @@ function centerSpans(it, w, side, u){
   let lo = lo0, hi = hi0;
   const take = (a, b) => { if (b <= u) lo = Math.max(lo, b); else if (a >= u) hi = Math.min(hi, a); };
   if (!isUpper(it)) S.openings.filter(o => o.host === w.id && o.kind !== 'window').forEach(o => take(o.off, o.off + o.w));
+  else S.openings.filter(o => o.host === w.id && (o.kind === 'window' || o.h + o.sill > it.z)).forEach(o => take(o.off - 2 * IN, o.off + o.w + 2 * IN));
   const reach = (it.d || 0.3) + (it.bump || 0);
   S.items.forEach(o => {
     if (o.id === it.id || o.of === it.id || o.st !== it.st || !zOverlap(o, it)) return;
@@ -2004,11 +2020,13 @@ function sideFills(it){
 function fillSides(it, list){
   const W = wallOfItem(it), {d: wd, n} = wallFrame(W.w), f = mul(n, W.side), ops2 = [];
   list.forEach(sd => { let u = sd.sgU < 0 ? sd.u1 : sd.u0;
+    const up = isUpper(it) || it.cat === 'micro' || it.cat === 'hood', top = up ? topLine(it) : 0;
     sd.fill.combo.forEach(inch => { const wdt = inch * IN, c = u + sd.sgU * wdt / 2;
-      const nb = newItem('base', {st: it.st, w: wdt, rot: rotOf(f), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 12 * IN))});
+      const nb = up ? newItem('upper', {st: it.st, w: wdt, rot: rotOf(f), z: 54 * IN, h: Math.max(12 * IN, top - 54 * IN), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 6 * IN))})
+                    : newItem('base', {st: it.st, w: wdt, rot: rotOf(f), at: add(add(W.w.s, mul(wd, c)), mul(f, W.w.t / 2 + 0.003 + 12 * IN))});
       ops2.push({do: 'add_item', item: nb}); u += sd.sgU * wdt; }); });
   const what = list.map(sd => `${sd.side.toLowerCase()}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`).join('; ');
-  commitSynced({do: 'batch', ops: ops2, label: `Base cabinets beside ${it.name} (${what})`}); showPop(null);
+  commitSynced({do: 'batch', ops: ops2, label: `${isUpper(it) || it.cat === 'micro' || it.cat === 'hood' ? 'Upper' : 'Base'} cabinets beside ${it.name} (${what})`}); showPop(null);
 }
 /* the ends of a shower / tub: the wall it backs to, and what is beside each end — a nearby wall (fill the gap with
    wall, or move that wall over) or nothing (add a wall at that end) */
@@ -2042,6 +2060,58 @@ function endWall(it, E, mode){
     commit({do: 'add_wall', wall: w, label: `Added a wall at the ${E.side} end of the ${it.name.toLowerCase()}`}); }
   showPop(null);
 }
+/* angle a corner off a room: a 45° wall across a square corner, the legs measured along the walls from the corner.
+   Cut = the two corner walls are trimmed back to the angled wall (only when they just meet there and nothing is in the cut);
+   otherwise the triangle behind stays as a small closed space. */
+function roomCorners(r){
+  const P = r.poly, n = P.length, out = [], c = mul(P.reduce((a, p) => add(a, p), [0, 0]), 1 / n), sg = Math.sign(polyArea(P));
+  for (let i = 0; i < n; i++){ const C = P[i], A0 = P[(i - 1 + n) % n], B0 = P[(i + 1) % n], u = unit(sub(A0, C)), v = unit(sub(B0, C));
+    if (Math.abs(dot(u, v)) > 0.05) continue;
+    const cr = (C[0] - A0[0]) * (B0[1] - C[1]) - (C[1] - A0[1]) * (B0[0] - C[0]); if (Math.sign(cr) !== sg) continue;   // square, outward-pointing corners only
+    out.push({C, u, v, la: dist(A0, C), lb: dist(B0, C), name: (C[1] > c[1] ? 'N' : 'S') + (C[0] > c[0] ? 'E' : 'W')}); }
+  return out;
+}
+function cornerPlan(r, k, L){
+  const A = add(k.C, mul(k.u, L)), B = add(k.C, mul(k.v, L)), ws = S.walls.filter(w => w.st === r.st);
+  const legWall = (dir, pt) => ws.find(w => Math.abs(Math.abs(dot(wallFrame(w).d, dir)) - 1) < 1e-3 && projOnSeg(pt, w.s, w.e).d < 0.01 && projOnSeg(add(k.C, mul(dir, 0.02)), w.s, w.e).d < 0.01);
+  const w1 = legWall(k.u, A), w2 = legWall(k.v, B); let cut = null;
+  if (w1 && w2){
+    const endAt = w => ['s', 'e'].find(e => dist(w[e], k.C) < Math.max(w1.t, w2.t) + 0.02);
+    const e1 = endAt(w1), e2 = endAt(w2), others = ws.filter(o => o !== w1 && o !== w2 && projOnSeg(k.C, o.s, o.e).d < o.t / 2 + w1.t / 2 + 0.02);
+    if (e1 && e2 && !others.length){
+      const walls = {}, offs = {}; let ok = true;
+      [[w1, e1, A], [w2, e2, B]].forEach(([w, e, pt]) => { const L0 = dist(w.s, w.e), keep = e === 's' ? [pt, w.e] : [w.s, pt]; walls[w.id] = {s: keep[0].slice(), e: keep[1].slice()};
+        const shift = e === 's' ? dist(w.s, pt) : 0, newL = dist(keep[0], keep[1]);
+        S.openings.filter(o => o.host === w.id).forEach(o => { const off = o.off - shift; if (off < 0.02 || off + o.w > newL - 0.02) ok = false; else if (shift) offs[o.id] = off; }); });
+      if (ok) cut = {walls, offs, t: Math.min(w1.t, w2.t), ext: !!(w1.ext && w2.ext), stud: Math.max(studOf(w1), studOf(w2))};
+    }
+  }
+  return {A, B, w1, w2, cut};
+}
+let cornerMode = 'cut';
+function angleCorner(r, k, legIn){
+  const L = legIn * IN; if (L > Math.min(k.la, k.lb) - 0.15){ toast(`The ${k.name} corner's walls are only ${ftin(Math.min(k.la, k.lb))} long.`); return; }
+  const pl = cornerPlan(r, k, L), cut = cornerMode === 'cut' && pl.cut;
+  // a door or window within the angle's reach of the corner would be cut through
+  for (const w0 of [pl.w1, pl.w2].filter(Boolean)){ const {d} = wallFrame(w0), uc = dot(sub(k.C, w0.s), d), dir = Math.sign(dot(w0 === pl.w1 ? k.u : k.v, d));
+    const hit = S.openings.find(o => o.host === w0.id && o.op !== 'open' && (dir > 0 ? o.off < uc + L + 0.03 && o.off + o.w > uc : o.off + o.w > uc - L - 0.03 && o.off < uc));
+    if (hit){ toast(`${hit.name || 'A ' + hit.kind} on ${w0.name || 'that wall'} is within ${legIn}" of the ${k.name} corner — pick a smaller angle or slide it away first.`); return; } }
+  const w = {id: uid('N-W'), st: r.st, s: pl.A, e: pl.B, t: cut ? pl.cut.t : 4.5 * IN, h: (pl.w1 || pl.w2 || {h: 2.44}).h, b: 0, ext: cut ? pl.cut.ext : false, stud: cut ? pl.cut.stud : 4, oc: 16, name: 'Angled wall'};
+  const opsA = (cut ? [{do: 'set_walls', walls: pl.cut.walls, openings: pl.cut.offs}] : []).concat([{do: 'add_wall', wall: w}]);
+  if (cornerMode === 'cut' && !pl.cut) toast(`Couldn't trim the ${k.name} corner walls (something else meets there or a door is in the way) — the angled wall goes in with a closed space behind it.`);
+  commit({do: 'batch', ops: opsA, label: `Angled the ${k.name} corner of ${r.name} (${legIn}")` + (cut ? '' : ' — closed space behind')}); hidePop(); sel = null; drawPlan();
+}
+function cornerPicker(r, k){
+  pop.innerHTML = ''; const t = document.createElement('div'); t.className = 't'; pop.appendChild(t);
+  if (!k){ const ks = roomCorners(r); t.textContent = ks.length ? `${r.name}: which corner?` : `${r.name} has no square corner to angle.`;
+    ks.forEach(k2 => btn(`${k2.name} corner`, () => cornerPicker(r, k2))); return; }
+  t.textContent = `${r.name}, ${k.name} corner: how far along each wall?`;
+  const m = btn(cornerMode === 'cut' ? 'Cut the corner off ✓' : 'Keep the corner (closed space behind) ✓', () => { cornerMode = cornerMode === 'cut' ? 'keep' : 'cut'; cornerPicker(r, k); });
+  const dv = document.createElement('div'); dv.style.width = '100%'; pop.appendChild(dv);
+  [24, 30, 36, 48].forEach(i => btn(`${i}"`, () => angleCorner(r, k, i)));
+  const inp = document.createElement('input'); inp.placeholder = 'inches'; inp.style.width = '70px'; inp.setAttribute('aria-label', 'Corner size in inches'); pop.appendChild(inp);
+  btn('Go', () => { const v = parseFloat(inp.value); if (v >= 6 && v <= 120) angleCorner(r, k, v); else toast('Type inches, like 32'); });
+}
 function centerItem(it, which){
   const W = wallOfItem(it); if (!W) return;
   const sp = centerSpans(it, W.w, W.side, W.u)[which] || centerSpans(it, W.w, W.side, W.u).wall; if (!sp) return;
@@ -2066,6 +2136,7 @@ function drawItems(g, upper){
     switch (it.cat){
       case 'base': case 'tall': line(L(-1, 0.8), L(1, 0.8)); if (it.cat === 'tall'){ line(L(-1, -1), L(1, 0.8)); if (it.style === 'linen'){ const [x, y] = toSvg(L(0.35, -0.35)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 8 * pxm()}, grp).textContent = 'LINEN'; } } break;
       case 'panel': line(L(-1, -1), L(1, 1)); line(L(-1, 1), L(1, -1)); break;
+      case 'micro': case 'hood': { line(L(-1, 0.6), L(1, 0.6)); if (it.cat === 'hood'){ line(L(-1, 1), L(-0.35, -1)); line(L(1, 1), L(0.35, -1)); } const [x, y] = toSvg(L(0, -0.2)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = it.cat === 'micro' ? 'MW' : 'HOOD'; break; }
       case 'trash': { line(L(-1, 0.8), L(1, 0.8)); const [x, y] = toSvg(L(0, -0.1)); el('text', {x, y: y + 4 * pxm(), class: 'sym-t', 'font-size': 9 * pxm()}, grp).textContent = 'TRASH';
         el('polygon', {points: pts([L(-0.7, -0.75), L(-0.05, -0.75), L(-0.05, 0.55), L(-0.7, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp);
         el('polygon', {points: pts([L(0.05, -0.75), L(0.7, -0.75), L(0.7, 0.55), L(0.05, 0.55)]), class: 'sym', 'stroke-width': sw, opacity: .35}, grp); break; }
@@ -2184,7 +2255,9 @@ function itemPop(t){
     if (frU){ const b = btn('Up to the other uppers', () => setUpperHeight(it, 0)); if (!it.pick) b.setAttribute('aria-pressed', 'true'); brk();
       [24, 12].forEach(di => { const b2 = btn(`${di}" deep box`, () => { commitSynced({do: 'set_item', item: it.id, boxD: di, label: `${it.name} → ${di}" deep on a bump-out`}); showPop(null); }); if (Math.abs(it.d - di * IN) < 0.005) b2.setAttribute('aria-pressed', 'true'); }); }
     brk(); }
-  if (!isUpper(it) && c.wall && !it.auto && ['range', 'dw', 'fridge', 'sink', 'base', 'trash', 'tall', 'corner'].includes(it.cat)){
+  if (it.cat === 'range' && !S.items.some(o => (o.cat === 'micro' || o.cat === 'hood') && Math.abs(dot(sub(o.at, it.at), itemFrame(it).a)) < it.w / 2 && dot(itemFrame(o).f, itemFrame(it).f) > 0.99)){
+    brk(); btn('Microwave above', () => aboveRange(it, 'micro')); btn('Hood above', () => aboveRange(it, 'hood')); brk(); }
+  if (c.wall && !it.auto && ['range', 'dw', 'fridge', 'sink', 'base', 'trash', 'tall', 'corner', 'micro', 'hood', 'upper'].includes(it.cat) && !(isUpper(it) && fridgeUnder(it))){
     const fills = sideFills(it);
     if (fills.length){ brk();
       fills.forEach(sd => btn(`${sd.side} ${ftinHalf(sd.space * IN)}: ${sd.fill.combo.map(x => x + '"').join(' + ')}${sd.fill.r > 0.24 ? ` + ${Math.round(sd.fill.r * 2) / 2}" filler` : ''}`, () => fillSides(it, [sd])));
@@ -2614,6 +2687,8 @@ function buildItems3D(grp){
       case 'fridge': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.steel, grp); break;
       case 'dw': itemBox(it, -1, 1, -1, 0.95, 0, H, on ? IM.pick : IM.steel, grp); itemBox(it, -1, 1, -1, 1.04, H, H + 1.5 * IN, IM.top, grp); break;     // countertop over the dishwasher
       case 'panel': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : IM.cab, grp); break;
+      case 'micro': itemBox(it, -1, 1, -1, -1 + 2 * 12 * IN / it.d, 17 * IN, H, on ? IM.pick : bad ? IM.bad : IM.cab, grp); itemBox(it, -1, 1, -1, 1, 0, 17 * IN, IM.steel, grp); break;
+      case 'hood': { const cw = Math.min(1, 12 * IN / it.w), cd = -1 + 2 * 10 * IN / it.d; itemBox(it, -1, 1, -1, 1, 0, 3 * IN, on ? IM.pick : IM.steel, grp); itemBox(it, -0.8, 0.8, -1, 0.6, 3 * IN, 9 * IN, IM.steel, grp); itemBox(it, -cw, cw, -1, cd, 9 * IN, H, IM.steel, grp); break; }
       case 'shower': if (it.style === 'neo'){ polyPrism(neoShape(it), EL(it.st) + it.z, EL(it.st) + it.z + H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break; }
         itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;
       case 'toilet': case 'tub': case 'washer': case 'dryer': itemBox(it, -1, 1, -1, 1, 0, H, on ? IM.pick : bad ? IM.bad : IM.white, grp); break;

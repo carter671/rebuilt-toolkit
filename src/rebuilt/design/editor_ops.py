@@ -486,6 +486,7 @@ ITEM = {
     "upper": ("fixture", "wall cabinet", "wall"), "tall": ("fixture", "tall cabinet", "tall"),
     "trash": ("fixture", "trash pull-out base cabinet", "base"), "corner": ("fixture", "corner base cabinet", None),
     "panel": ("fixture", "refrigerator end panel", None),
+    "micro": ("equipment", "over-the-range microwave + wall cabinet", None), "hood": ("equipment", "range hood", None),
     "island": ("fixture", "kitchen island", "island"), "filler": ("fixture", "cabinet filler", None),
     "range": ("equipment", "range", "range"), "fridge": ("equipment", "refrigerator", "fridge"),
     "dw": ("equipment", "dishwasher", None), "vanity": ("fixture", "vanity", "vanity"),
@@ -509,7 +510,7 @@ def _place_items(E, items, layout):
     cabinets, lf = [], {"base": 0.0, "wall": 0.0, "tall": 0.0, "island": 0.0}
     counter_sf, fixtures, appliances = 0.0, [], 0
     bumps = []                                              # cabinets pulled out flush with the fridge: framed bump-out behind
-    hardware = {"trash": 0, "lazy": 0, "panel": 0}
+    hardware = {"trash": 0, "lazy": 0, "panel": 0, "hood": 0}
     for it in items.values():
         if (it.get("bump") or 0) > 0.002:
             bumps.append(it)
@@ -560,6 +561,11 @@ def _place_items(E, items, layout):
                 counter_sf += w_ft * (it["d"] + (it.get("bump") or 0) + 0.025) * FT
         elif it["cat"] == "panel":
             hardware["panel"] += 1
+        elif it["cat"] == "micro":                            # the cabinet over the microwave is upper run; the microwave is an appliance
+            lf["wall"] += w_ft
+            appliances += 1
+        elif it["cat"] == "hood":
+            hardware["hood"] += 1
     lines = []
     run = max(lf["base"], lf["wall"])
     if run:
@@ -576,6 +582,8 @@ def _place_items(E, items, layout):
         lines.append({"key": "plumb_fixture", "qty": len(fixtures), "note": ", ".join(fixtures)})
     if hardware["trash"]:
         lines.append({"key": "trash_pullout", "qty": hardware["trash"], "note": "double-bin pull-out kit"})
+    if hardware["hood"]:
+        lines.append({"key": "range_hood", "qty": hardware["hood"], "note": "stainless chimney hood, ducted outside"})
     if hardware["panel"]:
         lines.append({"key": "fridge_panel", "qty": hardware["panel"], "note": "full-height end panel beside the fridge"})
     if hardware["lazy"]:

@@ -292,6 +292,7 @@ ADDED = {
     'cab_bumpout': ('Framed bump-out behind cabinets set flush with the fridge (2x4 + drywall)', 'lf', 45.0),
     'trash_pullout': ('Trash pull-out kit (double bin) in a base cabinet', 'ea', 220.0), 'lazy_susan': ('Lazy susan in a corner base', 'ea', 260.0),
     'fridge_panel': ('Refrigerator end panel, full height, finished to match', 'ea', 350.0),
+    'range_hood': ('Stainless chimney range hood + duct + roof / wall cap', 'ea', 1100.0),
     'door_barn': ('Barn door slab + surface track + blocking', 'ea', 700.0), 'door_ext_french': ('Exterior French door pair (full glass), sill pan', 'ea', 3200.0),
 }
 for k, v in PB.items():          # a real pricebook entry always wins over an added rate
